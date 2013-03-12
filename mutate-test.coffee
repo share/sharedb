@@ -1,6 +1,6 @@
 # Test that operations apply to their documents correctly.
 
-type = require('./mutate')
+type = require('./lib/mutate')
 
 module.exports =
   setUp: (callback) ->
@@ -108,6 +108,8 @@ module.exports =
 
     # Make sure the object chain gets created
     test.deepEqual {x:y:[2]}, @apply null, op:'ins', p:['x', 'y', 0], val:2
+    # ... even on path: -1
+    test.deepEqual {x:y:[2]}, @apply null, op:'ins', p:['x', 'y', -1], val:2
 
     test.done()
 

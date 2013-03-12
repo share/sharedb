@@ -1,11 +1,13 @@
 {EventEmitter} = require 'events'
+assert = require 'assert'
 mutate = require './mutate'
+redisLib = require 'redis'
 
-# mongo is a mongoskin client. Create with:
-#  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
-exports.client = (mongo, redis) ->
+exports.mongo = require './mongo'
+
+exports.client = (snapshotDb, redis) ->
   opLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
-  opChannel = (cName, docName) -> "#{cName}.#{docName}"
+  getOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
   # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
   # (null or undefined) then it returns all ops.
@@ -19,7 +21,10 @@ exports.client = (mongo, redis) ->
 
     redis.lrange opLogKey(cName, docName), from, to, (err, values) ->
       return callback? err if err
-      ops = (JSON.parse value for value in values)
+      ops = for value in values
+        op = JSON.parse value
+        op.v = from++ # The version is stripped from the ops in the oplog. Add it back.
+        op
       callback null, ops
 
   redisSubmit = (cName, docName, opData, callback) ->
@@ -63,7 +68,7 @@ end
 -- Ok to submit. Save the op in the oplog and publish.
 redis.call('RPUSH', opLogKey, logEntry)
 redis.call('PUBLISH', opChannel, pubEntry)
-    """, 3, clientNonceKey, opLogKey(cName, docName), opChannel(cName, docName), seq, opData.v, logEntry, pubEntry, callback
+    """, 3, clientNonceKey, opLogKey(cName, docName), getOpChannel(cName, docName), seq, opData.v, logEntry, pubEntry, callback
 
   client =
     submit: (cName, docName, opData, callback) ->
@@ -101,27 +106,71 @@ redis.call('PUBLISH', opChannel, pubEntry)
               # we'll be in serious trouble.
               snapshot.data = mutate.apply snapshot.data, d.op for d in oldOpData
 
-              console.log 'retry'
+              #console.log 'retry'
               return retry()
 
             # Call callback with op submit version
-            callback null, opData.v
-            # Update mongo snapshot if we feel like it
-            #if Math.random() < 0.1
-            #  mongo.collection(cName).update {_id:docName}, {$set:{v:opData.v, data:doc}}, {upsert:true}
+            callback? null, opData.v
+            # Update the snapshot if we feel like it.
+            if Math.random() < 0.1
+              snapshotDb.setSnapshot cName, docName, opData.v, doc
 
     observe: (cName, docName, v, callback) ->
       stream = new EventEmitter
 
-      # Subscribe redis to the stream. Cache any seen ops.
-      # Get all ops from v-> current
-      # Call callback with error and stream
-      # Send ops to the stream
-      # Send cached ops to the stream
-      # Hook the cache to the stream directly
+      opChannel = getOpChannel cName, docName
+      redisObserver = redisLib.createClient redis.port, redis.host, redis.options
+
+      open = true
+      stream.end = ->
+        throw new Error 'Stream already closed' unless open
+        stream.emit 'close'
+        open = false
+        try redisObserver?.quit()
+
+      # Subscribe redis to the stream first so we don't miss out on any operations
+      # while we're getting the history
+      queue = []
+      redisObserver.on 'message', (channel, msg) ->
+        assert open
+        return unless channel is opChannel
+        opData = JSON.parse msg
+
+        if queue
+          queue.push opData
+        else
+          assert opData.v is v
+          v++
+          stream.emit 'op', opData
+
+      redisObserver.subscribe opChannel, (err) ->
+        if err
+          try redisObserver.quit()
+          return callback? err
+
+        # Get all ops from v to current
+        getOps cName, docName, v, (err, data) ->
+          if err
+            try redisObserver.quit()
+            return callback? err
+
+          callback? null, stream
+
+          # First send all the operations between v and when we called getOps
+          for d in data
+            assert d.v is v
+            v++
+            stream.emit 'op', d
+          # Then all the ops between then and now..
+          for d in queue when d.v >= v
+            assert d.v is v
+            v++
+            stream.emit 'op', d
+          # Mark all future ops on the stream to go straight to the stream.
+          queue = null
 
     fetch: (cName, docName, callback) ->
-      mongo.collection(cName).findOne {_id:docName}, (err, snapshot) ->
+      snapshotDb.getSnapshot cName, docName, (err, snapshot) ->
         return callback? err if err
         snapshot ?= {v:0, data:null}
 
