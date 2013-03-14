@@ -6,8 +6,8 @@ redisLib = require 'redis'
 exports.mongo = require './mongo'
 
 exports.client = (snapshotDb, redis) ->
-  opLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
-  getOpChannel = (cName, docName) -> "#{cName}.#{docName}"
+  getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
+  getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
   # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
   # (null or undefined) then it returns all ops.
@@ -19,7 +19,7 @@ exports.client = (snapshotDb, redis) ->
       return callback? null, [] if from >= to
       to--
 
-    redis.lrange opLogKey(cName, docName), from, to, (err, values) ->
+    redis.lrange getOpLogKey(cName, docName), from, to, (err, values) ->
       return callback? err if err
       ops = for value in values
         op = JSON.parse value
@@ -29,7 +29,8 @@ exports.client = (snapshotDb, redis) ->
 
   redisSubmit = (cName, docName, opData, callback) ->
     logEntry = JSON.stringify {op:opData.op, id:opData.id}
-    pubEntry = JSON.stringify opData # Publish everything.
+    docPubEntry = JSON.stringify opData # Publish everything to the document's channel
+    collectionPubEntry = JSON.stringify {doc:docName, op:opData.op, v:opData.v}
 
     if opData.id
       pair = opData.id.split '.'
@@ -39,8 +40,8 @@ exports.client = (snapshotDb, redis) ->
 
     redis.eval """
 -- ops here is a JSON string.
-local clientNonceKey, opLogKey, opChannel = unpack(KEYS)
-local seq, v, logEntry, pubEntry = unpack(ARGV) -- From redisSubmit, below.
+local clientNonceKey, opLogKey, collOpChannel, docOpChannel = unpack(KEYS)
+local seq, v, logEntry, collectionPubEntry, docPubEntry = unpack(ARGV) -- From redisSubmit, below.
 v = tonumber(v)
 seq = tonumber(seq)
 
@@ -67,8 +68,12 @@ end
 
 -- Ok to submit. Save the op in the oplog and publish.
 redis.call('RPUSH', opLogKey, logEntry)
-redis.call('PUBLISH', opChannel, pubEntry)
-    """, 3, clientNonceKey, opLogKey(cName, docName), getOpChannel(cName, docName), seq, opData.v, logEntry, pubEntry, callback
+redis.call('PUBLISH', collOpChannel, collectionPubEntry)
+redis.call('PUBLISH', docOpChannel, docPubEntry)
+    """, 4, # num keys
+      clientNonceKey, getOpLogKey(cName, docName), cName, getDocOpChannel(cName, docName), # KEYS table
+      seq, opData.v, logEntry, collectionPubEntry, docPubEntry, # ARGV table
+      callback
 
   client =
     submit: (cName, docName, opData, callback) ->
@@ -115,7 +120,7 @@ redis.call('PUBLISH', opChannel, pubEntry)
             if Math.random() < 0.4
               snapshotDb.setSnapshot cName, docName, {v:opData.v, data:doc} unless snapshotDb.closed
 
-
+    # Callback called with (err, op stream)
     observe: (cName, docName, v, callback) ->
       stream = new Readable objectMode:yes
 
@@ -125,7 +130,7 @@ redis.call('PUBLISH', opChannel, pubEntry)
       # that is any better than the buffer implementation in nodejs streams themselves.
       stream._read = ->
 
-      opChannel = getOpChannel cName, docName
+      opChannel = getDocOpChannel cName, docName
       redisObserver = redisLib.createClient redis.port, redis.host, redis.options
 
       open = true
@@ -177,6 +182,7 @@ redis.call('PUBLISH', opChannel, pubEntry)
           # Mark all future ops on the stream to go straight to the stream.
           queue = null
 
+    # Callback called with (err, {v, data})
     fetch: (cName, docName, callback) ->
       snapshotDb.getSnapshot cName, docName, (err, snapshot) ->
         return callback? err if err
@@ -194,8 +200,11 @@ redis.call('PUBLISH', opChannel, pubEntry)
         @observe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
-    query: (q, callback) ->
-      throw new Error 'query not implemented'
+    query: (cName, q, callback) ->
+      # subscribe to collection firehose
+      # issue query on mongo
+      console.log 'loooool'
+
 
     collection: (cName) ->
       submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
@@ -203,6 +212,5 @@ redis.call('PUBLISH', opChannel, pubEntry)
       fetch: (docName, callback) -> client.fetch cName, docName, callback
       fetchAndObserve: (docName, callback) -> client.fetchAndObserve cName, docName, callback
       query: (query, callback) ->
-        query.from = cName
-        client.query query, callback
+        client.query cName, query, callback
   
