@@ -112,8 +112,8 @@ redis.call('PUBLISH', opChannel, pubEntry)
             # Call callback with op submit version
             callback? null, opData.v
             # Update the snapshot if we feel like it.
-            #if Math.random() < 0.1
-            snapshotDb.setSnapshot cName, docName, opData.v, doc unless snapshotDb.closed
+            if Math.random() < 0.4
+              snapshotDb.setSnapshot cName, docName, {v:opData.v, data:doc} unless snapshotDb.closed
 
 
     observe: (cName, docName, v, callback) ->

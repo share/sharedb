@@ -7,13 +7,15 @@ module.exports = (mongo) ->
     throw new Error 'db already closed' if @closed
     mongo.collection(cName).findOne {_id:docName}, callback
 
-  setSnapshot: (cName, docName, v, doc, callback) ->
+  setSnapshot: (cName, docName, data, callback) ->
     throw new Error 'db already closed' if @closed
-    mongo.collection(cName).update {_id:docName}, {$set:{v:v, data:doc}}, {upsert:true}, callback
+    mongo.collection(cName).update {_id:docName}, {$set:data}, {upsert:true}, callback
 
   query: (cName, query, callback) ->
     throw new Error 'db already closed' if @closed
-    mongo.collection(cName).query query, callback
+    mongo.collection(cName).find query, callback
+
+  #matchesQuery: (doc, 
 
   close: ->
     throw new Error 'db already closed' if @closed
