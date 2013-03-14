@@ -1,4 +1,4 @@
-{EventEmitter} = require 'events'
+{Readable} = require 'stream'
 assert = require 'assert'
 mutate = require './mutate'
 redisLib = require 'redis'
@@ -112,21 +112,29 @@ redis.call('PUBLISH', opChannel, pubEntry)
             # Call callback with op submit version
             callback? null, opData.v
             # Update the snapshot if we feel like it.
-            if Math.random() < 0.1
-              snapshotDb.setSnapshot cName, docName, opData.v, doc
+            #if Math.random() < 0.1
+            snapshotDb.setSnapshot cName, docName, opData.v, doc unless snapshotDb.closed
+
 
     observe: (cName, docName, v, callback) ->
-      stream = new EventEmitter
+      stream = new Readable objectMode:yes
+
+      # This function is for notifying us that the stream is empty and needs data.
+      # For now, we'll just ignore the signal and assume the reader reads as fast
+      # as we fill it. I could add a buffer in this function, but really I don't think
+      # that is any better than the buffer implementation in nodejs streams themselves.
+      stream._read = ->
 
       opChannel = getOpChannel cName, docName
       redisObserver = redisLib.createClient redis.port, redis.host, redis.options
 
       open = true
-      stream.end = ->
+      stream.destroy = ->
         throw new Error 'Stream already closed' unless open
-        stream.emit 'close'
+        stream.push null
         open = false
-        try redisObserver?.quit()
+        redisObserver.unsubscribe opChannel
+        redisObserver.quit()
 
       # Subscribe redis to the stream first so we don't miss out on any operations
       # while we're getting the history
@@ -141,17 +149,17 @@ redis.call('PUBLISH', opChannel, pubEntry)
         else
           assert opData.v is v
           v++
-          stream.emit 'op', opData
+          stream.push opData
 
       redisObserver.subscribe opChannel, (err) ->
         if err
-          try redisObserver.quit()
+          stream.destroy()
           return callback? err
 
         # Get all ops from v to current
         getOps cName, docName, v, (err, data) ->
           if err
-            try redisObserver.quit()
+            stream.destroy()
             return callback? err
 
           callback? null, stream
@@ -160,12 +168,12 @@ redis.call('PUBLISH', opChannel, pubEntry)
           for d in data
             assert d.v is v
             v++
-            stream.emit 'op', d
+            stream.push d
           # Then all the ops between then and now..
           for d in queue when d.v >= v
             assert d.v is v
             v++
-            stream.emit 'op', d
+            stream.push d
           # Mark all future ops on the stream to go straight to the stream.
           queue = null
 

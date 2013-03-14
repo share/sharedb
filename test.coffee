@@ -7,16 +7,17 @@ id = 0
 
 createClient = ->
   mongo = require('mongoskin').db 'localhost:27017/test?auto_reconnect', safe:false
+  mongowrapper = alive.mongo(mongo)
+
   redis = redisLib.createClient()
   redis.select 15
 
-  client: alive.client alive.mongo(mongo), redis
-  redis: redis
-  mongo: mongo
+  client = alive.client mongowrapper, redis
+  {client, redis, mongo, mongowrapper}
 
 module.exports =
   setUp: (callback) ->
-    {@client, @redis, @mongo} = createClient()
+    {@client, @redis, @mongo, @mongowrapper} = createClient()
 
     # Clear the databases
     @mongo.dropCollection '_test'
@@ -32,9 +33,8 @@ module.exports =
     callback()
 
   tearDown: (callback) ->
-    @mongo.close()
+    @mongowrapper.close()
     @redis.quit()
-    @stream?.end()
     callback()
     
   'submit a create op': (test) ->
@@ -79,16 +79,16 @@ module.exports =
         @collection.submit @doc, v:2, id:'abc.123', op:op, (err, v) =>
           test.strictEqual err, 'Op already submitted'
           test.done()
-
+ 
   'Observe':
     'local changes': (test) -> @create =>
       @collection.observe @doc, 1, (err, stream) =>
         throw new Error err if err
 
         op = op:'set', p:['a'], val:'hi'
-        stream.on 'op', (data) ->
-          test.deepEqual data, {v:1, op:op, id:'abc.123'}
-          stream.end()
+        stream.on 'readable', ->
+          test.deepEqual stream.read(), {v:1, op:op, id:'abc.123'}
+          stream.destroy()
           test.done()
 
         @collection.submit @doc, v:1, op:op, id:'abc.123'
@@ -96,59 +96,63 @@ module.exports =
     'From an old version': (test) -> @create =>
       # The document has version 1
       @collection.observe @doc, 0, (err, stream) =>
-        stream.once 'op', (data) =>
-          test.deepEqual data, {v:0, op:{op:'set', p:[], val:{}}}
+        stream.once 'readable', =>
+          test.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
 
           # And we still get ops that come in now.
           op = op:'set', p:['a'], val:'hi'
           @collection.submit @doc, v:1, op:op, id:'abc.123'
-          stream.once 'op', (data) ->
-            test.deepEqual data, {v:1, op:op, id:'abc.123'}
-            stream.end()
+          stream.once 'readable', ->
+            test.deepEqual stream.read(), {v:1, op:op, id:'abc.123'}
+            stream.destroy()
             test.done()
 
     'document that doesnt exist yet': (test) ->
       @collection.observe @doc, 0, (err, stream) =>
-        stream.on 'op', (data) ->
-          test.deepEqual data, {v:0, op:{op:'set', p:[], val:{}}}
-          stream.end()
+        stream.on 'readable', ->
+          test.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
+          stream.destroy()
           test.done()
 
         @create()
 
-    'double end throws': (test) ->
+    'double stream.destroy throws': (test) ->
       @collection.observe @doc, 1, (err, stream) =>
-        stream.end()
-        test.throws -> stream.end()
+        stream.destroy()
+        test.throws -> stream.destroy()
         test.done()
-
+    
     'separate clients 1': (test) -> @create =>
-      numClients = 100
-      clients = (createClient() for [1..numClients])
+      numClients = 50
+      clients = (createClient() for [0...numClients])
 
       for c, i in clients
         c.client.submit @cName, @doc, v:1, op:{op:'ins', p:['x', -1], val:i}
 
       @collection.observe @doc, 1, (err, stream) =>
-        console.log 'observing'
-        # We should get 20 ops on the stream, in order.
+        # We should get numClients ops on the stream, in order.
         seq = 1
-        stream.on 'op', (data) =>
-          console.log data
+        stream.on 'readable', tryRead = =>
+          data = stream.read()
+          return unless data
+          #console.log 'read', data
           delete data.op.val
           test.deepEqual data, {v:seq, op:{op:'ins', p:['x', -1]}}
 
           if seq is numClients
-            stream.end()
+            #console.log 'destroy stream'
+            stream.destroy()
+
             for c, i in clients
               c.redis.quit()
-              c.mongo.close()
+              c.mongowrapper.close()
+            test.done()
 
             # Uncomment to see the actually submitted data
             #@collection.fetch @doc, (err, {v, data}) =>
             #  console.log data
-
-            test.done()
           else
             seq++
+
+          tryRead()
 
