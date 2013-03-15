@@ -120,8 +120,7 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
             if Math.random() < 0.4
               snapshotDb.setSnapshot cName, docName, {v:opData.v, data:doc} unless snapshotDb.closed
 
-    # Callback called with (err, op stream)
-    observe: (cName, docName, v, callback) ->
+    _subscribe: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
       stream = new Readable objectMode:yes
 
       # This function is for notifying us that the stream is empty and needs data.
@@ -130,7 +129,6 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
       # that is any better than the buffer implementation in nodejs streams themselves.
       stream._read = ->
 
-      opChannel = getDocOpChannel cName, docName
       redisObserver = redisLib.createClient redis.port, redis.host, redis.options
 
       open = true
@@ -138,36 +136,44 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
         throw new Error 'Stream already closed' unless open
         stream.push null
         open = false
-        redisObserver.unsubscribe opChannel
+        redisObserver.unsubscribe channel
         redisObserver.quit()
+
+      redisObserver.on 'message', (_channel, msg) ->
+        assert open
+        return unless _channel is channel
+        data = JSON.parse msg
+        stream.push data
+
+      redisObserver.subscribe channel, (err) ->
+        if err
+          stream.destroy()
+          callback err, null
+        else
+          callback null, stream
+
+    # Callback called with (err, op stream). v must be in the past or present. Behaviour
+    # with a future v is undefined (because I don't think thats an interesting case).
+    observe: (cName, docName, v, callback) ->
+      opChannel = getDocOpChannel cName, docName
 
       # Subscribe redis to the stream first so we don't miss out on any operations
       # while we're getting the history
-      queue = []
-      redisObserver.on 'message', (channel, msg) ->
-        assert open
-        return unless channel is opChannel
-        opData = JSON.parse msg
+      @_subscribe opChannel, (err, stream) ->
+        callback err if err
 
-        if queue
-          queue.push opData
-        else
-          assert opData.v is v
-          v++
-          stream.push opData
-
-      redisObserver.subscribe opChannel, (err) ->
-        if err
-          stream.destroy()
-          return callback? err
-
-        # Get all ops from v to current
+        # From here on, we need to call stream.destroy() if there are errors.
         getOps cName, docName, v, (err, data) ->
           if err
             stream.destroy()
-            return callback? err
+            return callback err
 
-          callback? null, stream
+          # Ok, so if there's anything in the stream right now, it might overlap with the
+          # historical operations. We'll pump the reader and (probably!) prefix it with the
+          # getOps result.
+          queue = (d while d = stream.read())
+
+          callback null, stream
 
           # First send all the operations between v and when we called getOps
           for d in data
@@ -179,8 +185,6 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
             assert d.v is v
             v++
             stream.push d
-          # Mark all future ops on the stream to go straight to the stream.
-          queue = null
 
     # Callback called with (err, {v, data})
     fetch: (cName, docName, callback) ->
