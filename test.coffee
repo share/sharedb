@@ -158,8 +158,15 @@ module.exports =
 
           tryRead()
 
-###
   'Query':
+    'returns a result it already applies to': (test) -> @create {x:5}, =>
+      @collection.query {x:5}, (err, results) =>
+        expected = {}
+        expected[@doc] = {data:{x:5}, v:0}
+        test.deepEqual results.data, expected
+        results.destroy()
+        test.done()
+
     'Something with no results gets an empty result set': (test) ->
       @collection.query {xyz:123}, (err, results) ->
         test.deepEqual results.data, {}
@@ -176,14 +183,6 @@ module.exports =
         test.equals results, null
         test.done()
 
-    'returns a result it already applies to': (test) -> @create {x:5}, =>
-      @collection.query {x:5}, (err, results) =>
-        expected = {}
-        expected[@doc] = {data:{x:5}, v:1}
-        test.deepEqual results.data, expected
-        results.destroy()
-        test.done()
-
     'add an alement when it matches': (test) ->
       @collection.query {x:5}, (err, results) =>
         @create {x:5}
@@ -191,7 +190,7 @@ module.exports =
         results.on 'add', (docName) =>
           test.strictEqual docName, @doc
           expected = {}
-          expected[@doc] = {data:{x:5}, v:1}
+          expected[@doc] = {data:{x:5}, v:0}
           test.deepEqual results.data, expected
 
           results.destroy()
@@ -199,12 +198,16 @@ module.exports =
 
     'remove an element that no longer matches': (test) -> @create {x:5}, =>
       @collection.query {x:5}, (err, results) =>
-        results.on 'remove', (docName) ->
+        results.on 'remove', (docName) =>
           test.strictEqual docName, @doc
-          test.equal results.data[@doc], null
-          
-          results.destroy()
-          test.done()
+
+          # The doc is left in the result set until after the callback runs so
+          # we can read doc stuff off here.
+          process.nextTick ->
+            test.equal results.data[@doc], null
+            
+            results.destroy()
+            test.done()
 
         op = op:'rm', p:[]
         @collection.submit @doc, v:1, op:op, (err, v) =>
@@ -215,6 +218,7 @@ module.exports =
         results.on 'remove', -> throw new Error 'remove called after destroy'
 
         results.destroy()
+        setTimeout (-> test.done()), 10
 
         # Sooo tasty. results... you know you want this delicious document.
         @create {x:5}, =>
@@ -222,6 +226,8 @@ module.exports =
           @collection.submit @doc, v:1, op:op
 
 
+
+###
 
     'Updated documents have updated result data if follow:true': (test) ->
 

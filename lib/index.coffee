@@ -1,4 +1,5 @@
 {Readable} = require 'stream'
+{EventEmitter} = require 'events'
 assert = require 'assert'
 mutate = require './mutate'
 redisLib = require 'redis'
@@ -30,8 +31,6 @@ exports.client = (snapshotDb, redis) ->
   redisSubmit = (cName, docName, opData, callback) ->
     logEntry = JSON.stringify {op:opData.op, id:opData.id}
     docPubEntry = JSON.stringify opData # Publish everything to the document's channel
-    collectionPubEntry = JSON.stringify {doc:docName, op:opData.op, v:opData.v}
-
     if opData.id
       pair = opData.id.split '.'
       # I could say seq = parseInt pair[1], 10 ... but it'll be converted to a string by redis anyway.
@@ -40,8 +39,8 @@ exports.client = (snapshotDb, redis) ->
 
     redis.eval """
 -- ops here is a JSON string.
-local clientNonceKey, opLogKey, collOpChannel, docOpChannel = unpack(KEYS)
-local seq, v, logEntry, collectionPubEntry, docPubEntry = unpack(ARGV) -- From redisSubmit, below.
+local clientNonceKey, opLogKey, docOpChannel = unpack(KEYS)
+local seq, v, logEntry, docPubEntry = unpack(ARGV) -- From redisSubmit, below.
 v = tonumber(v)
 seq = tonumber(seq)
 
@@ -68,11 +67,10 @@ end
 
 -- Ok to submit. Save the op in the oplog and publish.
 redis.call('RPUSH', opLogKey, logEntry)
-redis.call('PUBLISH', collOpChannel, collectionPubEntry)
 redis.call('PUBLISH', docOpChannel, docPubEntry)
-    """, 4, # num keys
-      clientNonceKey, getOpLogKey(cName, docName), cName, getDocOpChannel(cName, docName), # KEYS table
-      seq, opData.v, logEntry, collectionPubEntry, docPubEntry, # ARGV table
+    """, 3, # num keys
+      clientNonceKey, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
+      seq, opData.v, logEntry, docPubEntry, # ARGV table
       callback
 
   client =
@@ -115,12 +113,18 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
               return retry()
 
             # Call callback with op submit version
-            callback? null, opData.v
-            # Update the snapshot if we feel like it.
-            if Math.random() < 0.4
-              snapshotDb.setSnapshot cName, docName, {v:opData.v, data:doc} unless snapshotDb.closed
+            return callback? null, opData.v if snapshotDb.closed # Happens in the tests sometimes. Its ok.
+
+            # Update the snapshot for queries
+            snapshotDb.setSnapshot cName, docName, {v:opData.v, data:doc}, (err) ->
+              return callback? err if err
+              redis.publish cName, JSON.stringify {docName:docName, op:opData.op, v:opData.v}
+              callback? null, opData.v
 
     _subscribe: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
+      # TODO: 2 refactors:
+      #        - Make the redis observer we use here reusable
+      #        - Reuse listens on channels
       stream = new Readable objectMode:yes
 
       # This function is for notifying us that the stream is empty and needs data.
@@ -204,10 +208,67 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
         @observe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
-    query: (cName, q, callback) ->
-      # subscribe to collection firehose
-      # issue query on mongo
-      console.log 'loooool'
+    query: (cName, query, callback) ->
+      # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
+      # so if we get notified about an op here, the document's been saved.
+      @_subscribe cName, (err, stream) =>
+        return callback err if err
+
+        # Issue query on mongo to get our initial result set.
+        snapshotDb.query cName, query, (err, initialResults) =>
+          if err
+            stream.destroy()
+            return callback err
+          
+          #console.log results
+
+          results = new EventEmitter
+          results.data = {}
+          results.destroy = ->
+            stream.destroy()
+
+          for d in initialResults
+            results.data[d._id] = {data:d.data, v:d.v}
+
+          do f = -> while d = stream.read() then do (d) ->
+            cachedData = results.data[d.docName]
+            # Ignore ops that are older than our data. This is possible because we subscribe before
+            # issuing the query.
+            return if cachedData and cachedData.v > d.v
+
+            modifies = undefined #snapshotDb.willOpMakeDocMatchQuery cachedData?, query, d.op
+
+            if !modifies?
+              # Not sure whether the document should be in the db. Poll.
+              snapshotDb.queryDoc cName, d.docName, query, (err, result) ->
+                return stream.emit 'error', err if err
+                modifies = result
+
+
+                if modifies and !cachedData
+                  # Add doc to the collection.
+                  results.data[d.docName] = modifies
+                  results.emit 'add', d.docName
+                else if !modifies and cachedData
+                  # Remove doc from collection
+                  results.emit 'remove', d.docName
+                  delete results.data[d.docName]
+
+            #if modifies is true and !cachedData?
+            # Add document. Not sure how to han
+
+
+          # for each op in cache + firehose when op not older than query result
+          #   check if op modifies collection.
+          #     if yes or no: broadcast
+          #     if unknown: issue mongo query with {_id:X}
+
+            #console.log data
+
+          stream.on 'readable', f
+
+          callback null, results
+
 
 
     collection: (cName) ->

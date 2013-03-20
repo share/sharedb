@@ -17,8 +17,21 @@ module.exports = (mongo) ->
     mongo.collection(cName).update {_id:docName}, {$set:data}, {upsert:true}, callback
 
   query: (cName, query, callback) ->
-    throw new Error 'db already closed' if @closed
-    mongo.collection(cName).find query, callback
+    return callback 'query cannot specify a document ID' if query._id
+    return callback 'db already closed' if @closed
+    mongo.collection(cName).find({data:query}).toArray (err, results) ->
+      try
+        callback err, results
+      catch e
+        console.log e.stack
+        throw e
+
+
+  queryDoc: (cName, docName, query, callback) ->
+    query = JSON.parse JSON.stringify query # clone the query so we don't edit the original
+    mongo.collection(cName).findOne {_id:docName, data:query}, (err, result) ->
+      delete result._id if result
+      callback err, result
 
   # Test whether an operation will make the document its applied to match the specified query.
   # This function doesn't really have enough information to know in all cases, but if we can determine
