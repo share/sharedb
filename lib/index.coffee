@@ -1,8 +1,8 @@
 {Readable} = require 'stream'
 {EventEmitter} = require 'events'
 assert = require 'assert'
-mutate = require './mutate'
 redisLib = require 'redis'
+otTypes = require 'ot-types'
 
 exports.mongo = require './mongo'
 
@@ -74,6 +74,23 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
       callback
 
   client =
+    create: (cName, docName, type, initialData, meta, callback) ->
+      # Not matching all possible cases here. Eh.
+      [initialData, callback] = [null, initialData] if typeof initialData is 'function'
+      [meta, callback] = [{}, meta] if typeof meta is 'function'
+
+      type = otTypes[type] if typeof type is 'string'
+      return callback? new Error 'Type not found' unless type
+
+      # + NOTIFY! Otherwise this won't work correctly with queries.
+
+      snapshotDb.create cName, docName,
+        type:type.url || type.name
+        v:0
+        data:type.create initialData
+        meta:meta or {}
+      , callback # Just passing the error straight through. Should probably sanitize it.
+
     submit: (cName, docName, opData, callback) ->
       return callback new Error 'missing version' unless typeof opData.v is 'number'
       return callback new Error 'missing op' unless typeof (opData.op or opData.ops) is 'object'
@@ -82,13 +99,16 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
       # try to apply the operation before saving it.
       @fetch cName, docName, (err, snapshot) ->
         return callback? err if err
+
+        type = otTypes[snapshot.type]
+        return callback? new Error "Type #{snapshot.type} missing" unless type
         
         # Just eagarly try to submit to redis. If this fails, redis will return all the ops we need to
         # 'transform' by.
         do retry = ->
           if snapshot.v is opData.v
             try
-              doc = mutate.apply snapshot.data, opData.op
+              doc = type.apply snapshot.data, opData.op
             catch e
               console.log e.stack
               return callback? e.message
@@ -102,12 +122,15 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
               # There are ops that should be applied before our new operation.
               oldOpData = (JSON.parse d for d in result)
 
-              #  --- don't transform for now! ---
-              opData.v += oldOpData.length
+              #console.log 'not transforming ', oldOpData
+              for old in oldOpData
+                opData.op = type.transform opData.op, old, 'left' if type.transform
+                opData.v++
+              #opData.v += oldOpData.length
 
               # If there's ever a problem applying the ops that have already been submitted,
               # we'll be in serious trouble.
-              snapshot.data = mutate.apply snapshot.data, d.op for d in oldOpData
+              snapshot.data = type.apply snapshot.data, d.op for d in oldOpData
 
               #console.log 'retry'
               return retry()
@@ -121,7 +144,7 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
               redis.publish cName, JSON.stringify {docName:docName, op:opData.op, v:opData.v}
               callback? null, opData.v
 
-    _subscribe: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
+    _subscribe_channel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
       # TODO: 2 refactors:
       #        - Make the redis observer we use here reusable
       #        - Reuse listens on channels
@@ -158,12 +181,12 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
 
     # Callback called with (err, op stream). v must be in the past or present. Behaviour
     # with a future v is undefined (because I don't think thats an interesting case).
-    observe: (cName, docName, v, callback) ->
+    subscribe: (cName, docName, v, callback) ->
       opChannel = getDocOpChannel cName, docName
 
       # Subscribe redis to the stream first so we don't miss out on any operations
       # while we're getting the history
-      @_subscribe opChannel, (err, stream) ->
+      @_subscribe_channel opChannel, (err, stream) ->
         callback err if err
 
         # From here on, we need to call stream.destroy() if there are errors.
@@ -194,24 +217,25 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
     fetch: (cName, docName, callback) ->
       snapshotDb.getSnapshot cName, docName, (err, snapshot) ->
         return callback? err if err
-        snapshot ?= {v:0, data:null}
+        return callback? 'Document does not exist' unless snapshot
 
         getOps cName, docName, snapshot.v, (err, opData) ->
           return callback? err if err
           snapshot.v += opData.length
-          snapshot.data = mutate.apply snapshot.data, d.op for d in opData
+          type = otTypes[snapshot.type]
+          snapshot.data = type.apply snapshot.data, d.op for d in opData
           callback null, snapshot
 
-    fetchAndObserve: (cName, docName, callback) ->
+    fetchAndSubscribe: (cName, docName, callback) ->
       @fetch cName, docName, (err, data) =>
         return callback err if err
-        @observe cName, docName, data.v, (err, stream) ->
+        @subscribe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
     query: (cName, query, callback) ->
       # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
       # so if we get notified about an op here, the document's been saved.
-      @_subscribe cName, (err, stream) =>
+      @_subscribe_channel cName, (err, stream) =>
         return callback err if err
 
         # Issue query on mongo to get our initial result set.
@@ -272,8 +296,9 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
 
 
     collection: (cName) ->
+      create: (docName, type, initialData, meta, callback) -> client.create cName, docName, type, initialData, meta, callback
       submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
-      observe: (docName, v, callback) -> client.observe cName, docName, v, callback
+      subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
       fetch: (docName, callback) -> client.fetch cName, docName, callback
       fetchAndObserve: (docName, callback) -> client.fetchAndObserve cName, docName, callback
       query: (query, callback) ->

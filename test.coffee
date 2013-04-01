@@ -3,6 +3,9 @@ mongoskin = require 'mongoskin'
 redisLib = require 'redis'
 alive = require './lib'
 
+otTypes = require 'ot-types'
+otTypes['json-racer'] = require './lib/mutate'
+
 id = 0
 
 createClient = ->
@@ -28,10 +31,11 @@ module.exports =
     @create = (data = {}, cb) -> # callback and data are both optional.
       [data, cb] = [{}, data] if typeof data is 'function'
 
-      op = op:'set', p:[], val:data
-      @collection.submit @doc, v:0, op:op, (err, v) ->
-        throw new Error err if err
-        cb?()
+      @collection.create @doc, 'json-racer', (err) =>
+        op = op:'set', p:[], val:data
+        @collection.submit @doc, v:0, op:op, (err, v) ->
+          throw new Error err if err
+          cb?()
     callback()
 
   tearDown: (callback) ->
@@ -39,11 +43,9 @@ module.exports =
     @redis.quit()
     callback()
     
-  'submit a create op': (test) ->
-    op = op:'set', p:[], val:'hi'
-    @collection.submit @doc, v:0, op:op, (err, v) ->
+  'create a doc': (test) ->
+    @collection.create @doc, 'json-racer', (err) ->
       throw new Error err if err
-      test.strictEqual v, 0
       test.done()
 
   'created documents can be fetched': (test) -> @create =>
@@ -84,7 +86,7 @@ module.exports =
  
   'Observe':
     'local changes': (test) -> @create =>
-      @collection.observe @doc, 1, (err, stream) =>
+      @collection.subscribe @doc, 1, (err, stream) =>
         throw new Error err if err
 
         op = op:'set', p:['a'], val:'hi'
@@ -97,7 +99,7 @@ module.exports =
 
     'From an old version': (test) -> @create =>
       # The document has version 1
-      @collection.observe @doc, 0, (err, stream) =>
+      @collection.subscribe @doc, 0, (err, stream) =>
         stream.once 'readable', =>
           test.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
 
@@ -110,7 +112,7 @@ module.exports =
             test.done()
 
     'document that doesnt exist yet': (test) ->
-      @collection.observe @doc, 0, (err, stream) =>
+      @collection.subscribe @doc, 0, (err, stream) =>
         stream.on 'readable', ->
           test.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
           stream.destroy()
@@ -119,7 +121,7 @@ module.exports =
         @create()
 
     'double stream.destroy throws': (test) ->
-      @collection.observe @doc, 1, (err, stream) =>
+      @collection.subscribe @doc, 1, (err, stream) =>
         stream.destroy()
         test.throws -> stream.destroy()
         test.done()
@@ -131,7 +133,7 @@ module.exports =
       for c, i in clients
         c.client.submit @cName, @doc, v:1, op:{op:'ins', p:['x', -1], val:i}
 
-      @collection.observe @doc, 1, (err, stream) =>
+      @collection.subscribe @doc, 1, (err, stream) =>
         # We should get numClients ops on the stream, in order.
         seq = 1
         stream.on 'readable', tryRead = =>
@@ -183,7 +185,8 @@ module.exports =
         test.equals results, null
         test.done()
 
-    'add an alement when it matches': (test) ->
+    ###
+    'add an element when it matches': (test) ->
       @collection.query {x:5}, (err, results) =>
         @create {x:5}
 
@@ -195,7 +198,7 @@ module.exports =
 
           results.destroy()
           test.done()
-
+    ###
     'remove an element that no longer matches': (test) -> @create {x:5}, =>
       @collection.query {x:5}, (err, results) =>
         results.on 'remove', (docName) =>

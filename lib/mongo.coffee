@@ -3,6 +3,10 @@
 # mongo is a mongoskin client. Create with:
 #  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
 module.exports = (mongo) ->
+  create: (cName, docName, data, callback) ->
+    data._id = docName
+    mongo.collection(cName).insert data, callback
+
   close: ->
     throw new Error 'db already closed' if @closed
     mongo.close()
@@ -10,7 +14,9 @@ module.exports = (mongo) ->
 
   getSnapshot: (cName, docName, callback) ->
     throw new Error 'db already closed' if @closed
-    mongo.collection(cName).findOne {_id:docName}, callback
+    mongo.collection(cName).findOne {_id:docName}, (err, data) ->
+      delete data._id if data
+      callback err, data
 
   setSnapshot: (cName, docName, data, callback) ->
     throw new Error 'db already closed' if @closed
