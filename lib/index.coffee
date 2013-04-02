@@ -6,7 +6,7 @@ otTypes = require 'ot-types'
 
 exports.mongo = require './mongo'
 
-exports.client = (snapshotDb, redis = redis.createClient()) ->
+exports.client = (snapshotDb, redis = redisLib.createClient()) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
