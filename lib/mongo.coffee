@@ -2,7 +2,9 @@
 
 # mongo is a mongoskin client. Create with:
 #  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
-module.exports = (mongo) ->
+module.exports = (args...) ->
+  mongo = require('mongoskin').db args...
+  
   create: (cName, docName, data, callback) ->
     data._id = docName
     mongo.collection(cName).insert data, callback

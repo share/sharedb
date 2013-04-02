@@ -1,5 +1,5 @@
 {
-  "name": "itsalive",
+  "name": "livedb",
   "version": "0.0.0",
   "description": "Realtime database wrapper",
   "main": "lib/index.coffee",

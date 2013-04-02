@@ -1,7 +1,7 @@
 # Nodeunit test
 mongoskin = require 'mongoskin'
 redisLib = require 'redis'
-alive = require './lib'
+livedb = require './lib'
 
 otTypes = require 'ot-types'
 otTypes['json-racer'] = require './lib/mutate'
@@ -9,13 +9,12 @@ otTypes['json-racer'] = require './lib/mutate'
 id = 0
 
 createClient = ->
-  mongo = require('mongoskin').db 'localhost:27017/test?auto_reconnect', safe:false
-  mongowrapper = alive.mongo(mongo)
+  mongowrapper = livedb.mongo('localhost:27017/test?auto_reconnect', safe:false)
 
   redis = redisLib.createClient()
   redis.select 15
 
-  client = alive.client mongowrapper, redis
+  client = livedb.client mongowrapper, redis
   {client, redis, mongo, mongowrapper}
 
 module.exports =
