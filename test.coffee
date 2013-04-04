@@ -1,7 +1,8 @@
-# Nodeunit test
+# Mocha test
 mongoskin = require 'mongoskin'
 redisLib = require 'redis'
 livedb = require './lib'
+assert = require 'assert'
 
 otTypes = require 'ot-types'
 otTypes['json-racer'] = require './lib/mutate'
@@ -15,14 +16,15 @@ createClient = ->
   redis.select 15
 
   client = livedb.client mongowrapper, redis
-  {client, redis, mongo, mongowrapper}
+  {client, redis, mongowrapper}
 
-module.exports =
-  setUp: (callback) ->
-    {@client, @redis, @mongo, @mongowrapper} = createClient()
+describe 'livedb', ->
+  beforeEach ->
+    {@client, @redis, @mongowrapper} = createClient()
 
     # Clear the databases
-    @mongo.dropCollection '_test'
+    mongo = mongoskin.db 'localhost:27017/test?auto_reconnect', safe:true
+    mongo.dropCollection '_test'
     @redis.flushdb()
 
     @collection = @client.collection (@cName = '_test')
@@ -35,44 +37,42 @@ module.exports =
         @collection.submit @doc, v:0, op:op, (err, v) ->
           throw new Error err if err
           cb?()
-    callback()
 
-  tearDown: (callback) ->
+  afterEach ->
     @mongowrapper.close()
     @redis.quit()
-    callback()
     
-  'create a doc': (test) ->
+  it 'creates a doc', (done) ->
     @collection.create @doc, 'json-racer', (err) ->
       throw new Error err if err
-      test.done()
+      done()
 
-  'created documents can be fetched': (test) -> @create =>
+  it 'can fetch created documents', (done) -> @create =>
     @collection.fetch @doc, (err, {v, data}) ->
       throw new Error err if err
-      test.deepEqual data, {}
-      test.strictEqual v, 1
-      test.done()
+      assert.deepEqual data, {}
+      assert.strictEqual v, 1
+      done()
 
-  'modify a document': (test) -> @create =>
+  it 'can modify a document', (done) -> @create =>
     op = op:'set', p:['a'], val:'hi'
     @collection.submit @doc, v:1, op:op, (err, v) =>
       throw new Error err if err
       @collection.fetch @doc, (err, {v, data}) =>
         throw new Error err if err
-        test.deepEqual data, {a:'hi'}
-        test.done()
+        assert.deepEqual data, {a:'hi'}
+        done()
 
-  'remove a doc': (test) -> @create =>
+  it 'removes a doc', (done) -> @create =>
     op = op:'rm', p:[]
     @collection.submit @doc, v:1, op:op, (err, v) =>
       throw new Error err if err
       @collection.fetch @doc, (err, {v, data}) =>
         throw new Error err if err
-        test.equal data, null
-        test.done()
+        assert.equal data, null
+        done()
 
-  'Repeated operations are not executed': (test) -> @create =>
+  it 'does not execute repeated operations', (done) -> @create =>
     op = op:'set', p:[], val:{arr:[]}
     @collection.submit @doc, v:1, op:op, (err, v) =>
       throw new Error err if err
@@ -80,52 +80,51 @@ module.exports =
       @collection.submit @doc, v:2, id:'abc.123', op:op, (err, v) =>
         throw new Error err if err
         @collection.submit @doc, v:2, id:'abc.123', op:op, (err, v) =>
-          test.strictEqual err, 'Op already submitted'
-          test.done()
- 
-  'Observe':
-    'local changes': (test) -> @create =>
+          assert.strictEqual err, 'Op already submitted'
+          done()
+  describe 'Observe', ->
+    it 'observes local changes', (done) -> @create =>
       @collection.subscribe @doc, 1, (err, stream) =>
         throw new Error err if err
 
         op = op:'set', p:['a'], val:'hi'
         stream.on 'readable', ->
-          test.deepEqual stream.read(), {v:1, op:op, id:'abc.123'}
+          assert.deepEqual stream.read(), {v:1, op:op, id:'abc.123'}
           stream.destroy()
-          test.done()
+          done()
 
         @collection.submit @doc, v:1, op:op, id:'abc.123'
 
-    'From an old version': (test) -> @create =>
+    it 'sees ops when you observe an old version', (done) -> @create =>
       # The document has version 1
       @collection.subscribe @doc, 0, (err, stream) =>
         stream.once 'readable', =>
-          test.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
+          assert.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
 
           # And we still get ops that come in now.
           op = op:'set', p:['a'], val:'hi'
           @collection.submit @doc, v:1, op:op, id:'abc.123'
           stream.once 'readable', ->
-            test.deepEqual stream.read(), {v:1, op:op, id:'abc.123'}
+            assert.deepEqual stream.read(), {v:1, op:op, id:'abc.123'}
             stream.destroy()
-            test.done()
+            done()
 
-    'document that doesnt exist yet': (test) ->
+    it 'can observe a document that doesnt exist yet', (done) ->
       @collection.subscribe @doc, 0, (err, stream) =>
         stream.on 'readable', ->
-          test.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
+          assert.deepEqual stream.read(), {v:0, op:{op:'set', p:[], val:{}}}
           stream.destroy()
-          test.done()
+          done()
 
         @create()
 
-    'double stream.destroy throws': (test) ->
+    it 'throws when you double stream.destroy', (done) ->
       @collection.subscribe @doc, 1, (err, stream) =>
         stream.destroy()
-        test.throws -> stream.destroy()
-        test.done()
+        assert.throws -> stream.destroy()
+        done()
     
-    'separate clients 1': (test) -> @create =>
+    it 'works with separate clients', (done) -> @create =>
       numClients = 50
       clients = (createClient() for [0...numClients])
 
@@ -140,7 +139,7 @@ module.exports =
           return unless data
           #console.log 'read', data
           delete data.op.val
-          test.deepEqual data, {v:seq, op:{op:'ins', p:['x', -1]}}
+          assert.deepEqual data, {v:seq, op:{op:'ins', p:['x', -1]}}
 
           if seq is numClients
             #console.log 'destroy stream'
@@ -149,7 +148,7 @@ module.exports =
             for c, i in clients
               c.redis.quit()
               c.mongowrapper.close()
-            test.done()
+            done()
 
             # Uncomment to see the actually submitted data
             #@collection.fetch @doc, (err, {v, data}) =>
@@ -159,68 +158,66 @@ module.exports =
 
           tryRead()
 
-  'Query':
-    'returns a result it already applies to': (test) -> @create {x:5}, =>
+  describe 'Query', ->
+    it 'returns a result it already applies to', (done) -> @create {x:5}, =>
       @collection.query {x:5}, (err, results) =>
         expected = {}
         expected[@doc] = {data:{x:5}, v:0}
-        test.deepEqual results.data, expected
+        assert.deepEqual results.data, expected
         results.destroy()
-        test.done()
+        done()
 
-    'Something with no results gets an empty result set': (test) ->
+    it 'gets an empty result set when you query something with no results', (done) ->
       @collection.query {xyz:123}, (err, results) ->
-        test.deepEqual results.data, {}
+        assert.deepEqual results.data, {}
         results.on 'add', -> throw new Error 'should not have added results'
 
         process.nextTick ->
           results.destroy()
-          test.done()
+          done()
 
-
-    'with a specified _id is invalid': (test) ->
+    it 'gives you an error when you specify _id', (done) ->
       @collection.query {_id:123}, (err, results) ->
-        test.ok err
-        test.equals results, null
-        test.done()
+        assert.ok err
+        assert.equal results, null
+        done()
 
-    ###
-    'add an element when it matches': (test) ->
+    it.skip 'adds an element when it matches', (done) ->
       @collection.query {x:5}, (err, results) =>
         @create {x:5}
 
         results.on 'add', (docName) =>
-          test.strictEqual docName, @doc
+          assert.strictEqual docName, @doc
           expected = {}
           expected[@doc] = {data:{x:5}, v:0}
-          test.deepEqual results.data, expected
+          assert.deepEqual results.data, expected
 
           results.destroy()
-          test.done()
-    ###
-    'remove an element that no longer matches': (test) -> @create {x:5}, =>
+          done()
+    
+    it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
       @collection.query {x:5}, (err, results) =>
         results.on 'remove', (docName) =>
-          test.strictEqual docName, @doc
+          assert.strictEqual docName, @doc
 
           # The doc is left in the result set until after the callback runs so
           # we can read doc stuff off here.
           process.nextTick ->
-            test.equal results.data[@doc], null
+            assert.equal results.data[@doc], null
             
             results.destroy()
-            test.done()
+            done()
 
         op = op:'rm', p:[]
         @collection.submit @doc, v:1, op:op, (err, v) =>
 
-    'Destroyed query set should not receive events': (test) ->
+    it 'does not emit receive events to a destroyed query', (done) ->
       @collection.query {x:5}, (err, results) =>
         results.on 'add', -> throw new Error 'add called after destroy'
         results.on 'remove', -> throw new Error 'remove called after destroy'
 
         results.destroy()
-        setTimeout (-> test.done()), 10
+        setTimeout (-> done()), 10
 
         # Sooo tasty. results... you know you want this delicious document.
         @create {x:5}, =>
@@ -229,9 +226,8 @@ module.exports =
 
 
 
-###
 
-    'Updated documents have updated result data if follow:true': (test) ->
+    #'Updated documents have updated result data if follow:true', (done) ->
 
-    'Pagination': (test) ->
+    #'Pagination', (done) ->
 ###
