@@ -3,8 +3,12 @@
 assert = require 'assert'
 redisLib = require 'redis'
 otTypes = require 'ot-types'
+ot = require './ot'
 
 exports.mongo = require './mongo'
+
+# DODGY DODGY HACK. thisiswhyitsslow.com.
+clone = (o) -> JSON.parse JSON.stringify o
 
 exports.client = (snapshotDb, redis = redisLib.createClient()) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
@@ -29,7 +33,7 @@ exports.client = (snapshotDb, redis = redisLib.createClient()) ->
       callback null, ops
 
   redisSubmit = (cName, docName, opData, callback) ->
-    logEntry = JSON.stringify {op:opData.op, id:opData.id}
+    logEntry = JSON.stringify {op:opData.op, id:opData.id, create:opData.create, del:opData.del}
     docPubEntry = JSON.stringify opData # Publish everything to the document's channel
     if opData.id
       pair = opData.id.split '.'
@@ -37,6 +41,8 @@ exports.client = (snapshotDb, redis = redisLib.createClient()) ->
       seq = pair[1]
       clientNonceKey = "c #{pair[0]}"
 
+    #console.log clientNonceKey, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
+    #  seq, opData.v, logEntry, docPubEntry, # ARGV table
     redis.eval """
 -- ops here is a JSON string.
 local clientNonceKey, opLogKey, docOpChannel = unpack(KEYS)
@@ -48,7 +54,9 @@ seq = tonumber(seq)
 if seq ~= nil then
   
   local nonce = redis.call('GET', clientNonceKey)
+  --redis.log(redis.LOG_NOTICE, tostring(nonce))
   if nonce == false or tonumber(nonce) < seq then
+    --redis.log(redis.LOG_NOTICE, "set " .. clientNonceKey .. " to " .. seq)
     redis.call('SET', clientNonceKey, seq)
     redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
   else
@@ -60,6 +68,7 @@ end
 local realv = redis.call('LLEN', opLogKey)
 
 if v < realv then
+  --redis.log(redis.LOG_NOTICE, "k: " .. opLogKey .. " v: " .. v)
   return redis.call('LRANGE', opLogKey, v, -1)
 elseif v > realv then
   return "Version from the future"
@@ -74,6 +83,7 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
       callback
 
   client =
+    ###
     create: (cName, docName, type, initialData, meta, callback) ->
       # Not matching all possible cases here. Eh.
       [initialData, callback] = [null, initialData] if typeof initialData is 'function'
@@ -90,30 +100,31 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
         data:type.create initialData
         meta:meta or {}
       , callback # Just passing the error straight through. Should probably sanitize it.
+    ###
 
     submit: (cName, docName, opData, callback) ->
-      return callback new Error 'missing version' unless typeof opData.v is 'number'
-      return callback new Error 'missing op' unless typeof (opData.op or opData.ops) is 'object'
+      # We want to allow this at some point.
+      return callback 'Submitting with no version not yet implemented' unless typeof opData.v is 'number'
+      return callback 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
+      return callback 'Missing opData' unless typeof opData is 'object'
+      return callback 'Missing create type' if opData.create and typeof opData.create.type isnt 'string'
+      ot.normalize opData
 
-      # Get doc snapshot. We don't need it for transform, but we will
-      # try to apply the operation before saving it.
-      @fetch cName, docName, (err, snapshot) ->
-        return callback? err if err
+      do retry = =>
+        # Get doc snapshot. We don't need it for transform, but we will
+        # try to apply the operation before saving it.
+        @fetch cName, docName, (err, snapshot) ->
+          return callback? err if err
+          return callback? 'Invalid version' if snapshot.v < opData.v
 
-        type = otTypes[snapshot.type]
-        return callback? new Error "Type #{snapshot.type} missing" unless type
-        
-        # Just eagarly try to submit to redis. If this fails, redis will return all the ops we need to
-        # 'transform' by.
-        do retry = ->
+          # If there's actually a chance of submitting, try applying the operation to make sure
+          # its valid.
           if snapshot.v is opData.v
-            try
-              doc = type.apply snapshot.data, opData.op
-            catch e
-              console.log e.stack
-              return callback? e.message
+            err = ot.apply snapshot, opData
+            return callback? err if err
 
-          # Send op to redis script (and retry if needed)
+          # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
+          # transform by.
           redisSubmit cName, docName, opData, (err, result) ->
             return callback? err if err
             return callback? result if typeof result is 'string'
@@ -122,15 +133,14 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
               # There are ops that should be applied before our new operation.
               oldOpData = (JSON.parse d for d in result)
 
-              #console.log 'not transforming ', oldOpData
               for old in oldOpData
-                opData.op = type.transform opData.op, old, 'left' if type.transform
-                opData.v++
-              #opData.v += oldOpData.length
+                err = ot.transform snapshot.type, opData, old
+                return callback? err if err
 
-              # If there's ever a problem applying the ops that have already been submitted,
-              # we'll be in serious trouble.
-              snapshot.data = type.apply snapshot.data, d.op for d in oldOpData
+                # If we want to remove the need to @fetch again when we retry, do something
+                # like this, but with the original snapshot object:
+                #err = ot.apply snapshot, old
+                #return callback? err if err
 
               #console.log 'retry'
               return retry()
@@ -139,9 +149,10 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
             return callback? null, opData.v if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
             # Update the snapshot for queries
-            snapshotDb.setSnapshot cName, docName, {v:opData.v, data:doc}, (err) ->
+            snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
               return callback? err if err
-              redis.publish cName, JSON.stringify {docName:docName, op:opData.op, v:opData.v}
+              opData.docName = docName
+              redis.publish cName, JSON.stringify opData
               callback? null, opData.v
 
     _subscribe_channel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
@@ -217,7 +228,7 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
     fetch: (cName, docName, callback) ->
       snapshotDb.getSnapshot cName, docName, (err, snapshot) ->
         return callback? err if err
-        return callback? 'Document does not exist' unless snapshot
+        snapshot ?= {v:0}
 
         getOps cName, docName, snapshot.v, (err, opData) ->
           return callback? err if err
@@ -296,7 +307,6 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
 
 
     collection: (cName) ->
-      create: (docName, type, initialData, meta, callback) -> client.create cName, docName, type, initialData, meta, callback
       submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
       subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
       fetch: (docName, callback) -> client.fetch cName, docName, callback

@@ -22,6 +22,8 @@ module.exports = (args...) ->
 
   setSnapshot: (cName, docName, data, callback) ->
     throw new Error 'db already closed' if @closed
+    data.data = null if data.data is undefined
+    data.type = null if data.type is undefined
     mongo.collection(cName).update {_id:docName}, {$set:data}, {upsert:true}, callback
 
   query: (cName, query, callback) ->
