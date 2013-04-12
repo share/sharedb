@@ -73,9 +73,9 @@ describe 'livedb', ->
     @collection.submit @doc, v:1, op:['hi'], (err, v) =>
       throw new Error err if err
       op = [2, ' there']
-      @collection.submit @doc, v:2, id:'abc.123', op:op, (err, v) =>
+      @collection.submit @doc, v:2, src:'abc', seq:123, op:op, (err, v) =>
         throw new Error err if err
-        @collection.submit @doc, v:2, id:'abc.123', op:op, (err, v) =>
+        @collection.submit @doc, v:2, src:'abc', seq:123, op:op, (err, v) =>
           assert.strictEqual err, 'Op already submitted'
           done()
 
@@ -85,11 +85,11 @@ describe 'livedb', ->
         throw new Error err if err
 
         stream.on 'readable', ->
-          assert.deepEqual stream.read(), {v:1, op:['hi'], id:'abc.123'}
+          assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
           stream.destroy()
           done()
 
-        @collection.submit @doc, v:1, op:['hi'], id:'abc.123'
+        @collection.submit @doc, v:1, op:['hi'], src:'abc', seq:123
 
     it 'sees ops when you observe an old version', (done) -> @create =>
       # The document has version 1
@@ -98,9 +98,9 @@ describe 'livedb', ->
           assert.deepEqual stream.read(), {v:0, create:{type:otTypes.text.uri, data:''}}
 
           # And we still get ops that come in now.
-          @collection.submit @doc, v:1, op:['hi'], id:'abc.123'
+          @collection.submit @doc, v:1, op:['hi'], src:'abc', seq:123
           stream.once 'readable', ->
-            assert.deepEqual stream.read(), {v:1, op:['hi'], id:'abc.123'}
+            assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
             stream.destroy()
             done()
 
@@ -226,4 +226,8 @@ describe 'livedb', ->
     it.skip 'Updated documents have updated result data if follow:true', (done) ->
 
     it.skip 'Pagination', (done) ->
+
+    it.skip 'Creating with no type errors out', ->
+
+    it.skip 'Fails to apply an operation to a document that was deleted and recreated', ->
 

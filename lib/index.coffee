@@ -33,16 +33,11 @@ exports.client = (snapshotDb, redis = redisLib.createClient()) ->
       callback null, ops
 
   redisSubmit = (cName, docName, opData, callback) ->
-    logEntry = JSON.stringify {op:opData.op, id:opData.id, create:opData.create, del:opData.del}
+    logEntry = JSON.stringify {op:opData.op, src:opData.src, seq:opData.seq, create:opData.create, del:opData.del}
     docPubEntry = JSON.stringify opData # Publish everything to the document's channel
-    if opData.id
-      pair = opData.id.split '.'
-      # I could say seq = parseInt pair[1], 10 ... but it'll be converted to a string by redis anyway.
-      seq = pair[1]
-      clientNonceKey = "c #{pair[0]}"
 
-    #console.log clientNonceKey, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
-    #  seq, opData.v, logEntry, docPubEntry, # ARGV table
+    #console.log opData.src, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
+    #  opData.seq, opData.v, logEntry, docPubEntry, # ARGV table
     redis.eval """
 -- ops here is a JSON string.
 local clientNonceKey, opLogKey, docOpChannel = unpack(KEYS)
@@ -78,8 +73,8 @@ end
 redis.call('RPUSH', opLogKey, logEntry)
 redis.call('PUBLISH', docOpChannel, docPubEntry)
     """, 3, # num keys
-      clientNonceKey, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
-      seq, opData.v, logEntry, docPubEntry, # ARGV table
+      opData.src, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
+      opData.seq, opData.v, logEntry, docPubEntry, # ARGV table
       callback
 
   client =
@@ -108,6 +103,11 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
       return callback 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
       return callback 'Missing opData' unless typeof opData is 'object'
       return callback 'Missing create type' if opData.create and typeof opData.create.type isnt 'string'
+
+      return callback 'invalid src' if opData.src? and typeof opData.src isnt 'string'
+      return callback 'invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
+      return callback 'seq but not src' if !!opData.seq isnt !!opData.src
+
       ot.normalize opData
 
       do retry = =>
