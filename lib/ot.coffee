@@ -12,13 +12,15 @@ exports.normalize = (opData) ->
 # This is the super apply function that takes in snapshot data (including the type) and edits it in-place.
 # Returns an error string or null for success.
 exports.apply = (data, opData) ->
+  console.log 'apply', data, opData
   return 'Missing data' unless typeof opData is 'object'
   return 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
 
-  if !data.type
+  if opData.create
+    return 'Document already exists' if data.type
+
     # The document doesn't exist, although it might have once existed. Here we will only allow creates.
     create = opData.create
-    return 'Document does not exist' unless typeof create is 'object'
 
     type = otTypes[create.type]
     return "Type not found" unless type
@@ -35,6 +37,7 @@ exports.apply = (data, opData) ->
     data.v++
 
   else
+    return 'Document does not exist' unless data.type
     # Apply the op data
     op = opData.op
     return 'Missing op' unless typeof op is 'object'
