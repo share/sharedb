@@ -12,7 +12,7 @@ exports.normalize = (opData) ->
 # This is the super apply function that takes in snapshot data (including the type) and edits it in-place.
 # Returns an error string or null for success.
 exports.apply = (data, opData) ->
-  console.log 'apply', data, opData
+  #console.log 'apply', data, opData
   return 'Missing data' unless typeof opData is 'object'
   return 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
 

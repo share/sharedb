@@ -100,7 +100,8 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
     submit: (cName, docName, opData, callback) ->
       # We want to allow this at some point.
       return callback 'Submitting with no version not yet implemented' unless typeof opData.v is 'number'
-      return callback 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
+      #console.log 'submit opdata ', opData
+      return callback 'Missing op1' if typeof (opData.op or opData.create) isnt 'object' and opData.del isnt true
       return callback 'Missing opData' unless typeof opData is 'object'
       return callback 'Missing create type' if opData.create and typeof opData.create.type isnt 'string'
 
