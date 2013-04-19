@@ -32,7 +32,8 @@ describe 'livedb', ->
     @create = (data = '', cb) -> # callback and data are both optional.
       [data, cb] = ['', data] if typeof data is 'function'
 
-      @collection.submit @doc, {v:0, create:{type:'text', data}}, (err) ->
+      type = if typeof data is 'string' then 'text' else 'json0'
+      @collection.submit @doc, {v:0, create:{type, data}}, (err) ->
         throw new Error err if err
         cb?()
 
@@ -154,11 +155,11 @@ describe 'livedb', ->
 
           tryRead()
 
-  describe.skip 'Query', ->
+  describe 'Query', ->
     it 'returns a result it already applies to', (done) -> @create {x:5}, =>
       @collection.query {x:5}, (err, results) =>
         expected = {}
-        expected[@doc] = {data:{x:5}, v:0}
+        expected[@doc] = {data:{x:5}, v:1}
         assert.deepEqual results.data, expected
         results.destroy()
         done()
@@ -185,7 +186,7 @@ describe 'livedb', ->
         results.on 'add', (docName) =>
           assert.strictEqual docName, @doc
           expected = {}
-          expected[@doc] = {data:{x:5}, v:0}
+          expected[@doc] = {data:{x:5}, v:1}
           assert.deepEqual results.data, expected
 
           results.destroy()
@@ -205,7 +206,7 @@ describe 'livedb', ->
             done()
 
         op = op:'rm', p:[]
-        @collection.submit @doc, v:1, op:op, (err, v) =>
+        @collection.submit @doc, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
     it 'does not emit receive events to a destroyed query', (done) ->
       @collection.query {x:5}, (err, results) =>
@@ -213,15 +214,10 @@ describe 'livedb', ->
         results.on 'remove', -> throw new Error 'remove called after destroy'
 
         results.destroy()
-        setTimeout (-> done()), 10
 
         # Sooo tasty. results... you know you want this delicious document.
-        @create {x:5}, =>
-          op = op:'rm', p:[]
-          @collection.submit @doc, v:1, op:op
-
-
-
+        @create {x:5}, ->
+          setTimeout (-> done()), 20
 
     it.skip 'Updated documents have updated result data if follow:true', (done) ->
 
