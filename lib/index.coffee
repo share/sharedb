@@ -173,10 +173,14 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
       open = true
       stream.destroy = ->
         throw new Error 'Stream already closed' unless open
+
         stream.push null
         open = false
         redisObserver.unsubscribe channel
         redisObserver.quit()
+
+        stream.emit 'close'
+        stream.emit 'end'
 
       redisObserver.on 'message', (_channel, msg) ->
         assert open
