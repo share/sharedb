@@ -255,7 +255,9 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
         return callback err if err
 
         # Issue query on mongo to get our initial result set.
+        #console.log 'snapshotdb query', cName, query
         snapshotDb.query cName, query, (err, initialResults) =>
+          #console.log '-> pshotdb query', cName, query, initialResults
           if err
             stream.destroy()
             return callback err

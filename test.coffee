@@ -157,7 +157,7 @@ describe 'livedb', ->
 
   describe 'Query', ->
     it 'returns a result it already applies to', (done) -> @create {x:5}, =>
-      @collection.query {x:5}, (err, results) =>
+      @collection.query {'data.x':5}, (err, results) =>
         expected = {}
         expected[@doc] = {data:{x:5}, v:1}
         assert.deepEqual results.data, expected
@@ -165,7 +165,7 @@ describe 'livedb', ->
         done()
 
     it 'gets an empty result set when you query something with no results', (done) ->
-      @collection.query {xyz:123}, (err, results) ->
+      @collection.query {'data.xyz':123}, (err, results) ->
         assert.deepEqual results.data, {}
         results.on 'add', -> throw new Error 'should not have added results'
 
@@ -180,7 +180,7 @@ describe 'livedb', ->
         done()
 
     it.skip 'adds an element when it matches', (done) ->
-      @collection.query {x:5}, (err, results) =>
+      @collection.query {'data.x':5}, (err, results) =>
         @create {x:5}
 
         results.on 'add', (docName) =>
@@ -193,7 +193,7 @@ describe 'livedb', ->
           done()
     
     it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
-      @collection.query {x:5}, (err, results) =>
+      @collection.query {'data.x':5}, (err, results) =>
         results.on 'remove', (docName) =>
           assert.strictEqual docName, @doc
 
@@ -209,7 +209,7 @@ describe 'livedb', ->
         @collection.submit @doc, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
     it 'does not emit receive events to a destroyed query', (done) ->
-      @collection.query {x:5}, (err, results) =>
+      @collection.query {'data.x':5}, (err, results) =>
         results.on 'add', -> throw new Error 'add called after destroy'
         results.on 'remove', -> throw new Error 'remove called after destroy'
 
