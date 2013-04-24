@@ -50,7 +50,7 @@ if seq ~= nil then
   local nonce = redis.call('GET', clientNonceKey)
   --redis.log(redis.LOG_NOTICE, tostring(nonce))
   if nonce ~= false and tonumber(nonce) >= seq then
-    redis.log(redis.LOG_NOTICE, clientNonceKey, nonce, seq)
+    --redis.log(redis.LOG_NOTICE, clientNonceKey, nonce, seq)
     return "Op already submitted"
   end
 end
@@ -72,7 +72,7 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
 -- Finally, save the new nonce. We do this here so we only update the nonce if
 -- we're at the most recent version in the oplog.
 if seq ~= nil then
-  redis.log(redis.LOG_NOTICE, "set " .. clientNonceKey .. " to " .. seq)
+  --redis.log(redis.LOG_NOTICE, "set " .. clientNonceKey .. " to " .. seq)
   redis.call('SET', clientNonceKey, seq)
   redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
 end
