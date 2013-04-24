@@ -38,11 +38,9 @@ module.exports = (args...) ->
 
 
   queryDoc: (cName, docName, query, callback) ->
-    console.log "findOne", {_id:docName, query}
     query = JSON.parse JSON.stringify query # clone the query so we don't edit the original
     query._id = docName
     mongo.collection(cName).findOne query, (err, result) ->
-      console.log "doc #{docName} query ", query, ' result: ', result
       delete result._id if result
       callback err, result
 
