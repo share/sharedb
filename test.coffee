@@ -80,6 +80,17 @@ describe 'livedb', ->
           assert.strictEqual err, 'Op already submitted'
           done()
 
+  it 'will execute concurrent operations', (done) -> @create =>
+    count = 0
+
+    callback = (err, v) =>
+      assert.equal err, null
+      count++
+      done() if count is 2
+
+    @collection.submit @doc, v:1, src:'abc', seq:1, op:['client 1'], callback
+    @collection.submit @doc, v:1, src:'def', seq:1, op:['client 2'], callback
+
   describe 'Observe', ->
     it 'observes local changes', (done) -> @create =>
       @collection.subscribe @doc, 1, (err, stream) =>
@@ -159,7 +170,7 @@ describe 'livedb', ->
     it 'returns a result it already applies to', (done) -> @create {x:5}, =>
       @collection.query {'data.x':5}, (err, results) =>
         expected = {}
-        expected[@doc] = {data:{x:5}, v:1}
+        expected[@doc] = {data:{x:5}, type:otTypes.json0.uri, v:1}
         assert.deepEqual results.data, expected
         results.destroy()
         done()

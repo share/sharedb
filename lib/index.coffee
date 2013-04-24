@@ -47,14 +47,10 @@ seq = tonumber(seq)
 
 -- Dedup, but only if the id has been set.
 if seq ~= nil then
-  
   local nonce = redis.call('GET', clientNonceKey)
   --redis.log(redis.LOG_NOTICE, tostring(nonce))
-  if nonce == false or tonumber(nonce) < seq then
-    --redis.log(redis.LOG_NOTICE, "set " .. clientNonceKey .. " to " .. seq)
-    redis.call('SET', clientNonceKey, seq)
-    redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
-  else
+  if nonce ~= false and tonumber(nonce) >= seq then
+    redis.log(redis.LOG_NOTICE, clientNonceKey, nonce, seq)
     return "Op already submitted"
   end
 end
@@ -72,6 +68,14 @@ end
 -- Ok to submit. Save the op in the oplog and publish.
 redis.call('RPUSH', opLogKey, logEntry)
 redis.call('PUBLISH', docOpChannel, docPubEntry)
+
+-- Finally, save the new nonce. We do this here so we only update the nonce if
+-- we're at the most recent version in the oplog.
+if seq ~= nil then
+  redis.log(redis.LOG_NOTICE, "set " .. clientNonceKey .. " to " .. seq)
+  redis.call('SET', clientNonceKey, seq)
+  redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
+end
     """, 3, # num keys
       opData.src, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
       opData.seq, opData.v, logEntry, docPubEntry, # ARGV table
@@ -270,7 +274,7 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
             stream.destroy()
 
           for d in initialResults
-            results.data[d._id] = {data:d.data, v:d.v}
+            results.data[d._id] = {data:d.data, type:d.type, v:d.v}
 
           do f = -> while d = stream.read() then do (d) ->
             cachedData = results.data[d.docName]
@@ -283,9 +287,9 @@ redis.call('PUBLISH', docOpChannel, docPubEntry)
             if !modifies?
               # Not sure whether the document should be in the db. Poll.
               snapshotDb.queryDoc cName, d.docName, query, (err, result) ->
+                #console.log 'result', result
                 return stream.emit 'error', err if err
                 modifies = result
-
 
                 if modifies and !cachedData
                   # Add doc to the collection.
