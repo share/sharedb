@@ -252,7 +252,9 @@ end
         @subscribe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
-    query: (cName, query, callback) ->
+    query: (cName, query, opts, callback) ->
+      [opts, callback] = [{}, opts] if typeof opts is 'function'
+
       # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
       # so if we get notified about an op here, the document's been saved.
       @_subscribe_channel cName, (err, stream) =>
@@ -260,45 +262,101 @@ end
 
         # Issue query on mongo to get our initial result set.
         #console.log 'snapshotdb query', cName, query
-        snapshotDb.query cName, query, (err, initialResults) =>
-          #console.log '-> pshotdb query', cName, query, initialResults
+        snapshotDb.query cName, query, (err, results) =>
+          #console.log '-> pshotdb query', cName, query, results
           if err
             stream.destroy()
             return callback err
           
-          #console.log results
+          # Maintain a map from docName -> index for constant time tests
+          docIdx = {}
+          docIdx[d.docName] = i for d, i in results
 
-          results = new EventEmitter
-          results.data = {}
-          results.destroy = ->
+          emitter = new EventEmitter
+          emitter.data = results
+          emitter.destroy = ->
             stream.destroy()
 
-          for d in initialResults
-            results.data[d._id] = {data:d.data, type:d.type, v:d.v}
-
           do f = -> while d = stream.read() then do (d) ->
-            cachedData = results.data[d.docName]
+            # We have some data from the channel stream about an updated document.
+            #console.log d.docName, docIdx, results
+            cachedData = results[docIdx[d.docName]]
             # Ignore ops that are older than our data. This is possible because we subscribe before
             # issuing the query.
             return if cachedData and cachedData.v > d.v
 
+            # Hook here to do syncronous tests for query membership. This will become an important
+            # way to speed this code up.
             modifies = undefined #snapshotDb.willOpMakeDocMatchQuery cachedData?, query, d.op
 
-            if !modifies?
-              # Not sure whether the document should be in the db. Poll.
-              snapshotDb.queryDoc cName, d.docName, query, (err, result) ->
-                #console.log 'result', result
-                return stream.emit 'error', err if err
-                modifies = result
+            # Not sure whether the changed document should be in the result set
+            if modifies is undefined
+              if opts.poll
+                # We need to do a full poll of the query, because the query uses limits or something.
+                snapshotDb.query cName, query, (err, newResults) ->
+                  # Do a simple diff, describing how to convert results -> newResults
+                  #
+                  # Inside the loop, we can't use any of the index values of docIdx because
+                  # the index values aren't updated as the loop iterates. We _can_ use it to test
+                  # existance in the result set.
+                  ri = newi = 0
+                  while ri < results.length and newi < newResults.length
+                    currentNew = newResults[newi]
+                    currentR = results[ri]
 
-                if modifies and !cachedData
-                  # Add doc to the collection.
-                  results.data[d.docName] = modifies
-                  results.emit 'add', d.docName
-                else if !modifies and cachedData
-                  # Remove doc from collection
-                  results.emit 'remove', d.docName
-                  delete results.data[d.docName]
+                    # 3 cases:
+                    #
+                    # - The current element is in the old result set and the new result set. Skip it.
+                    if currentR.docName == currentNew.docName
+                      ri++; newi++
+
+                    # - newResults[newi] is not the old result set. Add it.
+                    else if docIdx[currentNew.docName] is undefined
+                      results.splice ri, 0, currentNew
+                      emitter.emit 'add', currentNew, ri
+                      # Incremenet both because we spliced into results.
+                      ri++; newi++
+
+                    # - currentNew is in the result set, but skips currentR. Remove.
+                    else
+                      emitter.emit 'remove', currentR, ri
+                      results.splice ri, 1
+
+                  # If there's any extra stuff in newResults, add it to results.
+                  while newi < newResults.length
+                    currentNew = newResults[newi]
+                    results.push currentNew
+                    emitter.emit 'add', currentNew, ri
+                    ri++; newi++
+
+                  # If there's extra stuff in results, remove it.
+                  while ri < results.length
+                    emitter.emit 'remove', results[ri], ri
+                    results.splice ri, 1
+
+                  # Fix docIdx
+                  docIdx = {}
+                  docIdx[d.docName] = i for d, i in results
+
+              else
+                snapshotDb.queryDoc cName, d.docName, query, (err, result) ->
+                  return stream.emit 'error', err if err
+                  #console.log 'result', result, 'cachedData', cachedData
+
+                  if result and !cachedData
+                    # Add doc to the collection. Order isn't important, so
+                    # we'll just whack it at the end.
+                    results.push result
+                    emitter.emit 'add', result, results.length - 1
+                    docIdx[result.docName] = results.length - 1
+                  else if !result and cachedData
+                    # Remove doc from collection
+                    idx = docIdx[d.docName]
+                    emitter.emit 'remove', results[idx], idx
+                    results.splice idx, 1
+                    loop
+                      break unless typeof docIdx[idx] is 'number'
+                      docIdx[idx++]--
 
             #if modifies is true and !cachedData?
             # Add document. Not sure how to han
@@ -313,7 +371,7 @@ end
 
           stream.on 'readable', f
 
-          callback null, results
+          callback null, emitter
 
 
 
@@ -322,6 +380,6 @@ end
       subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
       fetch: (docName, callback) -> client.fetch cName, docName, callback
       fetchAndObserve: (docName, callback) -> client.fetchAndObserve cName, docName, callback
-      query: (query, callback) ->
-        client.query cName, query, callback
+      query: (query, opts, callback) ->
+        client.query cName, query, opts, callback
   

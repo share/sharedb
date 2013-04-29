@@ -22,61 +22,71 @@ describe 'livedb', ->
   beforeEach ->
     {@client, @redis, @mongowrapper} = createClient()
 
+    @cName = '_test'
+
     # Clear the databases
     mongo = mongoskin.db 'localhost:27017/test?auto_reconnect', safe:true
-    mongo.dropCollection '_test'
+    mongo.dropCollection @cName
     @redis.flushdb()
 
-    @collection = @client.collection (@cName = '_test')
-    @doc = "id#{id++}"
-    @create = (data = '', cb) -> # callback and data are both optional.
+    @collection = @client.collection @cName
+    @docName = "id#{id++}"
+    @create2 = (docName, data = '', cb) ->
       [data, cb] = ['', data] if typeof data is 'function'
 
       type = if typeof data is 'string' then 'text' else 'json0'
-      @collection.submit @doc, {v:0, create:{type, data}}, (err) ->
+      @collection.submit docName, {v:0, create:{type, data}}, (err) ->
         throw new Error err if err
         cb?()
+
+    # callback and data are both optional.
+    @create = (data, cb) -> @create2 @docName, data, cb
 
   afterEach ->
     @mongowrapper.close()
     @redis.quit()
     
   it 'creates a doc', (done) ->
-    @collection.submit @doc, {v:0, create:{type:'text'}}, (err) ->
+    @collection.submit @docName, {v:0, create:{type:'text'}}, (err) ->
       throw new Error err if err
       done()
 
+  it 'errors if you dont specify a type', (done) ->
+    @collection.submit @docName, {v:0, create:{}}, (err) ->
+      assert.ok err
+      done()
+
   it 'can fetch created documents', (done) -> @create 'hi', =>
-    @collection.fetch @doc, (err, {v, data}) ->
+    @collection.fetch @docName, (err, {v, data}) ->
       throw new Error err if err
       assert.deepEqual data, 'hi'
       assert.strictEqual v, 1
       done()
 
   it 'can modify a document', (done) -> @create =>
-    @collection.submit @doc, v:1, op:['hi'], (err, v) =>
+    @collection.submit @docName, v:1, op:['hi'], (err, v) =>
       throw new Error err if err
-      @collection.fetch @doc, (err, {v, data}) =>
+      @collection.fetch @docName, (err, {v, data}) =>
         throw new Error err if err
         assert.deepEqual data, 'hi'
         done()
 
   it 'removes a doc', (done) -> @create =>
-    @collection.submit @doc, v:1, del:true, (err, v) =>
+    @collection.submit @docName, v:1, del:true, (err, v) =>
       throw new Error err if err
-      @collection.fetch @doc, (err, data) =>
+      @collection.fetch @docName, (err, data) =>
         throw new Error err if err
         assert.equal data.data, null
         assert.equal data.type, null
         done()
 
   it 'does not execute repeated operations', (done) -> @create =>
-    @collection.submit @doc, v:1, op:['hi'], (err, v) =>
+    @collection.submit @docName, v:1, op:['hi'], (err, v) =>
       throw new Error err if err
       op = [2, ' there']
-      @collection.submit @doc, v:2, src:'abc', seq:123, op:op, (err, v) =>
+      @collection.submit @docName, v:2, src:'abc', seq:123, op:op, (err, v) =>
         throw new Error err if err
-        @collection.submit @doc, v:2, src:'abc', seq:123, op:op, (err, v) =>
+        @collection.submit @docName, v:2, src:'abc', seq:123, op:op, (err, v) =>
           assert.strictEqual err, 'Op already submitted'
           done()
 
@@ -88,12 +98,12 @@ describe 'livedb', ->
       count++
       done() if count is 2
 
-    @collection.submit @doc, v:1, src:'abc', seq:1, op:['client 1'], callback
-    @collection.submit @doc, v:1, src:'def', seq:1, op:['client 2'], callback
+    @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
+    @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
   describe 'Observe', ->
     it 'observes local changes', (done) -> @create =>
-      @collection.subscribe @doc, 1, (err, stream) =>
+      @collection.subscribe @docName, 1, (err, stream) =>
         throw new Error err if err
 
         stream.on 'readable', ->
@@ -101,23 +111,23 @@ describe 'livedb', ->
           stream.destroy()
           done()
 
-        @collection.submit @doc, v:1, op:['hi'], src:'abc', seq:123
+        @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
 
     it 'sees ops when you observe an old version', (done) -> @create =>
       # The document has version 1
-      @collection.subscribe @doc, 0, (err, stream) =>
+      @collection.subscribe @docName, 0, (err, stream) =>
         stream.once 'readable', =>
           assert.deepEqual stream.read(), {v:0, create:{type:otTypes.text.uri, data:''}}
 
           # And we still get ops that come in now.
-          @collection.submit @doc, v:1, op:['hi'], src:'abc', seq:123
+          @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
           stream.once 'readable', ->
             assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
             stream.destroy()
             done()
 
     it 'can observe a document that doesnt exist yet', (done) ->
-      @collection.subscribe @doc, 0, (err, stream) =>
+      @collection.subscribe @docName, 0, (err, stream) =>
         stream.on 'readable', ->
           assert.deepEqual stream.read(), {v:0, create:{type:otTypes.text.uri, data:''}}
           stream.destroy()
@@ -126,19 +136,19 @@ describe 'livedb', ->
         @create()
 
     it 'throws when you double stream.destroy', (done) ->
-      @collection.subscribe @doc, 1, (err, stream) =>
+      @collection.subscribe @docName, 1, (err, stream) =>
         stream.destroy()
         assert.throws -> stream.destroy()
         done()
     
     it 'works with separate clients', (done) -> @create =>
-      numClients = 50
+      numClients = 10 # You can go way higher, but it gets slow.
       clients = (createClient() for [0...numClients])
 
       for c, i in clients
-        c.client.submit @cName, @doc, v:1, op:["client #{i} "]
+        c.client.submit @cName, @docName, v:1, op:["client #{i} "]
 
-      @collection.subscribe @doc, 1, (err, stream) =>
+      @collection.subscribe @docName, 1, (err, stream) =>
         # We should get numClients ops on the stream, in order.
         seq = 1
         stream.on 'readable', tryRead = =>
@@ -159,7 +169,7 @@ describe 'livedb', ->
             done()
 
             # Uncomment to see the actually submitted data
-            #@collection.fetch @doc, (err, {v, data}) =>
+            #@collection.fetch @docName, (err, {v, data}) =>
             #  console.log data
           else
             seq++
@@ -167,74 +177,84 @@ describe 'livedb', ->
           tryRead()
 
   describe 'Query', ->
-    it 'returns a result it already applies to', (done) -> @create {x:5}, =>
-      @collection.query {'data.x':5}, (err, results) =>
-        expected = {}
-        expected[@doc] = {data:{x:5}, type:otTypes.json0.uri, v:1}
-        assert.deepEqual results.data, expected
-        results.destroy()
-        done()
+    for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
+      opts = {poll}
 
-    it 'gets an empty result set when you query something with no results', (done) ->
-      @collection.query {'data.xyz':123}, (err, results) ->
-        assert.deepEqual results.data, {}
-        results.on 'add', -> throw new Error 'should not have added results'
-
-        process.nextTick ->
-          results.destroy()
+      it 'returns a result it already applies to', (done) -> @create {x:5}, =>
+        @collection.query {'data.x':5}, opts, (err, emitter) =>
+          expected = [docName:@docName, data:{x:5}, type:otTypes.json0.uri, v:1]
+          assert.deepEqual emitter.data, expected
+          emitter.destroy()
           done()
 
-    it 'gives you an error when you specify _id', (done) ->
-      @collection.query {_id:123}, (err, results) ->
-        assert.ok err
-        assert.equal results, null
-        done()
+      it 'gets an empty result set when you query something with no results', (done) ->
+        @collection.query {'data.xyz':123}, opts, (err, emitter) ->
+          assert.deepEqual emitter.data, []
+          emitter.on 'add', -> throw new Error 'should not have added results'
 
-    it.skip 'adds an element when it matches', (done) ->
-      @collection.query {'data.x':5}, (err, results) =>
-        @create {x:5}
-
-        results.on 'add', (docName) =>
-          assert.strictEqual docName, @doc
-          expected = {}
-          expected[@doc] = {data:{x:5}, v:1}
-          assert.deepEqual results.data, expected
-
-          results.destroy()
-          done()
-    
-    it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
-      @collection.query {'data.x':5}, (err, results) =>
-        results.on 'remove', (docName) =>
-          assert.strictEqual docName, @doc
-
-          # The doc is left in the result set until after the callback runs so
-          # we can read doc stuff off here.
           process.nextTick ->
-            assert.equal results.data[@doc], null
-            
-            results.destroy()
+            emitter.destroy()
             done()
 
-        op = op:'rm', p:[]
-        @collection.submit @doc, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
+      it 'gives you an error when you specify _id', (done) ->
+        @collection.query {_id:123}, opts, (err, emitter) ->
+          assert.ok err
+          assert.equal emitter, null
+          done()
 
-    it 'does not emit receive events to a destroyed query', (done) ->
-      @collection.query {'data.x':5}, (err, results) =>
-        results.on 'add', -> throw new Error 'add called after destroy'
-        results.on 'remove', -> throw new Error 'remove called after destroy'
+      it 'adds an element when it matches', (done) ->
+        @collection.query {'data.x':5}, opts, (err, emitter) =>
+          emitter.on 'add', (data, idx) =>
+            assert.deepEqual data, {docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri}
+            assert.strictEqual idx, 0
 
-        results.destroy()
+            emitter.destroy()
+            done()
+      
+          @create {x:5}
 
-        # Sooo tasty. results... you know you want this delicious document.
-        @create {x:5}, ->
-          setTimeout (-> done()), 20
+      it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
+        @collection.query {'data.x':5}, opts, (err, emitter) =>
+          emitter.on 'remove', (doc, idx) =>
+            assert.strictEqual idx, 0
+            assert.strictEqual doc.docName, @docName
 
-    it.skip 'Updated documents have updated result data if follow:true', (done) ->
+            # The doc is left in the result set until after the callback runs so
+            # we can read doc stuff off here.
+            process.nextTick ->
+              assert.deepEqual emitter.data, []
+              
+              emitter.destroy()
+              done()
 
-    it.skip 'Pagination', (done) ->
+          op = op:'rm', p:[]
+          @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
-    it.skip 'Creating with no type errors out', ->
+      it 'does not emit receive events to a destroyed query', (done) ->
+        @collection.query {'data.x':5}, opts, (err, emitter) =>
+          emitter.on 'add', -> throw new Error 'add called after destroy'
+          emitter.on 'remove', -> throw new Error 'remove called after destroy'
 
-    it.skip 'Fails to apply an operation to a document that was deleted and recreated', ->
+          emitter.destroy()
+
+          # Sooo tasty. emitter... you know you want this delicious document.
+          @create {x:5}, ->
+            setTimeout (-> done()), 20
+
+    describe 'pagination', ->
+      it 'respects limit queries', (done) -> @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, =>
+        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}, $limit:1}, {poll:true}, (err, emitter) ->
+          assert.strictEqual emitter.data.length, 1
+          assert.strictEqual emitter.data[0].docName, '_p1'
+          done()
+
+      it 'respects skips', (done) -> @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, =>
+        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
+          assert.strictEqual emitter.data.length, 1
+          assert.strictEqual emitter.data[0].docName, '_p2'
+          done()
+
+
+
+  it.skip 'Fails to apply an operation to a document that was deleted and recreated', ->
 

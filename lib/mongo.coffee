@@ -29,19 +29,37 @@ module.exports = (args...) ->
   query: (cName, query, callback) ->
     return callback 'query cannot specify a document ID' if query._id
     return callback 'db already closed' if @closed
-    mongo.collection(cName).find(query).toArray (err, results) ->
-      try
-        callback err, results
-      catch e
-        console.log e.stack
-        throw e
+
+    skip = query.$skip
+    delete query.$skip
+    limit = query.$limit
+    delete query.$limit
+
+    mongo.collection(cName).find query, (err, cursor) ->
+      return callback err if err
+
+      cursor.limit limit if limit
+      cursor.skip skip if skip
+
+      cursor.toArray (err, results) ->
+        if results then for r in results
+          r.docName = r._id
+          delete r._id
+
+        try
+          callback err, results
+        catch e
+          console.log e.stack
+          throw e
 
 
   queryDoc: (cName, docName, query, callback) ->
     query = JSON.parse JSON.stringify query # clone the query so we don't edit the original
     query._id = docName
     mongo.collection(cName).findOne query, (err, result) ->
-      delete result._id if result
+      if result
+        result.docName = docName
+        delete result._id
       callback err, result
 
   # Test whether an operation will make the document its applied to match the specified query.
