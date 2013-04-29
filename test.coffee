@@ -177,6 +177,7 @@ describe 'livedb', ->
           tryRead()
 
   describe 'Query', ->
+    # Do these tests with polling turned on and off.
     for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
       opts = {poll}
 
@@ -242,17 +243,55 @@ describe 'livedb', ->
             setTimeout (-> done()), 20
 
     describe 'pagination', ->
-      it 'respects limit queries', (done) -> @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, =>
+      beforeEach (callback) ->
+        @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, => @create2 '_p3', {x:5, i:3}, => callback()
+
+      it 'respects limit queries', (done) ->
         @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}, $limit:1}, {poll:true}, (err, emitter) ->
           assert.strictEqual emitter.data.length, 1
           assert.strictEqual emitter.data[0].docName, '_p1'
           done()
 
-      it 'respects skips', (done) -> @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, =>
+      it 'respects skips', (done) ->
         @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
           assert.strictEqual emitter.data.length, 1
           assert.strictEqual emitter.data[0].docName, '_p2'
           done()
+
+      it 'will insert an element in the set', (done) ->
+        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}}, {poll:true}, (err, emitter) =>
+          assert.equal emitter.data.length, 3
+
+          emitter.on 'add', (data, idx) ->
+            assert.deepEqual data, {docName:'_p4', type:otTypes.json0.uri, v:1, data:{x:5, i:1.5}}
+            assert.deepEqual idx, 1
+            assert.strictEqual data, emitter.data[1]
+            assert.strictEqual emitter.data.length, 4
+
+            done()
+
+          @create2 '_p4', {x:5, i:1.5}
+      
+      it 'will remove an element from the set', (done) ->
+        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}}, {poll:true}, (err, emitter) =>
+
+          emitter.once 'remove', (data, idx) ->
+            assert.strictEqual idx, 0
+            assert.strictEqual data.docName, '_p1'
+            emitter.once 'remove', (data, idx) ->
+              assert.strictEqual idx, 1
+              assert.strictEqual data.docName, '_p3'
+
+              process.nextTick ->
+                assert.strictEqual emitter.data.length, 1
+                assert.strictEqual emitter.data[0].docName, '_p2'
+                done()
+
+          # I'll delete the first _and_ last elements to be sure, and do it in this order.
+          @collection.submit '_p1', v:1, del:true, (err, v) =>
+            throw err if err
+            @collection.submit '_p3', v:1, del:true, (err, v) =>
+              throw err if err
 
 
 
