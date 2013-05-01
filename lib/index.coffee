@@ -102,8 +102,6 @@ end
     ###
 
     submit: (cName, docName, opData, callback) ->
-      # We want to allow this at some point.
-      return callback 'Submitting with no version not yet implemented' unless typeof opData.v is 'number'
       #console.log 'submit opdata ', opData
       return callback 'Missing op1' if typeof (opData.op or opData.create) isnt 'object' and opData.del isnt true
       return callback 'Missing opData' unless typeof opData is 'object'
@@ -119,6 +117,8 @@ end
         # Get doc snapshot. We don't need it for transform, but we will
         # try to apply the operation before saving it.
         @fetch cName, docName, (err, snapshot) ->
+          opData.v = snapshot.v if !opData.v?
+
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
 

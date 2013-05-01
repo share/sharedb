@@ -51,6 +51,11 @@ describe 'livedb', ->
       throw new Error err if err
       done()
 
+  it 'allows create ops with a null version', (done) ->
+    @collection.submit @docName, {v:null, create:{type:'text'}}, (err) ->
+      throw new Error err if err
+      done()
+
   it 'errors if you dont specify a type', (done) ->
     @collection.submit @docName, {v:0, create:{}}, (err) ->
       assert.ok err
@@ -65,6 +70,14 @@ describe 'livedb', ->
 
   it 'can modify a document', (done) -> @create =>
     @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+      throw new Error err if err
+      @collection.fetch @docName, (err, {v, data}) =>
+        throw new Error err if err
+        assert.deepEqual data, 'hi'
+        done()
+
+  it 'allows ops with a null version', (done) -> @create =>
+    @collection.submit @docName, v:null, op:['hi'], (err, v) =>
       throw new Error err if err
       @collection.fetch @docName, (err, {v, data}) =>
         throw new Error err if err
