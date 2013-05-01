@@ -312,6 +312,7 @@ end
 
                     # - newResults[newi] is not the old result set. Add it.
                     else if docIdx[currentNew.docName] is undefined
+                      docIdx[currentNew.docName] = -1
                       results.splice ri, 0, currentNew
                       emitter.emit 'add', currentNew, ri
                       # Incremenet both because we spliced into results.
@@ -319,6 +320,7 @@ end
 
                     # - currentNew is in the result set, but skips currentR. Remove.
                     else
+                      delete docIdx[currentR.docName]
                       emitter.emit 'remove', currentR, ri
                       results.splice ri, 1
 
