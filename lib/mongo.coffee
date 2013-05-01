@@ -27,13 +27,12 @@ module.exports = (args...) ->
     mongo.collection(cName).update {_id:docName}, {$set:data}, {upsert:true}, callback
 
   query: (cName, query, callback) ->
-    return callback 'query cannot specify a document ID' if query._id
     return callback 'db already closed' if @closed
 
     skip = query.$skip
-    delete query.$skip
+    #delete query.$skip
     limit = query.$limit
-    delete query.$limit
+    #delete query.$limit
 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err

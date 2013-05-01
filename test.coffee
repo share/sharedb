@@ -197,12 +197,6 @@ describe 'livedb', ->
             emitter.destroy()
             done()
 
-      it 'gives you an error when you specify _id', (done) ->
-        @collection.query {_id:123}, opts, (err, emitter) ->
-          assert.ok err
-          assert.equal emitter, null
-          done()
-
       it 'adds an element when it matches', (done) ->
         @collection.query {'data.x':5}, opts, (err, emitter) =>
           emitter.on 'add', (data, idx) =>
