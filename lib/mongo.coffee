@@ -69,6 +69,9 @@ module.exports = (args...) ->
   # return true or false if it knows, or null if the function doesn't have enough information to tell.
   willOpMakeDocMatchQuery: (currentStatus, query, op) -> null
 
+  # Does the query need to be rerun against the database with every edit?
+  queryNeedsPollMode: (query) ->
+    query.$orderby || query.$limit || query.$skip
 
   # Test if a document matches a particular query. Should be synchronous and return true or false.
   #matchesQuery: null # (query, doc) ->

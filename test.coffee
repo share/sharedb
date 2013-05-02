@@ -307,6 +307,7 @@ describe 'livedb', ->
             @collection.submit '_p3', v:1, del:true, (err, v) =>
               throw err if err
 
+    it.skip 'turns poll mode on or off automatically if opts.poll is undefined', ->
 
 
   it.skip 'Fails to apply an operation to a document that was deleted and recreated', ->

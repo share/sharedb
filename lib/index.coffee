@@ -257,6 +257,13 @@ end
     query: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
+      poll = if opts.poll is undefined
+        snapshotDb.queryNeedsPollMode query
+      else
+        opts.poll
+
+      # console.log 'poll mode:', !!poll
+
       # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
       # so if we get notified about an op here, the document's been saved.
       @_subscribe_channel cName, (err, stream) =>
@@ -293,7 +300,7 @@ end
 
             # Not sure whether the changed document should be in the result set
             if modifies is undefined
-              if opts.poll
+              if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
                 snapshotDb.query cName, query, (err, newResults) ->
                   # Do a simple diff, describing how to convert results -> newResults
