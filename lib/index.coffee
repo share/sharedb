@@ -245,9 +245,8 @@ end
         getOps cName, docName, snapshot.v, (err, opData) ->
           return callback? err if err
           snapshot.v += opData.length
-          type = otTypes[snapshot.type]
-          snapshot.data = type.apply snapshot.data, d.op for d in opData
-          callback null, snapshot
+          err = ot.apply snapshot, d for d in opData
+          callback err, snapshot
 
     fetchAndSubscribe: (cName, docName, callback) ->
       @fetch cName, docName, (err, data) =>
