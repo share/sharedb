@@ -2,7 +2,6 @@
 {EventEmitter} = require 'events'
 assert = require 'assert'
 redisLib = require 'redis'
-otTypes = require 'ot-types'
 ot = require './ot'
 
 exports.mongo = require './mongo'
