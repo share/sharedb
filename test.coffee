@@ -307,6 +307,21 @@ describe 'livedb', ->
             @collection.submit '_p3', v:1, del:true, (err, v) =>
               throw err if err
 
+    describe 'queryFetch', ->
+      it 'query fetch with no results works', (done) ->
+        @collection.queryFetch {'data.somekeythatdoesnotexist':1}, (err, results) ->
+          throw new Error err if err
+          assert.deepEqual results, []
+          done()
+
+      it 'query with some results returns those results', (done) -> @create2 @docName, 'qwertyuiop', =>
+        @collection.queryFetch {'data':'qwertyuiop'}, (err, results) =>
+          expected = [docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1]
+          assert.deepEqual results, expected
+          done()
+
+
+
     it.skip 'turns poll mode on or off automatically if opts.poll is undefined', ->
 
 

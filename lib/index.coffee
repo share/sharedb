@@ -253,6 +253,10 @@ end
         @subscribe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
+    queryFetch: (cName, query, callback) ->
+      snapshotDb.query cName, query, (err, results) =>
+        callback err, results
+
     query: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
@@ -388,8 +392,10 @@ end
     collection: (cName) ->
       submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
       subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
+
       fetch: (docName, callback) -> client.fetch cName, docName, callback
       fetchAndObserve: (docName, callback) -> client.fetchAndObserve cName, docName, callback
-      query: (query, opts, callback) ->
-        client.query cName, query, opts, callback
+
+      queryFetch: (query, callback) -> client.queryFetch cName, query, callback
+      query: (query, opts, callback) -> client.query cName, query, opts, callback
   
