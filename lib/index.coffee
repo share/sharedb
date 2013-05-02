@@ -45,16 +45,6 @@ local seq, v, logEntry, docPubEntry = unpack(ARGV) -- From redisSubmit, below.
 v = tonumber(v)
 seq = tonumber(seq)
 
--- Dedup, but only if the id has been set.
-if seq ~= nil then
-  local nonce = redis.call('GET', clientNonceKey)
-  --redis.log(redis.LOG_NOTICE, tostring(nonce))
-  if nonce ~= false and tonumber(nonce) >= seq then
-    --redis.log(redis.LOG_NOTICE, clientNonceKey, nonce, seq)
-    return "Op already submitted"
-  end
-end
-
 -- Check the version matches.
 local realv = redis.call('LLEN', opLogKey)
 
@@ -63,6 +53,14 @@ if v < realv then
   return redis.call('LRANGE', opLogKey, v, -1)
 elseif v > realv then
   return "Version from the future"
+end
+
+-- Dedup, but only if the id has been set.
+if seq ~= nil then
+  local nonce = redis.call('GET', clientNonceKey)
+  if nonce ~= false and tonumber(nonce) >= seq then
+    return "Op already submitted"
+  end
 end
 
 -- Ok to submit. Save the op in the oplog and publish.
@@ -113,9 +111,11 @@ end
 
       ot.normalize opData
 
+      transformedOps = []
+
       do retry = =>
         # Get doc snapshot. We don't need it for transform, but we will
-        # try to apply the operation before saving it.
+        # try to apply the operation locally before saving it.
         @fetch cName, docName, (err, snapshot) ->
           opData.v = snapshot.v if !opData.v?
 
@@ -139,6 +139,9 @@ end
               oldOpData = (JSON.parse d for d in result)
 
               for old in oldOpData
+                old.v = opData.v
+                transformedOps.push old
+
                 err = ot.transform snapshot.type, opData, old
                 return callback? err if err
 
@@ -151,14 +154,14 @@ end
               return retry()
 
             # Call callback with op submit version
-            return callback? null, opData.v if snapshotDb.closed # Happens in the tests sometimes. Its ok.
+            return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
             # Update the snapshot for queries
             snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
               return callback? err if err
               opData.docName = docName
               redis.publish cName, JSON.stringify opData
-              callback? null, opData.v
+              callback? null, opData.v, transformedOps
 
     _subscribe_channel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
       # TODO: 2 refactors:
@@ -194,7 +197,7 @@ end
 
       redisObserver.subscribe channel, (err) ->
         if err
-          stream.destroy()
+          stream.destroy() if open
           callback err, null
         else
           callback null, stream

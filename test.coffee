@@ -76,6 +76,13 @@ describe 'livedb', ->
         assert.deepEqual data, 'hi'
         done()
 
+  it 'returns transformed documents', (done) -> @create =>
+    @collection.submit @docName, v:1, op:['a'], src:'abc', seq:123, (err, v, ops) =>
+      assert.deepEqual ops, []
+      @collection.submit @docName, v:1, op:['b'], (err, v, ops) =>
+        assert.deepEqual ops, [{v:1, op:['a'], src:'abc', seq:123}]
+        done()
+
   it 'allows ops with a null version', (done) -> @create =>
     @collection.submit @docName, v:null, op:['hi'], (err, v) =>
       throw new Error err if err
