@@ -5,6 +5,16 @@ shallowClone = (object) ->
   out[key] = object[key] for key of object
   return out
 
+normalizeQuery = (query) ->
+  # Box queries inside of a $query and clone so that we know where to look
+  # for selctors and can modify them without affecting the original object
+  if query.$query
+    query = shallowClone query
+    query.$query = shallowClone query.$query
+  else
+    query = $query: shallowClone(query)
+  return query
+
 # mongo is a mongoskin client. Create with:
 #  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
 module.exports = (args...) ->
@@ -34,12 +44,17 @@ module.exports = (args...) ->
   query: (cName, query, callback) ->
     return callback 'db already closed' if @closed
 
-    # Clone the query so we don't edit the original
-    query = shallowClone query
-    query.type = {$ne: null} unless query.type
-
     skip = query.$skip
     limit = query.$limit
+
+    query = normalizeQuery query
+
+    # Deleted documents are kept around so that we can start their version from
+    # the last version if they get recreated. When they are deleted, their type
+    # is set to null, so don't return any documents with a null type.
+    query.$query.type = {$ne: null} unless query.$query.type
+
+    console.log(query)
 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err
@@ -60,12 +75,12 @@ module.exports = (args...) ->
 
 
   queryDoc: (cName, docName, query, callback) ->
-    if query._id
-      return callback() if query._id isnt docName
+    query = normalizeQuery query
+
+    if query.$query._id
+      return callback() if query.$query._id isnt docName
     else
-      # Clone the query so we don't edit the original
-      query = shallowClone query
-      query._id = docName unless query._id
+      query.$query._id = docName
 
     mongo.collection(cName).findOne query, (err, result) ->
       if result
