@@ -1,5 +1,10 @@
 # A super simple mongodb adapter for itsalive
 
+shallowClone = (object) ->
+  out = {}
+  out[key] = object[key] for key of object
+  return out
+
 # mongo is a mongoskin client. Create with:
 #  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
 module.exports = (args...) ->
@@ -29,10 +34,12 @@ module.exports = (args...) ->
   query: (cName, query, callback) ->
     return callback 'db already closed' if @closed
 
+    # Clone the query so we don't edit the original
+    query = shallowClone query
+    query.type = {$ne: null} unless query.type
+
     skip = query.$skip
-    #delete query.$skip
     limit = query.$limit
-    #delete query.$limit
 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err
@@ -53,8 +60,13 @@ module.exports = (args...) ->
 
 
   queryDoc: (cName, docName, query, callback) ->
-    query = JSON.parse JSON.stringify query # clone the query so we don't edit the original
-    query._id = docName
+    if query._id
+      return callback() if query._id isnt docName
+    else
+      # Clone the query so we don't edit the original
+      query = shallowClone query
+      query._id = docName unless query._id
+
     mongo.collection(cName).findOne query, (err, result) ->
       if result
         result.docName = docName
