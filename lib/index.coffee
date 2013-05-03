@@ -13,24 +13,6 @@ exports.client = (snapshotDb, redis = redisLib.createClient()) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
-  # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
-  # (null or undefined) then it returns all ops.
-  getOps = (cName, docName, from, to, callback) ->
-    [to, callback] = [-1, to] if typeof to is 'function'
-    to ?= -1
-
-    if to >= 0
-      return callback? null, [] if from >= to
-      to--
-
-    redis.lrange getOpLogKey(cName, docName), from, to, (err, values) ->
-      return callback? err if err
-      ops = for value in values
-        op = JSON.parse value
-        op.v = from++ # The version is stripped from the ops in the oplog. Add it back.
-        op
-      callback null, ops
-
   redisSubmit = (cName, docName, opData, callback) ->
     logEntry = JSON.stringify {op:opData.op, src:opData.src, seq:opData.seq, create:opData.create, del:opData.del}
     docPubEntry = JSON.stringify opData # Publish everything to the document's channel
@@ -97,6 +79,25 @@ end
         meta:meta or {}
       , callback # Just passing the error straight through. Should probably sanitize it.
     ###
+
+    # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
+    # (null or undefined) then it returns all ops.
+    getOps: (cName, docName, from, to, callback) ->
+      [to, callback] = [-1, to] if typeof to is 'function'
+      to ?= -1
+
+      if to >= 0
+        return callback? null, [] if from >= to
+        to--
+
+      #console.log 'getOps', cName, docName, "'#{getOpLogKey(cName, docName)}'"
+      redis.lrange getOpLogKey(cName, docName), from, to, (err, values) ->
+        return callback? err if err
+        ops = for value in values
+          op = JSON.parse value
+          op.v = from++ # The version is stripped from the ops in the oplog. Add it back.
+          op
+        callback null, ops
 
     submit: (cName, docName, opData, callback) ->
       #console.log 'submit opdata ', opData
@@ -208,11 +209,11 @@ end
 
       # Subscribe redis to the stream first so we don't miss out on any operations
       # while we're getting the history
-      @_subscribe_channel opChannel, (err, stream) ->
+      @_subscribe_channel opChannel, (err, stream) =>
         callback err if err
 
         # From here on, we need to call stream.destroy() if there are errors.
-        getOps cName, docName, v, (err, data) ->
+        @getOps cName, docName, v, (err, data) ->
           if err
             stream.destroy()
             return callback err
@@ -237,11 +238,11 @@ end
 
     # Callback called with (err, {v, data})
     fetch: (cName, docName, callback) ->
-      snapshotDb.getSnapshot cName, docName, (err, snapshot) ->
+      snapshotDb.getSnapshot cName, docName, (err, snapshot) =>
         return callback? err if err
         snapshot ?= {v:0}
 
-        getOps cName, docName, snapshot.v, (err, opData) ->
+        @getOps cName, docName, snapshot.v, (err, opData) ->
           return callback? err if err
           snapshot.v += opData.length
           err = ot.apply snapshot, d for d in opData
@@ -392,6 +393,8 @@ end
     collection: (cName) ->
       submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
       subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
+
+      getOps: (docName, from, to, callback) -> client.getOps cName, docName, from, to, callback
 
       fetch: (docName, callback) -> client.fetch cName, docName, callback
       fetchAndObserve: (docName, callback) -> client.fetchAndObserve cName, docName, callback

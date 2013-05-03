@@ -121,6 +121,35 @@ describe 'livedb', ->
     @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
     @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
+  describe 'getOps', ->
+    it 'returns an empty list for nonexistant documents', (done) ->
+      @collection.getOps @docName, 0, -1, (err, ops) ->
+        throw new Error err if err
+        assert.deepEqual ops, []
+        done()
+
+    it 'returns ops that have been submitted to a document', (done) -> @create =>
+      @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+        @collection.getOps @docName, 0, 1, (err, ops) =>
+          throw new Error err if err
+          assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+
+          @collection.getOps @docName, 1, 2, (err, ops) ->
+            throw new Error err if err
+            assert.deepEqual ops, [op:['hi'], v:1]
+            done()
+
+    it 'returns all ops if to is not defined', (done) -> @create =>
+      @collection.getOps @docName, 0, (err, ops) =>
+        throw new Error err if err
+        assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+
+        @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+          @collection.getOps @docName, 0, (err, ops) ->
+            throw new Error err if err
+            assert.deepEqual ops, [{create:{type:otTypes.text.uri, data:''}, v:0}, {op:['hi'], v:1}]
+            done()
+
   describe 'Observe', ->
     it 'observes local changes', (done) -> @create =>
       @collection.subscribe @docName, 1, (err, stream) =>
