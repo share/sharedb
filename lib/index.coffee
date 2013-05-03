@@ -179,7 +179,7 @@ end
 
       open = true
       stream.destroy = ->
-        throw new Error 'Stream already closed' unless open
+        return unless open
 
         stream.push null
         open = false

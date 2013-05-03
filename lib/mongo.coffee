@@ -1,4 +1,4 @@
-# A super simple mongodb adapter for itsalive
+# A super simple mongodb adapter for livedb
 
 shallowClone = (object) ->
   out = {}
