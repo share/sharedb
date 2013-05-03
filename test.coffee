@@ -184,10 +184,10 @@ describe 'livedb', ->
 
         @create()
 
-    it 'throws when you double stream.destroy', (done) ->
+    it 'does not throw when you double stream.destroy', (done) ->
       @collection.subscribe @docName, 1, (err, stream) =>
         stream.destroy()
-        assert.throws -> stream.destroy()
+        stream.destroy()
         done()
     
     it 'works with separate clients', (done) -> @create =>

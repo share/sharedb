@@ -54,7 +54,7 @@ module.exports = (args...) ->
     # is set to null, so don't return any documents with a null type.
     query.$query.type = {$ne: null} unless query.$query.type
 
-    console.log(query)
+    #console.log(query)
 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err
