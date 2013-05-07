@@ -354,6 +354,7 @@ end
                   docIdx[d.docName] = i for d, i in results
 
               else
+                #console.log 'query doc', cName
                 snapshotDb.queryDoc cName, d.docName, query, (err, result) ->
                   return stream.emit 'error', err if err
                   #console.log 'result', result, 'cachedData', cachedData
@@ -367,6 +368,7 @@ end
                   else if !result and cachedData
                     # Remove doc from collection
                     idx = docIdx[d.docName]
+                    delete docIdx[d.docName]
                     emitter.emit 'remove', results[idx], idx
                     results.splice idx, 1
                     loop

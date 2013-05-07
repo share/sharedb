@@ -285,6 +285,8 @@ describe 'livedb', ->
           @create {x:5}, ->
             setTimeout (-> done()), 20
 
+      it 'works if you remove then re-add a document from a query' # Regression.
+
     describe 'pagination', ->
       beforeEach (callback) ->
         @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, => @create2 '_p3', {x:5, i:3}, => callback()
