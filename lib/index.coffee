@@ -244,7 +244,6 @@ end
 
         @getOps cName, docName, snapshot.v, (err, opData) ->
           return callback? err if err
-          snapshot.v += opData.length
           err = ot.apply snapshot, d for d in opData
           callback err, snapshot
 
