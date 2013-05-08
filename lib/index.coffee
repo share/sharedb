@@ -105,8 +105,8 @@ end
       return callback 'Missing opData' unless typeof opData is 'object'
       return callback 'Missing create type' if opData.create and typeof opData.create.type isnt 'string'
 
-      return callback 'invalid src' if opData.src? and typeof opData.src isnt 'string'
-      return callback 'invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
+      return callback 'Invalid src' if opData.src? and typeof opData.src isnt 'string'
+      return callback 'Invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
       return callback 'seq but not src' if !!opData.seq isnt !!opData.src
 
       ot.normalize opData
