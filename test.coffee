@@ -120,6 +120,7 @@ describe 'livedb', ->
       it 'runs a supplied validation function on the data', (done) ->
         validationRun = no
         validate = (opData, snapshot, callback) ->
+          assert.deepEqual snapshot, {v:1, data:'', type:otTypes.text.uri}
           validationRun = yes
           callback()
 
@@ -128,7 +129,10 @@ describe 'livedb', ->
           done()
 
       it 'does not submit if validation fails', (done) -> @create =>
-        validate = (opData, snapshot, callback) -> callback 'no you!'
+        validate = (opData, snapshot, callback) ->
+          assert.deepEqual opData.op, ['hi']
+          callback 'no you!'
+
         @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
           assert.equal err, 'no you!'
 
