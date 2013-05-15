@@ -45,102 +45,106 @@ describe 'livedb', ->
   afterEach ->
     @mongowrapper.close()
     @redis.quit()
-    
-  it 'creates a doc', (done) ->
-    @collection.submit @docName, {v:0, create:{type:'text'}}, (err) ->
-      throw new Error err if err
-      done()
-
-  it 'allows create ops with a null version', (done) ->
-    @collection.submit @docName, {v:null, create:{type:'text'}}, (err) ->
-      throw new Error err if err
-      done()
-
-  it 'errors if you dont specify a type', (done) ->
-    @collection.submit @docName, {v:0, create:{}}, (err) ->
-      assert.ok err
-      done()
-
-  it 'runs a supplied validation function on the data', (done) ->
-    validationRun = no
-    validate = (opData, snapshot, callback) ->
-      validationRun = yes
-      callback()
-
-    @collection.submit @docName, {v:0, create:{type:'text'}, validate}, (err) ->
-      assert.ok validationRun
-      done()
-
-  it 'does not submit if validation fails', (done) -> @create =>
-    validate = (opData, snapshot, callback) -> callback 'no you!'
-    @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
-      assert.equal err, 'no you!'
-
-      @collection.fetch @docName, (err, {v, data}) =>
+ 
+  describe 'submit', ->
+    it 'creates a doc', (done) ->
+      @collection.submit @docName, {v:0, create:{type:'text'}}, (err) ->
         throw new Error err if err
-        assert.deepEqual data, ''
         done()
 
-
-  it 'can fetch created documents', (done) -> @create 'hi', =>
-    @collection.fetch @docName, (err, {v, data}) ->
-      throw new Error err if err
-      assert.deepEqual data, 'hi'
-      assert.strictEqual v, 1
-      done()
-
-  it 'can modify a document', (done) -> @create =>
-    @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-      throw new Error err if err
-      @collection.fetch @docName, (err, {v, data}) =>
+    it 'allows create ops with a null version', (done) ->
+      @collection.submit @docName, {v:null, create:{type:'text'}}, (err) ->
         throw new Error err if err
-        assert.deepEqual data, 'hi'
         done()
 
-  it 'returns transformed documents', (done) -> @create =>
-    @collection.submit @docName, v:1, op:['a'], src:'abc', seq:123, (err, v, ops) =>
-      assert.deepEqual ops, []
-      @collection.submit @docName, v:1, op:['b'], (err, v, ops) =>
-        assert.deepEqual ops, [{v:1, op:['a'], src:'abc', seq:123}]
+    it 'errors if you dont specify a type', (done) ->
+      @collection.submit @docName, {v:0, create:{}}, (err) ->
+        assert.ok err
         done()
 
-  it 'allows ops with a null version', (done) -> @create =>
-    @collection.submit @docName, v:null, op:['hi'], (err, v) =>
-      throw new Error err if err
-      @collection.fetch @docName, (err, {v, data}) =>
+    it 'can modify a document', (done) -> @create =>
+      @collection.submit @docName, v:1, op:['hi'], (err, v) =>
         throw new Error err if err
-        assert.deepEqual data, 'hi'
-        done()
-
-  it 'removes a doc', (done) -> @create =>
-    @collection.submit @docName, v:1, del:true, (err, v) =>
-      throw new Error err if err
-      @collection.fetch @docName, (err, data) =>
-        throw new Error err if err
-        assert.equal data.data, null
-        assert.equal data.type, null
-        done()
-
-  it 'does not execute repeated operations', (done) -> @create =>
-    @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-      throw new Error err if err
-      op = [2, ' there']
-      @collection.submit @docName, v:2, src:'abc', seq:123, op:op, (err, v) =>
-        throw new Error err if err
-        @collection.submit @docName, v:2, src:'abc', seq:123, op:op, (err, v) =>
-          assert.strictEqual err, 'Op already submitted'
+        @collection.fetch @docName, (err, {v, data}) =>
+          throw new Error err if err
+          assert.deepEqual data, 'hi'
           done()
 
-  it 'will execute concurrent operations', (done) -> @create =>
-    count = 0
+    it 'transforms operations', (done) -> @create =>
+      @collection.submit @docName, v:1, op:['a'], src:'abc', seq:123, (err, v, ops) =>
+        assert.deepEqual ops, []
+        @collection.submit @docName, v:1, op:['b'], (err, v, ops) =>
+          assert.deepEqual ops, [{v:1, op:['a'], src:'abc', seq:123}]
+          done()
 
-    callback = (err, v) =>
-      assert.equal err, null
-      count++
-      done() if count is 2
+    it 'allows ops with a null version', (done) -> @create =>
+      @collection.submit @docName, v:null, op:['hi'], (err, v) =>
+        throw new Error err if err
+        @collection.fetch @docName, (err, {v, data}) =>
+          throw new Error err if err
+          assert.deepEqual data, 'hi'
+          done()
 
-    @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
-    @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
+    it 'removes a doc', (done) -> @create =>
+      @collection.submit @docName, v:1, del:true, (err, v) =>
+        throw new Error err if err
+        @collection.fetch @docName, (err, data) =>
+          throw new Error err if err
+          assert.equal data.data, null
+          assert.equal data.type, null
+          done()
+
+    it 'does not execute repeated operations', (done) -> @create =>
+      @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+        throw new Error err if err
+        op = [2, ' there']
+        @collection.submit @docName, v:2, src:'abc', seq:123, op:op, (err, v) =>
+          throw new Error err if err
+          @collection.submit @docName, v:2, src:'abc', seq:123, op:op, (err, v) =>
+            assert.strictEqual err, 'Op already submitted'
+            done()
+
+    it 'will execute concurrent operations', (done) -> @create =>
+      count = 0
+
+      callback = (err, v) =>
+        assert.equal err, null
+        count++
+        done() if count is 2
+
+      @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
+      @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
+
+
+    describe 'validate', ->
+      it 'runs a supplied validation function on the data', (done) ->
+        validationRun = no
+        validate = (opData, snapshot, callback) ->
+          validationRun = yes
+          callback()
+
+        @collection.submit @docName, {v:0, create:{type:'text'}, validate}, (err) ->
+          assert.ok validationRun
+          done()
+
+      it 'does not submit if validation fails', (done) -> @create =>
+        validate = (opData, snapshot, callback) -> callback 'no you!'
+        @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
+          assert.equal err, 'no you!'
+
+          @collection.fetch @docName, (err, {v, data}) =>
+            throw new Error err if err
+            assert.deepEqual data, ''
+            done()
+
+
+  describe 'fetch', ->
+    it 'can fetch created documents', (done) -> @create 'hi', =>
+      @collection.fetch @docName, (err, {v, data}) ->
+        throw new Error err if err
+        assert.deepEqual data, 'hi'
+        assert.strictEqual v, 1
+        done()
 
   describe 'getOps', ->
     it 'returns an empty list for nonexistant documents', (done) ->
