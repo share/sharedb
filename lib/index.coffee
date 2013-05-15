@@ -6,9 +6,6 @@ ot = require './ot'
 
 exports.mongo = require './mongo'
 
-# DODGY DODGY HACK. thisiswhyitsslow.com.
-clone = (o) -> JSON.parse JSON.stringify o
-
 exports.client = (snapshotDb, redis = redisLib.createClient()) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
@@ -100,14 +97,11 @@ end
         callback null, ops
 
     submit: (cName, docName, opData, callback) ->
-      #console.log 'submit opdata ', opData
-      return callback 'Missing op1' if typeof (opData.op or opData.create) isnt 'object' and opData.del isnt true
-      return callback 'Missing opData' unless typeof opData is 'object'
-      return callback 'Missing create type' if opData.create and typeof opData.create.type isnt 'string'
+      validate = opData.validate or (opData, snapshot, callback) -> callback()
 
-      return callback 'Invalid src' if opData.src? and typeof opData.src isnt 'string'
-      return callback 'Invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
-      return callback 'seq but not src' if !!opData.seq isnt !!opData.src
+      #console.log 'submit opdata ', opData
+      err = ot.checkOpData opData
+      return callback? err if err
 
       ot.normalize opData
 
@@ -122,46 +116,54 @@ end
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
 
+          trySubmit = ->
+            # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
+            # transform by.
+            redisSubmit cName, docName, opData, (err, result) ->
+              return callback? err if err
+              return callback? result if typeof result is 'string'
+
+              if result and typeof result is 'object'
+                # There are ops that should be applied before our new operation.
+                oldOpData = (JSON.parse d for d in result)
+
+                for old in oldOpData
+                  old.v = opData.v
+                  transformedOps.push old
+
+                  err = ot.transform snapshot.type, opData, old
+                  return callback? err if err
+
+                  # If we want to remove the need to @fetch again when we retry, do something
+                  # like this, but with the original snapshot object:
+                  #err = ot.apply snapshot, old
+                  #return callback? err if err
+
+                #console.log 'retry'
+                return retry()
+
+              # Call callback with op submit version
+              return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
+
+              # Update the snapshot for queries
+              snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
+                return callback? err if err
+                opData.docName = docName
+                redis.publish cName, JSON.stringify opData
+                callback? null, opData.v, transformedOps
+
           # If there's actually a chance of submitting, try applying the operation to make sure
           # its valid.
           if snapshot.v is opData.v
             err = ot.apply snapshot, opData
             return callback? err if err
 
-          # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
-          # transform by.
-          redisSubmit cName, docName, opData, (err, result) ->
-            return callback? err if err
-            return callback? result if typeof result is 'string'
-
-            if result and typeof result is 'object'
-              # There are ops that should be applied before our new operation.
-              oldOpData = (JSON.parse d for d in result)
-
-              for old in oldOpData
-                old.v = opData.v
-                transformedOps.push old
-
-                err = ot.transform snapshot.type, opData, old
-                return callback? err if err
-
-                # If we want to remove the need to @fetch again when we retry, do something
-                # like this, but with the original snapshot object:
-                #err = ot.apply snapshot, old
-                #return callback? err if err
-
-              #console.log 'retry'
-              return retry()
-
-            # Call callback with op submit version
-            return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
-
-            # Update the snapshot for queries
-            snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
+            validate opData, snapshot, (err) ->
               return callback? err if err
-              opData.docName = docName
-              redis.publish cName, JSON.stringify opData
-              callback? null, opData.v, transformedOps
+              trySubmit()
+          else
+            trySubmit()
+
 
     _subscribe_channel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
       # TODO: 2 refactors:

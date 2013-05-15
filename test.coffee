@@ -61,6 +61,27 @@ describe 'livedb', ->
       assert.ok err
       done()
 
+  it 'runs a supplied validation function on the data', (done) ->
+    validationRun = no
+    validate = (opData, snapshot, callback) ->
+      validationRun = yes
+      callback()
+
+    @collection.submit @docName, {v:0, create:{type:'text'}, validate}, (err) ->
+      assert.ok validationRun
+      done()
+
+  it 'does not submit if validation fails', (done) -> @create =>
+    validate = (opData, snapshot, callback) -> callback 'no you!'
+    @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
+      assert.equal err, 'no you!'
+
+      @collection.fetch @docName, (err, {v, data}) =>
+        throw new Error err if err
+        assert.deepEqual data, ''
+        done()
+
+
   it 'can fetch created documents', (done) -> @create 'hi', =>
     @collection.fetch @docName, (err, {v, data}) ->
       throw new Error err if err
