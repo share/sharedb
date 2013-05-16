@@ -303,6 +303,22 @@ describe 'livedb', ->
           op = op:'rm', p:[]
           @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
+      it 'removes deleted elements', (done) -> @create {x:5}, =>
+        @collection.query {'data.x':5}, opts, (err, emitter) =>
+          assert.strictEqual emitter.data.length, 1
+
+          emitter.on 'remove', (doc, idx) =>
+            assert.strictEqual idx, 0
+            assert.strictEqual doc.docName, @docName
+            process.nextTick ->
+              assert.deepEqual emitter.data, []
+              emitter.destroy()
+              done()
+
+          @collection.submit @docName, v:1, del:true, (err, v) =>
+            throw new Error err if err
+
+
       it 'does not emit receive events to a destroyed query', (done) ->
         @collection.query {'data.x':5}, opts, (err, emitter) =>
           emitter.on 'add', -> throw new Error 'add called after destroy'
@@ -315,6 +331,7 @@ describe 'livedb', ->
             setTimeout (-> done()), 20
 
       it 'works if you remove then re-add a document from a query' # Regression.
+      
 
     describe 'pagination', ->
       beforeEach (callback) ->

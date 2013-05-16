@@ -13,6 +13,12 @@ normalizeQuery = (query) ->
     query.$query = shallowClone query.$query
   else
     query = $query: shallowClone(query)
+
+  # Deleted documents are kept around so that we can start their version from
+  # the last version if they get recreated. When they are deleted, their type
+  # is set to null, so don't return any documents with a null type.
+  query.$query.type = {$ne: null} unless query.$query.type
+ 
   return query
 
 # mongo is a mongoskin client. Create with:
@@ -49,12 +55,6 @@ module.exports = (args...) ->
 
     query = normalizeQuery query
 
-    # Deleted documents are kept around so that we can start their version from
-    # the last version if they get recreated. When they are deleted, their type
-    # is set to null, so don't return any documents with a null type.
-    query.$query.type = {$ne: null} unless query.$query.type
-    #console.log(query)
- 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err
 
