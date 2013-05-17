@@ -192,7 +192,9 @@ end
         stream.emit 'end'
 
       redisObserver.on 'message', (_channel, msg) ->
-        assert open
+        # We shouldn't get messages after we tell it to unsubscribe, but its happened.
+        return unless open
+
         return unless _channel is channel
         data = JSON.parse msg
         stream.push data
