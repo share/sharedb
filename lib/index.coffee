@@ -372,9 +372,9 @@ end
                     delete docIdx[d.docName]
                     emitter.emit 'remove', results[idx], idx
                     results.splice idx, 1
-                    loop
-                      break unless typeof docIdx[idx] is 'number'
-                      docIdx[idx++]--
+                    while idx < results.length
+                      name = results[idx++].docName
+                      docIdx[name]--
 
             #if modifies is true and !cachedData?
             # Add document. Not sure how to han
