@@ -171,7 +171,7 @@ end
             trySubmit()
 
 
-    _subscribe_channel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
+    _subscribeChannel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
       # TODO: 2 refactors:
       #        - Make the redis observer we use here reusable
       #        - Reuse listens on channels
@@ -219,7 +219,7 @@ end
 
       # Subscribe redis to the stream first so we don't miss out on any operations
       # while we're getting the history
-      @_subscribe_channel opChannel, (err, stream) =>
+      @_subscribeChannel opChannel, (err, stream) =>
         callback err if err
 
         # From here on, we need to call stream.destroy() if there are errors.
@@ -279,7 +279,7 @@ end
 
       # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
       # so if we get notified about an op here, the document's been saved.
-      @_subscribe_channel cName, (err, stream) =>
+      @_subscribeChannel cName, (err, stream) =>
         return callback err if err
 
         # Issue query on mongo to get our initial result set.

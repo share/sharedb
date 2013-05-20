@@ -26,6 +26,8 @@ normalizeQuery = (query) ->
 module.exports = (args...) ->
   mongo = require('mongoskin').db args...
   
+  name: 'mongo'
+
   create: (cName, docName, data, callback) ->
     data._id = docName
     mongo.collection(cName).insert data, callback
