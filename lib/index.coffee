@@ -6,7 +6,7 @@ ot = require './ot'
 
 exports.mongo = require './mongo'
 
-exports.client = (snapshotDb, redis = redisLib.createClient()) ->
+exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
@@ -142,6 +142,11 @@ end
                 #console.log 'retry'
                 return retry()
 
+              # And SOLR or whatever. Not entirely sure of the timing here.
+              for name, db of extraDbs
+                db.submit? cName, docName, opData, snapshot, (err) ->
+                  console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
+
               # Call callback with op submit version
               return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
@@ -151,6 +156,7 @@ end
                 opData.docName = docName
                 redis.publish cName, JSON.stringify opData
                 callback? null, opData.v, transformedOps
+
 
           # If there's actually a chance of submitting, try applying the operation to make sure
           # its valid.

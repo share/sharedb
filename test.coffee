@@ -10,17 +10,18 @@ otTypes = require 'ot-types'
 id = 0
 
 createClient = ->
-  mongowrapper = livedb.mongo('localhost:27017/test?auto_reconnect', safe:false)
+  mongoWrapper = livedb.mongo('localhost:27017/test?auto_reconnect', safe:false)
 
   redis = redisLib.createClient()
   redis.select 15
 
-  client = livedb.client mongowrapper, redis
-  {client, redis, mongowrapper}
+  testWrapper = {name:'test'}
+  client = livedb.client mongoWrapper, redis, {test:testWrapper}
+  {client, redis, mongoWrapper, testWrapper}
 
 describe 'livedb', ->
   beforeEach ->
-    {@client, @redis, @mongowrapper} = createClient()
+    {@client, @redis, @mongoWrapper, @testWrapper} = createClient()
 
     @cName = '_test'
 
@@ -43,7 +44,7 @@ describe 'livedb', ->
     @create = (data, cb) -> @create2 @docName, data, cb
 
   afterEach ->
-    @mongowrapper.close()
+    @mongoWrapper.close()
     @redis.quit()
  
   describe 'submit', ->
@@ -115,6 +116,15 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
       @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
+    it 'sends operations to any extra db backends', (done) ->
+      @testWrapper.submit = (cName, docName, opData, snapshot, callback) =>
+        assert.equal cName, @cName
+        assert.equal docName, @docName
+        assert.deepEqual opData, {v:0, create:{type:otTypes.text.uri, data:''}}
+        assert.deepEqual snapshot, {v:1, data:"", type:otTypes.text.uri}
+        done()
+
+      @create()
 
     describe 'validate', ->
       it 'runs a supplied validation function on the data', (done) ->
@@ -243,7 +253,7 @@ describe 'livedb', ->
 
             for c, i in clients
               c.redis.quit()
-              c.mongowrapper.close()
+              c.mongoWrapper.close()
             done()
 
             # Uncomment to see the actually submitted data
