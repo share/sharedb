@@ -265,21 +265,27 @@ end
 
     queryFetch: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
-      if opts.b
-        return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.b
-        db = extraDbs[opts.b]
+      if opts.backend
+        return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.backend
+        db = extraDbs[opts.backend]
       else
         db = snapshotDb
 
       db.query cName, query, (err, results) =>
-        callback err, results
+        if err
+          callback err
+        else if Array.isArray results
+          callback null, results
+        else
+          callback null, results.results, results.extra
+
 
     query: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
-      if opts.b
-        return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.b
-        db = extraDbs[opts.b]
+      if opts.backend
+        return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.backend
+        db = extraDbs[opts.backend]
       else
         db = snapshotDb
 
@@ -292,8 +298,8 @@ end
 
       # console.log 'poll mode:', !!poll
 
-      channels = if db.subscribedCollections
-        db.subscribedCollections cName, query, opts
+      channels = if db.subscribedChannels
+        db.subscribedChannels cName, query, opts
       else
         [cName]
 
@@ -317,7 +323,6 @@ end
           if !Array.isArray results
             # Results is an object. It should look like {results:[..], data:....}
             emitter.extra = results.extra
-            console.log 'extra', emitter.extra
             results = results.results
 
           emitter.data = results

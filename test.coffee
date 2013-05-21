@@ -411,14 +411,16 @@ describe 'livedb', ->
           assert.deepEqual results, expected
           done()
 
+      it 'does the right thing with a backend that returns extra data'
+
     describe 'selected collections', ->
       it 'asks the db to pick the interesting collections'
 
       it 'gets operations submitted to any specified collection', (done) ->
-        @testWrapper.subscribedCollections = (cName, query, opts) ->
+        @testWrapper.subscribedChannels = (cName, query, opts) ->
           assert.strictEqual cName, 'internet'
           assert.deepEqual query, {x:5}
-          assert.deepEqual opts, {sexy:true, b:'test'}
+          assert.deepEqual opts, {sexy:true, backend:'test'}
           ['c1', 'c2']
 
         called = 0
@@ -434,7 +436,7 @@ describe 'livedb', ->
           if called is 3
             done()
 
-        @client.query 'internet', {x:5}, {sexy:true, b:'test'}, (err) =>
+        @client.query 'internet', {x:5}, {sexy:true, backend:'test'}, (err) =>
           throw Error err if err
           @client.submit 'c1', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
           @client.submit 'c2', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
@@ -445,7 +447,7 @@ describe 'livedb', ->
         @testWrapper.query = (cName, query, callback) ->
           callback null, {results:[], extra:{x:5}}
 
-        @client.query 'internet', {x:5}, {b:'test'}, (err, stream) =>
+        @client.query 'internet', {x:5}, {backend:'test'}, (err, stream) =>
           assert.deepEqual stream.extra, {x:5}
           done()
 
@@ -454,7 +456,7 @@ describe 'livedb', ->
         @testWrapper.query = (cName, query, callback) ->
           callback null, {results:[], extra:{x:x++}}
 
-        @collection.query {x:5}, {b:'test'}, (err, stream) =>
+        @collection.query {x:5}, {backend:'test'}, (err, stream) =>
           assert.deepEqual stream.extra, {x:1}
           
           stream.on 'extra', (extra) ->
