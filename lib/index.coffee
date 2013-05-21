@@ -263,8 +263,15 @@ end
         @subscribe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
-    queryFetch: (cName, query, callback) ->
-      snapshotDb.query cName, query, (err, results) =>
+    queryFetch: (cName, query, opts, callback) ->
+      [opts, callback] = [{}, opts] if typeof opts is 'function'
+      if opts.b
+        return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.b
+        db = extraDbs[opts.b]
+      else
+        db = snapshotDb
+
+      db.query cName, query, (err, results) =>
         callback err, results
 
     query: (cName, query, opts, callback) ->
@@ -302,17 +309,24 @@ end
           if err
             stream.destroy()
             return callback err
-          
+
+          emitter = new EventEmitter
+          emitter.destroy = ->
+            stream.destroy()
+
+          if !Array.isArray results
+            # Results is an object. It should look like {results:[..], data:....}
+            emitter.extra = results.extra
+            console.log 'extra', emitter.extra
+            results = results.results
+
+          emitter.data = results
+
           # Maintain a map from docName -> index for constant time tests
           docIdx = {}
           for d, i in results
             d.c ||= cName
             docIdx["#{d.c}.#{d.docName}"] = i
-
-          emitter = new EventEmitter
-          emitter.data = results
-          emitter.destroy = ->
-            stream.destroy()
 
           do f = -> while d = stream.read() then do (d) ->
             d.c = d.channel
@@ -332,6 +346,11 @@ end
               if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
                 db.query cName, query, (err, newResults) ->
+                  if !Array.isArray newResults
+                    if newResults.extra
+                      emitter.emit 'extra', newResults.extra
+                    newResults = newResults.results
+
                   # Do a simple diff, describing how to convert results -> newResults
                   #
                   # Inside the loop, we can't use any of the index values of docIdx because
@@ -433,6 +452,6 @@ end
       fetch: (docName, callback) -> client.fetch cName, docName, callback
       fetchAndObserve: (docName, callback) -> client.fetchAndObserve cName, docName, callback
 
-      queryFetch: (query, callback) -> client.queryFetch cName, query, callback
+      queryFetch: (query, opts, callback) -> client.queryFetch cName, query, opts, callback
       query: (query, opts, callback) -> client.query cName, query, opts, callback
   

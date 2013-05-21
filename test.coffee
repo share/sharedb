@@ -440,6 +440,30 @@ describe 'livedb', ->
           @client.submit 'c2', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
           @client.submit 'c3', @docName, {v:0, create:{type:otTypes.text.uri}}
 
+    describe 'extra data', ->
+      it 'gets extra data in the initial result set', (done) ->
+        @testWrapper.query = (cName, query, callback) ->
+          callback null, {results:[], extra:{x:5}}
+
+        @client.query 'internet', {x:5}, {b:'test'}, (err, stream) =>
+          assert.deepEqual stream.extra, {x:5}
+          done()
+
+      it 'gets updated extra data when the result set changes', (done) ->
+        x = 1
+        @testWrapper.query = (cName, query, callback) ->
+          callback null, {results:[], extra:{x:x++}}
+
+        @collection.query {x:5}, {b:'test'}, (err, stream) =>
+          assert.deepEqual stream.extra, {x:1}
+          
+          stream.on 'extra', (extra) ->
+            assert.deepEqual extra, {x:2}
+            done()
+
+          @create()
+
+
     it.skip 'turns poll mode on or off automatically if opts.poll is undefined', ->
 
 
