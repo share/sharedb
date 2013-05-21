@@ -171,7 +171,7 @@ end
             trySubmit()
 
 
-    _subscribeChannel: (channel, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
+    _subscribeChannels: (channels, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
       # TODO: 2 refactors:
       #        - Make the redis observer we use here reusable
       #        - Reuse listens on channels
@@ -191,7 +191,7 @@ end
 
         stream.push null
         open = false
-        redisObserver.unsubscribe channel
+        redisObserver.unsubscribe()
         redisObserver.quit()
 
         stream.emit 'close'
@@ -201,11 +201,11 @@ end
         # We shouldn't get messages after we tell it to unsubscribe, but its happened.
         return unless open
 
-        return unless _channel is channel
         data = JSON.parse msg
+        data.channel = _channel if Array.isArray channels
         stream.push data
 
-      redisObserver.subscribe channel, (err) ->
+      redisObserver.subscribe channels, (err) ->
         if err
           stream.destroy() if open
           callback err, null
@@ -219,7 +219,7 @@ end
 
       # Subscribe redis to the stream first so we don't miss out on any operations
       # while we're getting the history
-      @_subscribeChannel opChannel, (err, stream) =>
+      @_subscribeChannels opChannel, (err, stream) =>
         callback err if err
 
         # From here on, we need to call stream.destroy() if there are errors.
@@ -270,21 +270,34 @@ end
     query: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
-      poll = if opts.poll is undefined
-        snapshotDb.queryNeedsPollMode query
+      if opts.b
+        return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.b
+        db = extraDbs[opts.b]
+      else
+        db = snapshotDb
+
+      poll = if !db.queryDoc
+        true
+      else if opts.poll is undefined and db.queryNeedsPollMode
+        db.queryNeedsPollMode query
       else
         opts.poll
 
       # console.log 'poll mode:', !!poll
 
+      channels = if db.subscribedCollections
+        db.subscribedCollections cName, query, opts
+      else
+        [cName]
+
       # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
       # so if we get notified about an op here, the document's been saved.
-      @_subscribeChannel cName, (err, stream) =>
+      @_subscribeChannels channels, (err, stream) =>
         return callback err if err
 
         # Issue query on mongo to get our initial result set.
         #console.log 'snapshotdb query', cName, query
-        snapshotDb.query cName, query, (err, results) =>
+        db.query cName, query, (err, results) =>
           #console.log '-> pshotdb query', cName, query, results
           if err
             stream.destroy()
@@ -292,7 +305,9 @@ end
           
           # Maintain a map from docName -> index for constant time tests
           docIdx = {}
-          docIdx[d.docName] = i for d, i in results
+          for d, i in results
+            d.c ||= cName
+            docIdx["#{d.c}.#{d.docName}"] = i
 
           emitter = new EventEmitter
           emitter.data = results
@@ -300,9 +315,10 @@ end
             stream.destroy()
 
           do f = -> while d = stream.read() then do (d) ->
+            d.c = d.channel
             # We have some data from the channel stream about an updated document.
             #console.log d.docName, docIdx, results
-            cachedData = results[docIdx[d.docName]]
+            cachedData = results[docIdx["#{d.c}.#{d.docName}"]]
             # Ignore ops that are older than our data. This is possible because we subscribe before
             # issuing the query.
             return if cachedData and cachedData.v > d.v
@@ -315,7 +331,7 @@ end
             if modifies is undefined
               if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
-                snapshotDb.query cName, query, (err, newResults) ->
+                db.query cName, query, (err, newResults) ->
                   # Do a simple diff, describing how to convert results -> newResults
                   #
                   # Inside the loop, we can't use any of the index values of docIdx because
@@ -326,15 +342,20 @@ end
                     currentNew = newResults[newi]
                     currentR = results[ri]
 
+                    currentNew.c ||= cName
+
+                    newName = "#{currentNew.c}.#{currentNew.docName}"
+                    oldName = "#{currentR.c}.#{currentR.docName}"
+
                     # 3 cases:
                     #
                     # - The current element is in the old result set and the new result set. Skip it.
-                    if currentR.docName == currentNew.docName
+                    if newName == oldName
                       ri++; newi++
 
                     # - newResults[newi] is not the old result set. Add it.
-                    else if docIdx[currentNew.docName] is undefined
-                      docIdx[currentNew.docName] = -1
+                    else if docIdx[newName] is undefined
+                      docIdx[newName] = -1
                       results.splice ri, 0, currentNew
                       emitter.emit 'add', currentNew, ri
                       # Incremenet both because we spliced into results.
@@ -342,7 +363,7 @@ end
 
                     # - currentNew is in the result set, but skips currentR. Remove.
                     else
-                      delete docIdx[currentR.docName]
+                      delete docIdx[oldName]
                       emitter.emit 'remove', currentR, ri
                       results.splice ri, 1
 
@@ -360,11 +381,11 @@ end
 
                   # Fix docIdx
                   docIdx = {}
-                  docIdx[d.docName] = i for d, i in results
+                  docIdx["#{d.c}.#{d.docName}"] = i for d, i in results
 
               else
                 #console.log 'query doc', cName
-                snapshotDb.queryDoc cName, d.docName, query, (err, result) ->
+                db.queryDoc cName, d.docName, query, (err, result) ->
                   return stream.emit 'error', err if err
                   #console.log 'result', result, 'cachedData', cachedData
 
@@ -373,15 +394,17 @@ end
                     # we'll just whack it at the end.
                     results.push result
                     emitter.emit 'add', result, results.length - 1
-                    docIdx[result.docName] = results.length - 1
+                    docIdx["#{result.c}.#{result.docName}"] = results.length - 1
                   else if !result and cachedData
                     # Remove doc from collection
-                    idx = docIdx[d.docName]
-                    delete docIdx[d.docName]
+                    name = "#{d.c}.#{d.docName}"
+                    idx = docIdx[name]
+                    delete docIdx[name]
                     emitter.emit 'remove', results[idx], idx
                     results.splice idx, 1
                     while idx < results.length
-                      name = results[idx++].docName
+                      r = results[idx++]
+                      name = "#{r.c}.#{r.docName}"
                       docIdx[name]--
 
             #if modifies is true and !cachedData?

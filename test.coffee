@@ -195,9 +195,13 @@ describe 'livedb', ->
         throw new Error err if err
 
         stream.on 'readable', ->
-          assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
-          stream.destroy()
-          done()
+          try
+            assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
+            stream.destroy()
+            done()
+          catch e
+            console.error e.stack
+            throw e
 
         @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
 
@@ -271,7 +275,7 @@ describe 'livedb', ->
 
       it 'returns a result it already applies to', (done) -> @create {x:5}, =>
         @collection.query {'data.x':5}, opts, (err, emitter) =>
-          expected = [docName:@docName, data:{x:5}, type:otTypes.json0.uri, v:1]
+          expected = [docName:@docName, data:{x:5}, type:otTypes.json0.uri, v:1, c:@cName]
           assert.deepEqual emitter.data, expected
           emitter.destroy()
           done()
@@ -363,8 +367,8 @@ describe 'livedb', ->
         @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}}, {poll:true}, (err, emitter) =>
           assert.equal emitter.data.length, 3
 
-          emitter.on 'add', (data, idx) ->
-            assert.deepEqual data, {docName:'_p4', type:otTypes.json0.uri, v:1, data:{x:5, i:1.5}}
+          emitter.on 'add', (data, idx) =>
+            assert.deepEqual data, {c:@cName, docName:'_p4', type:otTypes.json0.uri, v:1, data:{x:5, i:1.5}}
             assert.deepEqual idx, 1
             assert.strictEqual data, emitter.data[1]
             assert.strictEqual emitter.data.length, 4
@@ -407,7 +411,34 @@ describe 'livedb', ->
           assert.deepEqual results, expected
           done()
 
+    describe 'selected collections', ->
+      it 'asks the db to pick the interesting collections'
 
+      it 'gets operations submitted to any specified collection', (done) ->
+        @testWrapper.subscribedCollections = (cName, query, opts) ->
+          assert.strictEqual cName, 'internet'
+          assert.deepEqual query, {x:5}
+          assert.deepEqual opts, {sexy:true, b:'test'}
+          ['c1', 'c2']
+
+        called = 0
+        @testWrapper.query = (cName, query, callback) ->
+          # This should get called three times:
+          # When client.query is called initially and when the c1 and c2 documents are created
+          called++
+          assert called <= 3
+
+          assert.deepEqual query, {x:5}
+          callback null, []
+
+          if called is 3
+            done()
+
+        @client.query 'internet', {x:5}, {sexy:true, b:'test'}, (err) =>
+          throw Error err if err
+          @client.submit 'c1', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
+          @client.submit 'c2', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
+          @client.submit 'c3', @docName, {v:0, create:{type:otTypes.text.uri}}
 
     it.skip 'turns poll mode on or off automatically if opts.poll is undefined', ->
 
