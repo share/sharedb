@@ -4,7 +4,7 @@ redisLib = require 'redis'
 livedb = require './lib'
 assert = require 'assert'
 
-otTypes = require 'ot-types'
+otTypes = require 'ottypes'
 #otTypes['json-racer'] = require './lib/mutate'
 
 id = 0

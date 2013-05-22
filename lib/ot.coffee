@@ -2,7 +2,7 @@
 # functions, but they're a bit different. These functions understand versions and can deal with out of bound
 # create & delete operations.
 
-otTypes = require 'ot-types'
+otTypes = require 'ottypes'
 
 exports.normalize = (opData) ->
   if opData.create
