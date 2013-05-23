@@ -5,20 +5,49 @@ shallowClone = (object) ->
   out[key] = object[key] for key of object
   return out
 
-normalizeQuery = (query) ->
+metaOperators =
+  $comment: true
+  $explain: true
+  $hint: true
+  $maxScan: true
+  $max: true
+  $min: true
+  $orderby: true
+  $returnKey: true
+  $showDiskLoc: true
+  $snapshot: true
+
+cursorOperators =
+  $skip: 'skip'
+  $limit: 'limit'
+
+extractCursorMethods = (inputQuery) ->
+  out = []
+  for key of inputQuery
+    if cursorOperators[key]
+      out.push [cursorOperators[key], inputQuery[key]]
+      delete inputQuery[key]
+  return out
+
+normalizeQuery = (inputQuery) ->
   # Box queries inside of a $query and clone so that we know where to look
   # for selctors and can modify them without affecting the original object
-  if query.$query
-    query = shallowClone query
+  if inputQuery.$query
+    query = shallowClone inputQuery
     query.$query = shallowClone query.$query
   else
-    query = $query: shallowClone(query)
+    query = {$query: {}}
+    for key, value of inputQuery
+      if metaOperators[key]
+        query[key] = value
+      else
+        query.$query[key] = value
 
   # Deleted documents are kept around so that we can start their version from
   # the last version if they get recreated. When they are deleted, their type
   # is set to null, so don't return any documents with a null type.
   query.$query.type = {$ne: null} unless query.$query.type
- 
+
   return query
 
 # mongo is a mongoskin client. Create with:
@@ -49,19 +78,18 @@ module.exports = (args...) ->
     data.type = null if data.type is undefined
     mongo.collection(cName).update {_id:docName}, {$set:data}, {upsert:true}, callback
 
-  query: (cName, query, callback) ->
+  query: (cName, inputQuery, callback) ->
     return callback 'db already closed' if @closed
 
-    skip = query.$skip
-    limit = query.$limit
+    cursorMethods = extractCursorMethods inputQuery
 
-    query = normalizeQuery query
+    query = normalizeQuery inputQuery
 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err
 
-      cursor.limit limit if limit
-      cursor.skip skip if skip
+      for item in cursorMethods
+        cursor[item[0]] item[1]
 
       cursor.toArray (err, results) ->
         if results then for r in results
@@ -75,8 +103,8 @@ module.exports = (args...) ->
           throw e
 
 
-  queryDoc: (cName, docName, query, callback) ->
-    query = normalizeQuery query
+  queryDoc: (cName, docName, inputQuery, callback) ->
+    query = normalizeQuery inputQuery
 
     if query.$query._id
       return callback() if query.$query._id isnt docName
