@@ -21,12 +21,12 @@ cursorOperators =
   $skip: 'skip'
   $limit: 'limit'
 
-extractCursorMethods = (inputQuery) ->
+extractCursorMethods = (query) ->
   out = []
-  for key of inputQuery
+  for key of query
     if cursorOperators[key]
-      out.push [cursorOperators[key], inputQuery[key]]
-      delete inputQuery[key]
+      out.push [cursorOperators[key], query[key]]
+      delete query[key]
   return out
 
 normalizeQuery = (inputQuery) ->
@@ -38,7 +38,7 @@ normalizeQuery = (inputQuery) ->
   else
     query = {$query: {}}
     for key, value of inputQuery
-      if metaOperators[key]
+      if metaOperators[key] || cursorOperators[key]
         query[key] = value
       else
         query.$query[key] = value
@@ -81,9 +81,8 @@ module.exports = (args...) ->
   query: (cName, inputQuery, callback) ->
     return callback 'db already closed' if @closed
 
-    cursorMethods = extractCursorMethods inputQuery
-
     query = normalizeQuery inputQuery
+    cursorMethods = extractCursorMethods query
 
     mongo.collection(cName).find query, (err, cursor) ->
       return callback err if err
