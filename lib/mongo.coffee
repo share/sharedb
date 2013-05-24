@@ -70,16 +70,18 @@ castToSnapshot = (doc) ->
     delete doc._type
     delete doc._v
     delete doc._id
-    data =
+    return {
       data: doc
       type: type
       v: v
       docName: docName
-  else
-    data.type = type
-    data.v = v
-    data.docName = docName
-  return data
+    }
+  return {
+    data: data
+    type: type
+    v: v
+    docName: docName
+  }
 
 # mongo is a mongoskin client. Create with:
 #  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
