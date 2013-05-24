@@ -28,6 +28,7 @@ describe 'livedb', ->
     # Clear the databases
     mongo = mongoskin.db 'localhost:27017/test?auto_reconnect', safe:true
     mongo.dropCollection @cName
+    mongo.close()
     @redis.flushdb()
 
     @collection = @client.collection @cName
@@ -44,8 +45,8 @@ describe 'livedb', ->
     @create = (data, cb) -> @create2 @docName, data, cb
 
   afterEach ->
+    @client.destroy()
     @mongoWrapper.close()
-    @redis.quit()
  
   describe 'submit', ->
     it 'creates a doc', (done) ->
@@ -406,7 +407,7 @@ describe 'livedb', ->
           done()
 
       it 'query with some results returns those results', (done) -> @create2 @docName, 'qwertyuiop', =>
-        @collection.queryFetch {'data':'qwertyuiop'}, (err, results) =>
+        @collection.queryFetch {'_data':'qwertyuiop'}, (err, results) =>
           expected = [docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1]
           assert.deepEqual results, expected
           done()

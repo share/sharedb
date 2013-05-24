@@ -10,6 +10,10 @@ exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
+  # This is a set.
+  streams = {}
+  nextStreamId = 0
+
   redisSubmit = (cName, docName, opData, callback) ->
     logEntry = JSON.stringify {op:opData.op, src:opData.src, seq:opData.seq, create:opData.create, del:opData.del}
     docPubEntry = JSON.stringify opData # Publish everything to the document's channel
@@ -186,11 +190,16 @@ end
       redisObserver = redisLib.createClient redis.port, redis.host, redis.options
 
       open = true
+
+      stream._id = nextStreamId++
+      streams[stream._id] = stream
+
       stream.destroy = ->
         return unless open
 
         stream.push null
         open = false
+        delete streams[stream._id]
         redisObserver.unsubscribe()
         redisObserver.quit()
 
@@ -279,7 +288,6 @@ end
         else
           callback null, results.results, results.extra
 
-
     query: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
@@ -351,6 +359,8 @@ end
               if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
                 db.query cName, query, (err, newResults) ->
+                  return emitter.emit 'error', new Error err if err
+
                   if !Array.isArray newResults
                     if newResults.extra
                       emitter.emit 'extra', newResults.extra
@@ -410,7 +420,7 @@ end
               else
                 #console.log 'query doc', cName
                 db.queryDoc cName, d.docName, query, (err, result) ->
-                  return stream.emit 'error', err if err
+                  return emitter.emit 'error', new Error err if err
                   #console.log 'result', result, 'cachedData', cachedData
 
                   if result and !cachedData
@@ -446,8 +456,6 @@ end
 
           callback null, emitter
 
-
-
     collection: (cName) ->
       submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
       subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
@@ -459,4 +467,12 @@ end
 
       queryFetch: (query, opts, callback) -> client.queryFetch cName, query, opts, callback
       query: (query, opts, callback) -> client.query cName, query, opts, callback
-  
+
+    destroy: ->
+      #snapshotDb.close()
+      redis.quit()
+
+      # ... and close any remaining subscription streams.
+      for id, s of streams
+        s.destroy()
+
