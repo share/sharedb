@@ -274,14 +274,14 @@ describe 'livedb', ->
       opts = {poll}
 
       it 'returns a result it already applies to', (done) -> @create {x:5}, =>
-        @collection.query {'data.x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           expected = [docName:@docName, data:{x:5}, type:otTypes.json0.uri, v:1, c:@cName]
           assert.deepEqual emitter.data, expected
           emitter.destroy()
           done()
 
       it 'gets an empty result set when you query something with no results', (done) ->
-        @collection.query {'data.xyz':123}, opts, (err, emitter) ->
+        @collection.query {'xyz':123}, opts, (err, emitter) ->
           assert.deepEqual emitter.data, []
           emitter.on 'add', -> throw new Error 'should not have added results'
 
@@ -290,7 +290,7 @@ describe 'livedb', ->
             done()
 
       it 'adds an element when it matches', (done) ->
-        @collection.query {'data.x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'add', (data, idx) =>
             assert.deepEqual data, {docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri}
             assert.strictEqual idx, 0
@@ -301,7 +301,7 @@ describe 'livedb', ->
           @create {x:5}
 
       it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
-        @collection.query {'data.x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'remove', (doc, idx) =>
             assert.strictEqual idx, 0
             assert.strictEqual doc.docName, @docName
@@ -318,7 +318,7 @@ describe 'livedb', ->
           @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
       it 'removes deleted elements', (done) -> @create {x:5}, =>
-        @collection.query {'data.x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           assert.strictEqual emitter.data.length, 1
 
           emitter.on 'remove', (doc, idx) =>
@@ -334,7 +334,7 @@ describe 'livedb', ->
 
 
       it 'does not emit receive events to a destroyed query', (done) ->
-        @collection.query {'data.x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'add', -> throw new Error 'add called after destroy'
           emitter.on 'remove', -> throw new Error 'remove called after destroy'
 
@@ -352,19 +352,19 @@ describe 'livedb', ->
         @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, => @create2 '_p3', {x:5, i:3}, => callback()
 
       it 'respects limit queries', (done) ->
-        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}, $limit:1}, {poll:true}, (err, emitter) ->
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}, $limit:1}, {poll:true}, (err, emitter) ->
           assert.strictEqual emitter.data.length, 1
           assert.strictEqual emitter.data[0].docName, '_p1'
           done()
 
       it 'respects skips', (done) ->
-        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
           assert.strictEqual emitter.data.length, 1
           assert.strictEqual emitter.data[0].docName, '_p2'
           done()
 
       it 'will insert an element in the set', (done) ->
-        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}}, {poll:true}, (err, emitter) =>
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
           assert.equal emitter.data.length, 3
 
           emitter.on 'add', (data, idx) =>
@@ -378,7 +378,7 @@ describe 'livedb', ->
           @create2 '_p4', {x:5, i:1.5}
       
       it 'will remove an element from the set', (done) ->
-        @collection.query {$query:{'data.x':5}, $orderby:{'data.i':1}}, {poll:true}, (err, emitter) =>
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
 
           emitter.once 'remove', (data, idx) ->
             assert.strictEqual idx, 0
@@ -400,7 +400,7 @@ describe 'livedb', ->
 
     describe 'queryFetch', ->
       it 'query fetch with no results works', (done) ->
-        @collection.queryFetch {'data.somekeythatdoesnotexist':1}, (err, results) ->
+        @collection.queryFetch {'somekeythatdoesnotexist':1}, (err, results) ->
           throw new Error err if err
           assert.deepEqual results, []
           done()
