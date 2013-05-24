@@ -21,14 +21,20 @@ createClient = ->
 
 describe 'livedb', ->
   beforeEach ->
-    {@client, @redis, @mongoWrapper, @testWrapper} = createClient()
-
     @cName = '_test'
+    @cName2 = '_test2'
+    @cName3 = '_test3'
 
-    # Clear the databases
+    # Clear mongo
     mongo = mongoskin.db 'localhost:27017/test?auto_reconnect', safe:true
     mongo.dropCollection @cName
+    mongo.dropCollection @cName2
+    mongo.dropCollection @cName3
     mongo.close()
+
+    {@client, @redis, @mongoWrapper, @testWrapper} = createClient()
+
+    # & clear redis.
     @redis.flushdb()
 
     @collection = @client.collection @cName
@@ -418,11 +424,11 @@ describe 'livedb', ->
       it 'asks the db to pick the interesting collections'
 
       it 'gets operations submitted to any specified collection', (done) ->
-        @testWrapper.subscribedChannels = (cName, query, opts) ->
+        @testWrapper.subscribedChannels = (cName, query, opts) =>
           assert.strictEqual cName, 'internet'
           assert.deepEqual query, {x:5}
           assert.deepEqual opts, {sexy:true, backend:'test'}
-          ['c1', 'c2']
+          [@cName, @cName2]
 
         called = 0
         @testWrapper.query = (cName, query, callback) ->
@@ -439,9 +445,9 @@ describe 'livedb', ->
 
         @client.query 'internet', {x:5}, {sexy:true, backend:'test'}, (err) =>
           throw Error err if err
-          @client.submit 'c1', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
-          @client.submit 'c2', @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw Error err if err
-          @client.submit 'c3', @docName, {v:0, create:{type:otTypes.text.uri}}
+          @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
+          @client.submit @cName2, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
+          @client.submit @cName3, @docName, {v:0, create:{type:otTypes.text.uri}}
 
     describe 'extra data', ->
       it 'gets extra data in the initial result set', (done) ->

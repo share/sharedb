@@ -91,7 +91,7 @@ end
         return callback? null, [] if from >= to
         to--
 
-      #console.log 'getOps', cName, docName, "'#{getOpLogKey(cName, docName)}'"
+      #console.trace 'getOps', getOpLogKey(cName, docName), from, to
       redis.lrange getOpLogKey(cName, docName), from, to, (err, values) ->
         return callback? err if err
         ops = for value in values

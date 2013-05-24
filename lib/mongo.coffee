@@ -90,11 +90,6 @@ module.exports = (args...) ->
   
   name: 'mongo'
 
-  create: (cName, docName, data, callback) ->
-    return callback 'db already closed' if @closed
-    doc = castToDoc docName, data
-    mongo.collection(cName).insert doc, callback
-
   close: ->
     return callback 'db already closed' if @closed
     mongo.close()
