@@ -51,10 +51,10 @@ normalizeQuery = (inputQuery) ->
   return query
 
 castToDoc = (docName, data) ->
-  doc = if data.type is 'http://sharejs.org/types/JSONv0'
-    data.data || {}
+  doc = if data.data && typeof data.data is 'object' && !Array.isArray(data.data)
+    data.data
   else
-    data: if data.data? then data.data else null
+    _data: data.data || null
   doc._type = data.type || null
   doc._v = data.v
   doc._id = docName
@@ -65,17 +65,17 @@ castToSnapshot = (doc) ->
   type = doc._type
   v = doc._v
   docName = doc._id
-  delete doc._type
-  delete doc._v
-  delete doc._id
-  if type is 'http://sharejs.org/types/JSONv0'
+  data = doc._data
+  if data is undefined
+    delete doc._type
+    delete doc._v
+    delete doc._id
     data =
       data: doc
       type: type
       v: v
       docName: docName
   else
-    data = doc
     data.type = type
     data.v = v
     data.docName = docName
