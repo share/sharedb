@@ -46,9 +46,40 @@ normalizeQuery = (inputQuery) ->
   # Deleted documents are kept around so that we can start their version from
   # the last version if they get recreated. When they are deleted, their type
   # is set to null, so don't return any documents with a null type.
-  query.$query.type = {$ne: null} unless query.$query.type
+  query.$query._type = {$ne: null} unless query.$query._type
 
   return query
+
+castToDoc = (docName, data) ->
+  doc = if data.type is 'http://sharejs.org/types/JSONv0'
+    data.data || {}
+  else
+    data: if data.data? then data.data else null
+  doc._type = data.type || null
+  doc._v = data.v
+  doc._id = docName
+  return doc
+
+castToSnapshot = (doc) ->
+  return unless doc
+  type = doc._type
+  v = doc._v
+  docName = doc._id
+  delete doc._type
+  delete doc._v
+  delete doc._id
+  if type is 'http://sharejs.org/types/JSONv0'
+    data =
+      data: doc
+      type: type
+      v: v
+      docName: docName
+  else
+    data = doc
+    data.type = type
+    data.v = v
+    data.docName = docName
+  return data
 
 # mongo is a mongoskin client. Create with:
 #  mongo.db('localhost:27017/tx?auto_reconnect', safe:true)
@@ -58,25 +89,24 @@ module.exports = (args...) ->
   name: 'mongo'
 
   create: (cName, docName, data, callback) ->
-    data._id = docName
-    mongo.collection(cName).insert data, callback
+    return callback 'db already closed' if @closed
+    doc = castToDoc docName, data
+    mongo.collection(cName).insert doc, callback
 
   close: ->
-    throw new Error 'db already closed' if @closed
+    return callback 'db already closed' if @closed
     mongo.close()
     @closed = true
 
   getSnapshot: (cName, docName, callback) ->
-    throw new Error 'db already closed' if @closed
-    mongo.collection(cName).findOne {_id:docName}, (err, data) ->
-      delete data._id if data
-      callback err, data
+    return callback 'db already closed' if @closed
+    mongo.collection(cName).findOne {_id:docName}, (err, doc) ->
+      callback err, castToSnapshot(doc)
 
   setSnapshot: (cName, docName, data, callback) ->
-    throw new Error 'db already closed' if @closed
-    data.data = null if data.data is undefined
-    data.type = null if data.type is undefined
-    mongo.collection(cName).update {_id:docName}, {$set:data}, {upsert:true}, callback
+    return callback 'db already closed' if @closed
+    doc = castToDoc docName, data
+    mongo.collection(cName).update {_id:docName}, doc, {upsert:true}, callback
 
   query: (cName, inputQuery, callback) ->
     return callback 'db already closed' if @closed
@@ -91,18 +121,11 @@ module.exports = (args...) ->
         cursor[item[0]] item[1]
 
       cursor.toArray (err, results) ->
-        if results then for r in results
-          r.docName = r._id
-          delete r._id
-
-        try
-          callback err, results
-        catch e
-          console.log e.stack
-          throw e
-
+        results = results && results.map(castToSnapshot)
+        callback err, results
 
   queryDoc: (cName, docName, inputQuery, callback) ->
+    return callback 'db already closed' if @closed
     query = normalizeQuery inputQuery
 
     if query.$query._id
@@ -110,11 +133,8 @@ module.exports = (args...) ->
     else
       query.$query._id = docName
 
-    mongo.collection(cName).findOne query, (err, result) ->
-      if result
-        result.docName = docName
-        delete result._id
-      callback err, result
+    mongo.collection(cName).findOne query, (err, doc) ->
+      callback err, castToSnapshot(doc)
 
   # Test whether an operation will make the document its applied to match the specified query.
   # This function doesn't really have enough information to know in all cases, but if we can determine
@@ -130,4 +150,3 @@ module.exports = (args...) ->
 
   # Test if a document matches a particular query. Should be synchronous and return true or false.
   #matchesQuery: null # (query, doc) ->
-
