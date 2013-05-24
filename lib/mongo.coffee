@@ -51,10 +51,10 @@ normalizeQuery = (inputQuery) ->
   return query
 
 castToDoc = (docName, data) ->
-  doc = if data.data && typeof data.data is 'object' && !Array.isArray(data.data)
+  doc = if typeof data.data is 'object' && data.data isnt null && !Array.isArray(data.data)
     data.data
   else
-    _data: data.data || null
+    _data: if data.data? then data.data else null
   doc._type = data.type || null
   doc._v = data.v
   doc._id = docName
