@@ -15,10 +15,14 @@
     "mocha": "~1"
   },
   "scripts": {
+    "prepublish": "make all",
     "test": "mocha"
   },
-  "repository": "",
-  "author": "",
-  "license": "BSD",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/share/livedb.git"
+  },
+  "author": "Joseph Gentle <josephg@gmail.com>",
+  "license": "MIT",
   "gitHead": "a95ee727e5cb43a40476f58554774b776fb08f68"
 }
