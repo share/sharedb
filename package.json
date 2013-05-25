@@ -11,7 +11,8 @@
     "arraydiff": "~0.1.1"
   },
   "devDependencies": {
-    "coffee-script": "~1.5",
+    "coffee-script": "~1.6.2",
+    "livedb-mongo": "0.1.0",
     "mocha": "~1"
   },
   "scripts": {
