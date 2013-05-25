@@ -3,6 +3,7 @@ mongoskin = require 'mongoskin'
 redisLib = require 'redis'
 livedb = require './lib'
 assert = require 'assert'
+util = require 'util'
 
 otTypes = require 'ottypes'
 #otTypes['json-racer'] = require './lib/mutate'
@@ -101,6 +102,8 @@ describe 'livedb', ->
           assert.equal data.data, null
           assert.equal data.type, null
           done()
+
+    it 'passes an error back to fetch if fetching returns a document with no version'
 
     it 'does not execute repeated operations', (done) -> @create =>
       @collection.submit @docName, v:1, op:['hi'], (err, v) =>
@@ -290,7 +293,7 @@ describe 'livedb', ->
       it 'gets an empty result set when you query something with no results', (done) ->
         @collection.query {'xyz':123}, opts, (err, emitter) ->
           assert.deepEqual emitter.data, []
-          emitter.on 'add', -> throw new Error 'should not have added results'
+          emitter.on 'diff', -> throw new Error 'should not have added results'
 
           process.nextTick ->
             emitter.destroy()
@@ -298,20 +301,23 @@ describe 'livedb', ->
 
       it 'adds an element when it matches', (done) ->
         @collection.query {'x':5}, opts, (err, emitter) =>
-          emitter.on 'add', (data, idx) =>
-            assert.deepEqual data, {docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri}
-            assert.strictEqual idx, 0
+          emitter.on 'diff', (diff) =>
+            assert.deepEqual diff, [
+              index: 0
+              values: [c:@cName, docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri]
+              type: 'insert'
+            ]
 
             emitter.destroy()
             done()
       
           @create {x:5}
 
+      #console.log util.inspect diff, colors:yes, depth:null
       it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
         @collection.query {'x':5}, opts, (err, emitter) =>
-          emitter.on 'remove', (doc, idx) =>
-            assert.strictEqual idx, 0
-            assert.strictEqual doc.docName, @docName
+          emitter.on 'diff', (diff) =>
+            assert.deepEqual diff, [type:'remove', index:0, howMany:1]
 
             # The doc is left in the result set until after the callback runs so
             # we can read doc stuff off here.
@@ -328,9 +334,8 @@ describe 'livedb', ->
         @collection.query {'x':5}, opts, (err, emitter) =>
           assert.strictEqual emitter.data.length, 1
 
-          emitter.on 'remove', (doc, idx) =>
-            assert.strictEqual idx, 0
-            assert.strictEqual doc.docName, @docName
+          emitter.on 'diff', (diff) =>
+            assert.deepEqual diff, [type:'remove', index:0, howMany:1]
             process.nextTick ->
               assert.deepEqual emitter.data, []
               emitter.destroy()
@@ -339,11 +344,9 @@ describe 'livedb', ->
           @collection.submit @docName, v:1, del:true, (err, v) =>
             throw new Error err if err
 
-
       it 'does not emit receive events to a destroyed query', (done) ->
         @collection.query {'x':5}, opts, (err, emitter) =>
-          emitter.on 'add', -> throw new Error 'add called after destroy'
-          emitter.on 'remove', -> throw new Error 'remove called after destroy'
+          emitter.on 'diff', -> throw new Error 'add called after destroy'
 
           emitter.destroy()
 
@@ -374,10 +377,12 @@ describe 'livedb', ->
         @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
           assert.equal emitter.data.length, 3
 
-          emitter.on 'add', (data, idx) =>
-            assert.deepEqual data, {c:@cName, docName:'_p4', type:otTypes.json0.uri, v:1, data:{x:5, i:1.5}}
-            assert.deepEqual idx, 1
-            assert.strictEqual data, emitter.data[1]
+          emitter.on 'diff', (diff) =>
+            assert.deepEqual diff, [
+              index: 1
+              values: [{c:@cName, docName:'_p4', type:otTypes.json0.uri, v:1, data:{x:5, i:1.5}}]
+              type: 'insert'
+            ]
             assert.strictEqual emitter.data.length, 4
 
             done()
@@ -386,13 +391,10 @@ describe 'livedb', ->
       
       it 'will remove an element from the set', (done) ->
         @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
-
-          emitter.once 'remove', (data, idx) ->
-            assert.strictEqual idx, 0
-            assert.strictEqual data.docName, '_p1'
-            emitter.once 'remove', (data, idx) ->
-              assert.strictEqual idx, 1
-              assert.strictEqual data.docName, '_p3'
+          emitter.once 'diff', (diff) ->
+            assert.deepEqual diff, [type:'remove', index:0, howMany:1]
+            emitter.once 'diff', (diff) ->
+              assert.deepEqual diff, [type:'remove', index:1, howMany:1]
 
               process.nextTick ->
                 assert.strictEqual emitter.data.length, 1

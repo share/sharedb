@@ -2,6 +2,7 @@
 {EventEmitter} = require 'events'
 assert = require 'assert'
 redisLib = require 'redis'
+arraydiff = require 'arraydiff'
 ot = require './ot'
 
 exports.mongo = require './mongo'
@@ -91,6 +92,7 @@ end
         return callback? null, [] if from >= to
         to--
 
+      return callback 'invalid getOps fetch' unless from?
       #console.trace 'getOps', getOpLogKey(cName, docName), from, to
       redis.lrange getOpLogKey(cName, docName), from, to, (err, values) ->
         return callback? err if err
@@ -260,6 +262,7 @@ end
       snapshotDb.getSnapshot cName, docName, (err, snapshot) =>
         return callback? err if err
         snapshot ?= {v:0}
+        return callback 'Invalid snapshot data' unless snapshot.v?
 
         @getOps cName, docName, snapshot.v, (err, opData) ->
           return callback? err if err
@@ -288,7 +291,9 @@ end
         else
           callback null, results.results, results.extra
 
-    query: (cName, query, opts, callback) ->
+    # For mongo, the index is just the collection itself. For something like
+    # SOLR, the index refers to the core we're actually querying.
+    query: (index, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
       if opts.backend
@@ -307,9 +312,9 @@ end
       # console.log 'poll mode:', !!poll
 
       channels = if db.subscribedChannels
-        db.subscribedChannels cName, query, opts
+        db.subscribedChannels index, query, opts
       else
-        [cName]
+        [index]
 
       # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
       # so if we get notified about an op here, the document's been saved.
@@ -318,7 +323,7 @@ end
 
         # Issue query on mongo to get our initial result set.
         #console.log 'snapshotdb query', cName, query
-        db.query cName, query, (err, results) =>
+        db.query index, query, (err, results) =>
           #console.log '-> pshotdb query', cName, query, results
           if err
             stream.destroy()
@@ -338,14 +343,17 @@ end
           # Maintain a map from docName -> index for constant time tests
           docIdx = {}
           for d, i in results
-            d.c ||= cName
+            d.c ||= index
             docIdx["#{d.c}.#{d.docName}"] = i
 
           do f = -> while d = stream.read() then do (d) ->
+            # Collection name.
             d.c = d.channel
+
             # We have some data from the channel stream about an updated document.
             #console.log d.docName, docIdx, results
             cachedData = results[docIdx["#{d.c}.#{d.docName}"]]
+
             # Ignore ops that are older than our data. This is possible because we subscribe before
             # issuing the query.
             return if cachedData and cachedData.v > d.v
@@ -358,7 +366,7 @@ end
             if modifies is undefined
               if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
-                db.query cName, query, (err, newResults) ->
+                db.query index, query, (err, newResults) ->
                   return emitter.emit 'error', new Error err if err
 
                   if !Array.isArray newResults
@@ -366,75 +374,43 @@ end
                       emitter.emit 'extra', newResults.extra
                     newResults = newResults.results
 
-                  # Do a simple diff, describing how to convert results -> newResults
-                  #
-                  # Inside the loop, we can't use any of the index values of docIdx because
-                  # the index values aren't updated as the loop iterates. We _can_ use it to test
-                  # existance in the result set.
-                  ri = newi = 0
-                  while ri < results.length and newi < newResults.length
-                    currentNew = newResults[newi]
-                    currentR = results[ri]
+                  r.c ||= index for r in newResults
 
-                    currentNew.c ||= cName
+                  diff = arraydiff results, newResults, (a, b) ->
+                    unless a and b
+                      console.log '####### undefined stuffs'
+                      console.log results
+                      console.log newResults
+                    return false unless a and b
+                    a.docName is b.docName and a.c is b.c
+                  if diff.length
+                    emitter.data = results = newResults
+                    d.type = d.type for d in diff
+                    emitter.emit 'diff', diff
 
-                    newName = "#{currentNew.c}.#{currentNew.docName}"
-                    oldName = "#{currentR.c}.#{currentR.docName}"
-
-                    # 3 cases:
-                    #
-                    # - The current element is in the old result set and the new result set. Skip it.
-                    if newName == oldName
-                      ri++; newi++
-
-                    # - newResults[newi] is not the old result set. Add it.
-                    else if docIdx[newName] is undefined
-                      docIdx[newName] = -1
-                      results.splice ri, 0, currentNew
-                      emitter.emit 'add', currentNew, ri
-                      # Incremenet both because we spliced into results.
-                      ri++; newi++
-
-                    # - currentNew is in the result set, but skips currentR. Remove.
-                    else
-                      delete docIdx[oldName]
-                      emitter.emit 'remove', currentR, ri
-                      results.splice ri, 1
-
-                  # If there's any extra stuff in newResults, add it to results.
-                  while newi < newResults.length
-                    currentNew = newResults[newi]
-                    results.push currentNew
-                    emitter.emit 'add', currentNew, ri
-                    ri++; newi++
-
-                  # If there's extra stuff in results, remove it.
-                  while ri < results.length
-                    emitter.emit 'remove', results[ri], ri
-                    results.splice ri, 1
-
-                  # Fix docIdx
-                  docIdx = {}
-                  docIdx["#{d.c}.#{d.docName}"] = i for d, i in results
-
+                  #docIdx["#{d.c}.#{d.docName}"] = i for d, i in results
               else
                 #console.log 'query doc', cName
-                db.queryDoc cName, d.docName, query, (err, result) ->
+
+                db.queryDoc index, d.c, d.docName, query, (err, result) ->
                   return emitter.emit 'error', new Error err if err
                   #console.log 'result', result, 'cachedData', cachedData
 
                   if result and !cachedData
                     # Add doc to the collection. Order isn't important, so
                     # we'll just whack it at the end.
+                    result.c = d.c
                     results.push result
-                    emitter.emit 'add', result, results.length - 1
+                    emitter.emit 'diff', [{type:'insert', index:results.length - 1, values:[result]}]
+                    #emitter.emit 'add', result, results.length - 1
                     docIdx["#{result.c}.#{result.docName}"] = results.length - 1
                   else if !result and cachedData
                     # Remove doc from collection
                     name = "#{d.c}.#{d.docName}"
                     idx = docIdx[name]
                     delete docIdx[name]
-                    emitter.emit 'remove', results[idx], idx
+                    #emitter.emit 'remove', results[idx], idx
+                    emitter.emit 'diff', [{type:'remove', index:results.length - 1, howMany:1}]
                     results.splice idx, 1
                     while idx < results.length
                       r = results[idx++]

@@ -121,7 +121,7 @@ module.exports = (args...) ->
         results = results && results.map(castToSnapshot)
         callback err, results
 
-  queryDoc: (cName, docName, inputQuery, callback) ->
+  queryDoc: (index, cName, docName, inputQuery, callback) ->
     return callback 'db already closed' if @closed
     query = normalizeQuery inputQuery
 
