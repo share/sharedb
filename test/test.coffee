@@ -1,7 +1,7 @@
 # Mocha test
 mongoskin = require 'mongoskin'
 redisLib = require 'redis'
-livedb = require './lib'
+livedb = require '../lib'
 assert = require 'assert'
 util = require 'util'
 
