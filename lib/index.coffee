@@ -5,8 +5,6 @@ redisLib = require 'redis'
 arraydiff = require 'arraydiff'
 ot = require './ot'
 
-exports.mongo = require './mongo'
-
 exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
   # This is a set.
   streams = {}

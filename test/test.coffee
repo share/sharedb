@@ -4,6 +4,7 @@ redisLib = require 'redis'
 livedb = require '../lib'
 assert = require 'assert'
 util = require 'util'
+liveDbMongo = require 'livedb-mongo'
 
 otTypes = require 'ottypes'
 #otTypes['json-racer'] = require './lib/mutate'
@@ -11,7 +12,7 @@ otTypes = require 'ottypes'
 id = 0
 
 createClient = ->
-  mongoWrapper = livedb.mongo('localhost:27017/test?auto_reconnect', safe:false)
+  mongoWrapper = liveDbMongo 'localhost:27017/test?auto_reconnect', safe: false
 
   redis = redisLib.createClient()
   redis.select 15
