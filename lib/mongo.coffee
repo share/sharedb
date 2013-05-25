@@ -52,7 +52,7 @@ normalizeQuery = (inputQuery) ->
 
 castToDoc = (docName, data) ->
   doc = if typeof data.data is 'object' && data.data isnt null && !Array.isArray(data.data)
-    data.data
+    shallowClone data.data
   else
     _data: if data.data? then data.data else null
   doc._type = data.type || null
@@ -67,6 +67,7 @@ castToSnapshot = (doc) ->
   docName = doc._id
   data = doc._data
   if data is undefined
+    doc = shallowClone doc
     delete doc._type
     delete doc._v
     delete doc._id
