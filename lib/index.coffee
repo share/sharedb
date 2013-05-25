@@ -194,6 +194,7 @@ end
       stream._read = ->
 
       redisObserver = redisLib.createClient redis.port, redis.host, redis.options
+      redisObserver.auth redis.auth_pass if redis.auth_pass
 
       open = true
 
