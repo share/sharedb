@@ -8,7 +8,7 @@
     "mongoskin": "~0.5",
     "redis": "~0.8",
     "ottypes": "~0.6",
-    "arraydiff": "~0.1"
+    "arraydiff": "~0.1.1"
   },
   "devDependencies": {
     "coffee-script": "~1.5",
