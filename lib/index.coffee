@@ -8,12 +8,18 @@ ot = require './ot'
 exports.mongo = require './mongo'
 
 exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
-  getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
-  getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
-
   # This is a set.
   streams = {}
   nextStreamId = 0
+
+  # Redis has different databases, which are namespaced separately. We need to
+  # make sure our pubsub messages are constrained to the database where we
+  # published the op.
+  redisDb = redis.selected_db || 0
+
+  prefixChannel = (channel) -> "#{redisDb} #{channel}"
+  getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
+  getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
   redisSubmit = (cName, docName, opData, callback) ->
     logEntry = JSON.stringify {op:opData.op, src:opData.src, seq:opData.seq, create:opData.create, del:opData.del}
@@ -58,7 +64,7 @@ if seq ~= nil then
   redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
 end
     """, 3, # num keys
-      opData.src, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
+      opData.src, (getOpLogKey cName, docName), (prefixChannel getDocOpChannel cName, docName), # KEYS table
       opData.seq, opData.v, logEntry, docPubEntry, # ARGV table
       callback
 
@@ -160,7 +166,7 @@ end
               snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
                 return callback? err if err
                 opData.docName = docName
-                redis.publish cName, JSON.stringify opData
+                redis.publish prefixChannel(cName), JSON.stringify opData
                 callback? null, opData.v, transformedOps
 
 
@@ -213,8 +219,14 @@ end
         return unless open
 
         data = JSON.parse msg
-        data.channel = _channel if Array.isArray channels
+        # we need to attach the channel name to the data, except its prefixed. So unprefix it.
+        data.channel = _channel[_channel.indexOf(' ') + 1..] if Array.isArray channels
         stream.push data
+
+      if Array.isArray channels
+        channels[i] = prefixChannel c for c, i in channels
+      else
+        channels = prefixChannel channels
 
       redisObserver.subscribe channels, (err) ->
         if err
@@ -390,8 +402,6 @@ end
 
                   #docIdx["#{d.c}.#{d.docName}"] = i for d, i in results
               else
-                #console.log 'query doc', cName
-
                 db.queryDoc index, d.c, d.docName, query, (err, result) ->
                   return emitter.emit 'error', new Error err if err
                   #console.log 'result', result, 'cachedData', cachedData

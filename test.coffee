@@ -475,8 +475,11 @@ describe 'livedb', ->
           @create()
 
 
-    it.skip 'turns poll mode on or off automatically if opts.poll is undefined', ->
+    it 'turns poll mode on or off automatically if opts.poll is undefined'
 
 
-  it.skip 'Fails to apply an operation to a document that was deleted and recreated', ->
+  it 'Fails to apply an operation to a document that was deleted and recreated'
+
+  it 'correctly namespaces pubsub operations so other collections dont get confused'
+
 
