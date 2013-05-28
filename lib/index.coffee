@@ -423,7 +423,7 @@ end
                     idx = docIdx[name]
                     delete docIdx[name]
                     #emitter.emit 'remove', results[idx], idx
-                    emitter.emit 'diff', [{type:'remove', index:results.length - 1, howMany:1}]
+                    emitter.emit 'diff', [{type:'remove', index:idx, howMany:1}]
                     results.splice idx, 1
                     while idx < results.length
                       r = results[idx++]
