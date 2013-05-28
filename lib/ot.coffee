@@ -44,6 +44,7 @@ exports.apply = (data, opData) ->
     data.v++
 
   else if opData.del
+    opData.prev = {data:data.data, type:data.type}
     delete data.data
     delete data.type
     data.v++

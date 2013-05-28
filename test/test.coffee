@@ -452,6 +452,10 @@ describe 'livedb', ->
           @client.submit @cName2, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
           @client.submit @cName3, @docName, {v:0, create:{type:otTypes.text.uri}}
 
+      it 'calls submit on the extra collections'
+
+      it 'can call publish'
+
     describe 'extra data', ->
       it 'gets extra data in the initial result set', (done) ->
         @testWrapper.query = (cName, query, callback) ->

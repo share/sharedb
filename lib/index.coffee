@@ -21,6 +21,7 @@ exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
 
   redisSubmit = (cName, docName, opData, callback) ->
     logEntry = JSON.stringify {op:opData.op, src:opData.src, seq:opData.seq, create:opData.create, del:opData.del}
+    # the opData object here contains deleted data for del operations. We don't use this... but fyi.
     docPubEntry = JSON.stringify opData # Publish everything to the document's channel
 
     #console.log opData.src, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
@@ -106,6 +107,9 @@ end
           op
         callback null, ops
 
+    publish: (channel, data) ->
+      redis.publish prefixChannel(channel), (if data then JSON.stringify data)
+
     submit: (cName, docName, opData, callback) ->
       validate = opData.validate or (opData, snapshot, callback) -> callback()
 
@@ -120,13 +124,13 @@ end
       do retry = =>
         # Get doc snapshot. We don't need it for transform, but we will
         # try to apply the operation locally before saving it.
-        @fetch cName, docName, (err, snapshot) ->
+        @fetch cName, docName, (err, snapshot) =>
           opData.v = snapshot.v if !opData.v?
 
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
 
-          trySubmit = ->
+          trySubmit = =>
             # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
             # transform by.
             redisSubmit cName, docName, opData, (err, result) ->
@@ -154,7 +158,7 @@ end
 
               # And SOLR or whatever. Not entirely sure of the timing here.
               for name, db of extraDbs
-                db.submit? cName, docName, opData, snapshot, (err) ->
+                db.submit? cName, docName, opData, snapshot, @publish, (err) ->
                   console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
 
               # Call callback with op submit version
