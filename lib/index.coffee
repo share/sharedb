@@ -10,12 +10,14 @@ exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
   streams = {}
   nextStreamId = 0
 
+  redisObserver = redisLib.createClient redis.port, redis.host, redis.options
+  redisObserver.auth redis.auth_pass if redis.auth_pass
+  redisObserver.setMaxListeners 0
+
   # Redis has different databases, which are namespaced separately. We need to
   # make sure our pubsub messages are constrained to the database where we
   # published the op.
-  redisDb = redis.selected_db || 0
-
-  prefixChannel = (channel) -> "#{redisDb} #{channel}"
+  prefixChannel = (channel) -> "#{redis.selected_db || 0} #{channel}"
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
@@ -188,7 +190,8 @@ end
             trySubmit()
 
 
-    _subscribeChannels: (channels, callback) -> # Subscribe to a redis pubsub channel and get a nodejs stream out
+    # Subscribe to a redis pubsub channel and get a nodejs stream out
+    _subscribeChannels: (channels, callback) ->
       # TODO: 2 refactors:
       #        - Make the redis observer we use here reusable
       #        - Reuse listens on channels
@@ -199,9 +202,6 @@ end
       # as we fill it. I could add a buffer in this function, but really I don't think
       # that is any better than the buffer implementation in nodejs streams themselves.
       stream._read = ->
-
-      redisObserver = redisLib.createClient redis.port, redis.host, redis.options
-      redisObserver.auth redis.auth_pass if redis.auth_pass
 
       open = true
 
@@ -214,32 +214,41 @@ end
         stream.push null
         open = false
         delete streams[stream._id]
-        redisObserver.unsubscribe()
-        redisObserver.quit()
+        redisObserver.unsubscribe channels
+        # redisObserver.quit()
+        redisObserver.removeListener 'message', onMessage
 
         stream.emit 'close'
         stream.emit 'end'
-
-      redisObserver.on 'message', (_channel, msg) ->
-        # We shouldn't get messages after we tell it to unsubscribe, but its happened.
-        return unless open
-
-        data = JSON.parse msg
-        # we need to attach the channel name to the data, except its prefixed. So unprefix it.
-        data.channel = _channel[_channel.indexOf(' ') + 1..] if Array.isArray channels
-        stream.push data
 
       if Array.isArray channels
         channels[i] = prefixChannel c for c, i in channels
       else
         channels = prefixChannel channels
 
+      if Array.isArray channels
+        onMessage = (msgChannel, msg) ->
+          # We shouldn't get messages after unsubscribe, but it's happened.
+          return if !open || channels.indexOf(msgChannel) == -1
+
+          data = JSON.parse msg
+          # Unprefix database name from the channel
+          data.channel = msgChannel.slice msgChannel.indexOf(' ') + 1
+          stream.push data
+      else
+        onMessage = (msgChannel, msg) ->
+          # We shouldn't get messages after unsubscribe, but it's happened.
+          return if !open || msgChannel isnt channels
+          data = JSON.parse msg
+          stream.push data
+
+      redisObserver.on 'message', onMessage
+
       redisObserver.subscribe channels, (err) ->
         if err
-          stream.destroy() if open
-          callback err, null
-        else
-          callback null, stream
+          stream.destroy()
+          return callback err
+        callback null, stream
 
     # Callback called with (err, op stream). v must be in the past or present. Behaviour
     # with a future v is undefined (because I don't think thats an interesting case).
