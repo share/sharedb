@@ -285,14 +285,14 @@ describe 'livedb', ->
       opts = {poll}
 
       it 'returns a result it already applies to', (done) -> @create {x:5}, =>
-        @collection.query @client, {'x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           expected = [docName:@docName, data:{x:5}, type:otTypes.json0.uri, v:1, c:@cName]
           assert.deepEqual emitter.data, expected
           emitter.destroy()
           done()
 
       it 'gets an empty result set when you query something with no results', (done) ->
-        @collection.query @client, {'xyz':123}, opts, (err, emitter) ->
+        @collection.query {'xyz':123}, opts, (err, emitter) ->
           assert.deepEqual emitter.data, []
           emitter.on 'diff', -> throw new Error 'should not have added results'
 
@@ -301,7 +301,7 @@ describe 'livedb', ->
             done()
 
       it 'adds an element when it matches', (done) ->
-        @collection.query @client, {'x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'diff', (diff) =>
             assert.deepEqual diff, [
               index: 0
@@ -316,7 +316,7 @@ describe 'livedb', ->
 
       #console.log util.inspect diff, colors:yes, depth:null
       it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
-        @collection.query @client, {'x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'diff', (diff) =>
             assert.deepEqual diff, [type:'remove', index:0, howMany:1]
 
@@ -332,7 +332,7 @@ describe 'livedb', ->
           @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
       it 'removes deleted elements', (done) -> @create {x:5}, =>
-        @collection.query @client, {'x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           assert.strictEqual emitter.data.length, 1
 
           emitter.on 'diff', (diff) =>
@@ -346,7 +346,7 @@ describe 'livedb', ->
             throw new Error err if err
 
       it 'does not emit receive events to a destroyed query', (done) ->
-        @collection.query @client, {'x':5}, opts, (err, emitter) =>
+        @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'diff', -> throw new Error 'add called after destroy'
 
           emitter.destroy()
@@ -363,19 +363,19 @@ describe 'livedb', ->
         @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, => @create2 '_p3', {x:5, i:3}, => callback()
 
       it 'respects limit queries', (done) ->
-        @collection.query @client, {$query:{'x':5}, $orderby:{'i':1}, $limit:1}, {poll:true}, (err, emitter) ->
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}, $limit:1}, {poll:true}, (err, emitter) ->
           assert.strictEqual emitter.data.length, 1
           assert.strictEqual emitter.data[0].docName, '_p1'
           done()
 
       it 'respects skips', (done) ->
-        @collection.query @client, {$query:{'x':5}, $orderby:{'i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
           assert.strictEqual emitter.data.length, 1
           assert.strictEqual emitter.data[0].docName, '_p2'
           done()
 
       it 'will insert an element in the set', (done) ->
-        @collection.query @client, {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
           assert.equal emitter.data.length, 3
 
           emitter.on 'diff', (diff) =>
@@ -391,7 +391,7 @@ describe 'livedb', ->
           @create2 '_p4', {x:5, i:1.5}
       
       it 'will remove an element from the set', (done) ->
-        @collection.query @client, {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
           emitter.once 'diff', (diff) ->
             assert.deepEqual diff, [type:'remove', index:0, howMany:1]
             emitter.once 'diff', (diff) ->
@@ -434,7 +434,7 @@ describe 'livedb', ->
           [@cName, @cName2]
 
         called = 0
-        @testWrapper.query = (cName, query, callback) ->
+        @testWrapper.query = (livedb, cName, query, callback) ->
           # This should get called three times:
           # When client.query is called initially and when the c1 and c2 documents are created
           called++
@@ -470,7 +470,7 @@ describe 'livedb', ->
         @testWrapper.query = (client, cName, query, callback) ->
           callback null, {results:[], extra:{x:x++}}
 
-        @collection.query @client, {x:5}, {backend:'test'}, (err, stream) =>
+        @collection.query {x:5}, {backend:'test'}, (err, stream) =>
           assert.deepEqual stream.extra, {x:1}
           
           stream.on 'extra', (extra) ->
