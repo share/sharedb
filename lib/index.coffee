@@ -14,6 +14,8 @@ exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
   redisObserver.auth redis.auth_pass if redis.auth_pass
   redisObserver.setMaxListeners 0
 
+  subscribeCounts = {}
+
   # Redis has different databases, which are namespaced separately. We need to
   # make sure our pubsub messages are constrained to the database where we
   # published the op.
@@ -214,19 +216,24 @@ end
         stream.push null
         open = false
         delete streams[stream._id]
-        redisObserver.unsubscribe channels
-        # redisObserver.quit()
+        if Array.isArray channels
+          for channel, i in channels
+            continue if --subscribeCounts[channel] > 0
+            redisObserver.unsubscribe channel
+            delete subscribeCounts[channel]
+        else
+          unless --subscribeCounts[channels] > 0
+            redisObserver.unsubscribe channels
+            delete subscribeCounts[channels]
         redisObserver.removeListener 'message', onMessage
 
         stream.emit 'close'
         stream.emit 'end'
 
       if Array.isArray channels
-        channels[i] = prefixChannel c for c, i in channels
-      else
-        channels = prefixChannel channels
-
-      if Array.isArray channels
+        for channel, i in channels
+          channel = channels[i] = prefixChannel channel
+          subscribeCounts[channel] = (subscribeCounts[channel] || 0) + 1
         onMessage = (msgChannel, msg) ->
           # We shouldn't get messages after unsubscribe, but it's happened.
           return if !open || channels.indexOf(msgChannel) == -1
@@ -236,6 +243,8 @@ end
           data.channel = msgChannel.slice msgChannel.indexOf(' ') + 1
           stream.push data
       else
+        channels = prefixChannel channels
+        subscribeCounts[channels] = (subscribeCounts[channels] || 0) + 1
         onMessage = (msgChannel, msg) ->
           # We shouldn't get messages after unsubscribe, but it's happened.
           return if !open || msgChannel isnt channels
