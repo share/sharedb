@@ -15,7 +15,7 @@ createClient = ->
   mongoWrapper = liveDbMongo 'localhost:27017/test?auto_reconnect', safe: false
 
   redis = redisLib.createClient()
-  redis.select 15
+  redis.select redis.selected_db = 15
 
   testWrapper = {name:'test'}
   client = livedb.client mongoWrapper, redis, {test:testWrapper}
