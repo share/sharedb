@@ -135,7 +135,7 @@ end
           trySubmit = =>
             # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
             # transform by.
-            redisSubmit cName, docName, opData, (err, result) ->
+            redisSubmit cName, docName, opData, (err, result) =>
               return callback? err if err
               return callback? result if typeof result is 'string'
 
@@ -162,7 +162,7 @@ end
               return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
               # Update the snapshot for queries
-              snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
+              snapshotDb.setSnapshot cName, docName, snapshot, (err) =>
                 return callback? err if err
 
                 # And SOLR or whatever. Not entirely sure of the timing here.
