@@ -156,17 +156,18 @@ end
                 #console.log 'retry'
                 return retry()
 
-              # And SOLR or whatever. Not entirely sure of the timing here.
-              for name, db of extraDbs
-                db.submit? cName, docName, opData, snapshot, @publish, (err) ->
-                  console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
-
               # Call callback with op submit version
               return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
               # Update the snapshot for queries
               snapshotDb.setSnapshot cName, docName, snapshot, (err) ->
                 return callback? err if err
+
+                # And SOLR or whatever. Not entirely sure of the timing here.
+                for name, db of extraDbs
+                  db.submit? cName, docName, opData, snapshot, @publish, (err) ->
+                    console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
+
                 opData.docName = docName
                 redis.publish prefixChannel(cName), JSON.stringify opData
                 callback? null, opData.v, transformedOps
