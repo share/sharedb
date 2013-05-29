@@ -87,6 +87,8 @@ end
       , callback # Just passing the error straight through. Should probably sanitize it.
     ###
 
+    snapshotDb: snapshotDb
+
     # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
     # (null or undefined) then it returns all ops.
     getOps: (cName, docName, from, to, callback) ->
@@ -298,7 +300,7 @@ end
       else
         db = snapshotDb
 
-      db.query cName, query, (err, results) =>
+      db.query this, cName, query, (err, results) =>
         if err
           callback err
         else if Array.isArray results
@@ -338,7 +340,7 @@ end
 
         # Issue query on mongo to get our initial result set.
         #console.log 'snapshotdb query', cName, query
-        db.query index, query, (err, results) =>
+        db.query this, index, query, (err, results) =>
           #console.log '-> pshotdb query', cName, query, results
           if err
             stream.destroy()
@@ -381,7 +383,7 @@ end
             if modifies is undefined
               if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
-                db.query index, query, (err, newResults) ->
+                db.query client, index, query, (err, newResults) ->
                   return emitter.emit 'error', new Error err if err
 
                   if !Array.isArray newResults
@@ -405,7 +407,7 @@ end
 
                   #docIdx["#{d.c}.#{d.docName}"] = i for d, i in results
               else
-                db.queryDoc index, d.c, d.docName, query, (err, result) ->
+                db.queryDoc client, index, d.c, d.docName, query, (err, result) ->
                   return emitter.emit 'error', new Error err if err
                   #console.log 'result', result, 'cachedData', cachedData
 
