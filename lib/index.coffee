@@ -414,6 +414,8 @@ end
                         emitter.emit 'extra', newResultset.extra
                         emitter.extra = extra = newResultset.extra
                     newResults = newResultset.results
+                  else
+                    newResults = newResultset
 
                   r.c ||= index for r in newResults
 
