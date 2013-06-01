@@ -7,7 +7,7 @@
     "hiredis": "~0.1.14",
     "mongoskin": "~0.5",
     "redis": "~0.8",
-    "ottypes": "~0.6",
+    "ottypes": "~1",
     "arraydiff": "~0.1.1"
   },
   "devDependencies": {
