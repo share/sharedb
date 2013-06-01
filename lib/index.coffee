@@ -1,6 +1,7 @@
 {Readable} = require 'stream'
 {EventEmitter} = require 'events'
 assert = require 'assert'
+deepEquals = require 'deep-is'
 redisLib = require 'redis'
 arraydiff = require 'arraydiff'
 ot = require './ot'
@@ -319,13 +320,13 @@ end
       else
         db = snapshotDb
 
-      db.query this, cName, query, (err, results) =>
+      db.query this, cName, query, (err, resultset) =>
         if err
           callback err
-        else if Array.isArray results
-          callback null, results
+        else if Array.isArray resultset
+          callback null, resultset
         else
-          callback null, results.results, results.extra
+          callback null, resultset.results, resultset.extra
 
     # For mongo, the index is just the collection itself. For something like
     # SOLR, the index refers to the core we're actually querying.
@@ -352,15 +353,15 @@ end
       else
         [index]
 
-      # subscribe to collection firehose -> cache. The firehose isn't updated until after mongo,
+      # subscribe to collection firehose -> cache. The firehose isn't updated until after the db,
       # so if we get notified about an op here, the document's been saved.
       @_subscribeChannels channels, (err, stream) =>
         return callback err if err
 
-        # Issue query on mongo to get our initial result set.
-        #console.log 'snapshotdb query', cName, query
-        db.query this, index, query, (err, results) =>
-          #console.log '-> pshotdb query', cName, query, results
+        # Issue query on db to get our initial result set.
+        # console.log 'snapshotdb query', cName, query
+        db.query this, index, query, (err, resultset) =>
+          #console.log '-> pshotdb query', cName, query, resultset
           if err
             stream.destroy()
             return callback err
@@ -369,10 +370,12 @@ end
           emitter.destroy = ->
             stream.destroy()
 
-          if !Array.isArray results
-            # Results is an object. It should look like {results:[..], data:....}
-            emitter.extra = results.extra
-            results = results.results
+          if !Array.isArray resultset
+            # Resultset is an object. It should look like {results:[..], data:....}
+            emitter.extra = extra = resultset.extra
+            results = resultset.results
+          else
+            results = resultset
 
           emitter.data = results
 
@@ -402,13 +405,15 @@ end
             if modifies is undefined
               if poll
                 # We need to do a full poll of the query, because the query uses limits or something.
-                db.query client, index, query, (err, newResults) ->
+                db.query client, index, query, (err, newResultset) ->
                   return emitter.emit 'error', new Error err if err
 
-                  if !Array.isArray newResults
-                    if newResults.extra
-                      emitter.emit 'extra', newResults.extra
-                    newResults = newResults.results
+                  if !Array.isArray newResultset
+                    if newResultset.extra
+                      unless deepEquals extra, newResultset.extra
+                        emitter.emit 'extra', newResultset.extra
+                        emitter.extra = extra = newResultset.extra
+                    newResults = newResultset.results
 
                   r.c ||= index for r in newResults
 
