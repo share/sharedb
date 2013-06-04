@@ -4,12 +4,14 @@
   "description": "Realtime database wrapper",
   "main": "lib/index.js",
   "dependencies": {
-    "hiredis": "~0.1.14",
     "mongoskin": "~0.5",
     "redis": "~0.8",
     "ottypes": "~1",
     "deep-is": "0.1.2",
     "arraydiff": "~0.1.1"
+  },
+  "optionalDependencies": {
+    "hiredis": "~0.1.14"
   },
   "devDependencies": {
     "coffee-script": "~1.6.2",
