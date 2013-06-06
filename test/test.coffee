@@ -127,18 +127,6 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
       @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
-    it 'calls registered callbacks after a submit has happened', (done) -> @create =>
-      @client.onSubmit @cName, (docName, opData, snapshot) =>
-        assert.equal docName, @docName
-        delete opData.docName # I don't care if docname is set here.
-        assert.deepEqual opData, v:1, op:['hi']
-        delete snapshot.docName
-        assert.deepEqual snapshot, v:2, data:'hi', type:otTypes.text.uri
-        done()
-
-      @collection.submit @docName, v:1, op:['hi']
-
-
     it 'sends operations to any extra db backends', (done) ->
       @testWrapper.submit = (cName, docName, opData, snapshot, callback) =>
         assert.equal cName, @cName
