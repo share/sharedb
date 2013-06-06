@@ -17,6 +17,9 @@ exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
 
   subscribeCounts = {}
 
+  # We make an emitter per collection if people want hooks for submitted ops.
+  emitters = {}
+
   # Redis has different databases, which are namespaced separately. We need to
   # make sure our pubsub messages are constrained to the database where we
   # published the op.
@@ -117,6 +120,9 @@ end
     publish: (channel, data) ->
       redis.publish prefixChannel(channel), (if data then JSON.stringify data)
 
+    onSubmit: (cName, fn) ->
+      (emitters[cName] ||= new EventEmitter()).on 'submit', fn
+
     submit: (cName, docName, opData, callback) ->
       validate = opData.validate or (opData, snapshot, callback) -> callback()
 
@@ -177,6 +183,8 @@ end
 
                 opData.docName = docName
                 redis.publish prefixChannel(cName), JSON.stringify opData
+
+                emitters[cName]?.emit 'submit', docName, opData, snapshot
                 callback? null, opData.v, transformedOps
 
 
