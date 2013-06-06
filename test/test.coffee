@@ -149,6 +149,33 @@ describe 'livedb', ->
 
       @create()
 
+    describe 'pre validate', ->
+      it 'runs a supplied pre validate function on the data', (done) ->
+        validationRun = no
+        preValidate = (opData, snapshot, callback) ->
+          assert.deepEqual snapshot, {v:0}
+          validationRun = yes
+          callback()
+
+        @collection.submit @docName, {v:0, create:{type:'text'}, preValidate}, (err) ->
+          assert.ok validationRun
+          done()
+
+      it 'does not submit if pre validation fails', (done) -> @create =>
+        preValidate = (opData, snapshot, callback) ->
+          assert.deepEqual opData.op, ['hi']
+          callback 'no you!'
+
+        @collection.submit @docName, {v:1, op:['hi'], preValidate}, (err) =>
+          assert.equal err, 'no you!'
+
+          @collection.fetch @docName, (err, {v, data}) =>
+            throw new Error err if err
+            assert.deepEqual data, ''
+            done()
+
+
+
     describe 'validate', ->
       it 'runs a supplied validation function on the data', (done) ->
         validationRun = no

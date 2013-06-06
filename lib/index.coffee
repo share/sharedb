@@ -125,6 +125,7 @@ end
 
     submit: (cName, docName, opData, callback) ->
       validate = opData.validate or (opData, snapshot, callback) -> callback()
+      preValidate = opData.preValidate or (opData, snapshot, callback) -> callback()
 
       #console.log 'submit opdata ', opData
       err = ot.checkOpData opData
@@ -191,12 +192,15 @@ end
           # If there's actually a chance of submitting, try applying the operation to make sure
           # its valid.
           if snapshot.v is opData.v
-            err = ot.apply snapshot, opData
-            return callback? err if err
-
-            validate opData, snapshot, (err) ->
+            preValidate opData, snapshot, (err) ->
               return callback? err if err
-              trySubmit()
+
+              err = ot.apply snapshot, opData
+              return callback? err if err
+
+              validate opData, snapshot, (err) ->
+                return callback? err if err
+                trySubmit()
           else
             trySubmit()
 
