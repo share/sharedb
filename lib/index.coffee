@@ -165,7 +165,7 @@ end
                 return retry()
 
               # Call callback with op submit version
-              return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
+              return callback? null, opData.v, transformedOps, snapshot if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
               # Update the snapshot for queries
               snapshotDb.setSnapshot cName, docName, snapshot, (err) =>
@@ -179,7 +179,7 @@ end
                 opData.docName = docName
                 redis.publish prefixChannel(cName), JSON.stringify opData
 
-                callback? null, opData.v, transformedOps
+                callback? null, opData.v, transformedOps, snapshot
 
 
           # If there's actually a chance of submitting, try applying the operation to make sure
