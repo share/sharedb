@@ -20,6 +20,7 @@
   },
   "scripts": {
     "prepublish": "make all",
+    "install": "make all",
     "test": "mocha"
   },
   "repository": {
