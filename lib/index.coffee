@@ -248,6 +248,7 @@ end
           # Unprefix database name from the channel
           data.channel = msgChannel.slice msgChannel.indexOf(' ') + 1
           stream.push data
+        channelList = channels
       else
         channels = prefixChannel channels
         subscribeCounts[channels] = (subscribeCounts[channels] || 0) + 1
@@ -256,10 +257,11 @@ end
           return if !open || msgChannel isnt channels
           data = JSON.parse msg
           stream.push data
+        channelList = [channels]
 
       redisObserver.on 'message', onMessage
 
-      redisObserver.subscribe channels, (err) ->
+      redisObserver.subscribe channelList..., (err) ->
         if err
           stream.destroy()
           return callback err
