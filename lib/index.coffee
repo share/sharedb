@@ -173,7 +173,7 @@ end
 
                 # And SOLR or whatever. Not entirely sure of the timing here.
                 for name, db of extraDbs
-                  db.submit? cName, docName, opData, snapshot, @publish, (err) ->
+                  db.submit? cName, docName, opData, snapshot, this, (err) ->
                     console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
 
                 opData.docName = docName
