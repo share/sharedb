@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 all:
-	coffee -bc lib
+	node_modules/.bin/coffee -bc lib
 
 clean:
 	rm lib/*.js
