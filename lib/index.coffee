@@ -165,7 +165,7 @@ end
                 return retry()
 
               # Call callback with op submit version
-              return callback? null, opData.v, transformedOps if snapshotDb.closed # Happens in the tests sometimes. Its ok.
+              return callback? null, opData.v, transformedOps, snapshot if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
               # Update the snapshot for queries
               snapshotDb.setSnapshot cName, docName, snapshot, (err) =>
@@ -173,13 +173,13 @@ end
 
                 # And SOLR or whatever. Not entirely sure of the timing here.
                 for name, db of extraDbs
-                  db.submit? cName, docName, opData, snapshot, @publish, (err) ->
+                  db.submit? cName, docName, opData, snapshot, this, (err) ->
                     console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
 
                 opData.docName = docName
                 redis.publish prefixChannel(cName), JSON.stringify opData
 
-                callback? null, opData.v, transformedOps
+                callback? null, opData.v, transformedOps, snapshot
 
 
           # If there's actually a chance of submitting, try applying the operation to make sure
@@ -248,6 +248,7 @@ end
           # Unprefix database name from the channel
           data.channel = msgChannel.slice msgChannel.indexOf(' ') + 1
           stream.push data
+        channelList = channels
       else
         channels = prefixChannel channels
         subscribeCounts[channels] = (subscribeCounts[channels] || 0) + 1
@@ -256,10 +257,11 @@ end
           return if !open || msgChannel isnt channels
           data = JSON.parse msg
           stream.push data
+        channelList = [channels]
 
       redisObserver.on 'message', onMessage
 
-      redisObserver.subscribe channels, (err) ->
+      redisObserver.subscribe channelList..., (err) ->
         if err
           stream.destroy()
           return callback err
