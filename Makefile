@@ -1,7 +1,9 @@
 .PHONY: all clean
 
+NPM_BIN=`npm bin`
+
 all:
-	node_modules/.bin/coffee -bc lib
+	$(NPM_BIN)/coffee -bc lib
 
 clean:
 	rm lib/*.js
