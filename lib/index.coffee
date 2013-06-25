@@ -6,13 +6,15 @@ redisLib = require 'redis'
 arraydiff = require 'arraydiff'
 ot = require './ot'
 
-exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
+exports.client = (snapshotDb, redis = redisLib.createClient(), redisObserver, extraDbs = {}) ->
   # This is a set.
   streams = {}
   nextStreamId = 0
 
-  redisObserver = redisLib.createClient redis.port, redis.host, redis.options
-  redisObserver.auth redis.auth_pass if redis.auth_pass
+  if redisObserver.constructor is Object
+    extraDbs = redisObserver
+    redisObserver = redisLib.createClient redis.port, redis.host, redis.options
+    redisObserver.auth redis.auth_pass if redis.auth_pass
   redisObserver.setMaxListeners 0
 
   subscribeCounts = {}
