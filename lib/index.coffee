@@ -135,10 +135,9 @@ end
         # Get doc snapshot. We don't need it for transform, but we will
         # try to apply the operation locally before saving it.
         @fetch cName, docName, (err, snapshot) =>
-          opData.v = snapshot.v if !opData.v?
-
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
+          opData.v = snapshot.v if !opData.v?
 
           trySubmit = =>
             # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
