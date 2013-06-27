@@ -427,10 +427,6 @@ end
                   r.c ||= index for r in newResults
 
                   diff = arraydiff results, newResults, (a, b) ->
-                    unless a and b
-                      console.log '####### undefined stuffs'
-                      console.log results
-                      console.log newResults
                     return false unless a and b
                     a.docName is b.docName and a.c is b.c
                   if diff.length
