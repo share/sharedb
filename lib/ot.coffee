@@ -19,6 +19,8 @@ exports.checkOpData = (opData) ->
   return 'Invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
   return 'seq but not src' if !!opData.seq isnt !!opData.src
 
+defaultValidate = ->
+
 # This is the super apply function that takes in snapshot data (including the type) and edits it in-place.
 # Returns an error string or null for success.
 exports.apply = (data, opData) ->
@@ -27,6 +29,9 @@ exports.apply = (data, opData) ->
   return 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
 
   return 'Version mismatch' if data.v? && opData.v? and data.v != opData.v
+
+  validate = opData.validate or defaultValidate
+  preValidate = opData.preValidate or defaultValidate
 
   if opData.create
     return 'Document already exists' if data.type
@@ -37,17 +42,29 @@ exports.apply = (data, opData) ->
     type = otTypes[create.type]
     return "Type not found" unless type
 
+    err = preValidate opData, data
+    return err if err
+
     snapshot = type.create create.data
 
     data.data = snapshot
     data.type = type.uri
     data.v++
 
+    err = validate opData, data
+    return err if err
+
   else if opData.del
+    err = preValidate opData, data
+    return err if err
+
     opData.prev = {data:data.data, type:data.type}
     delete data.data
     delete data.type
     data.v++
+
+    err = validate opData, data
+    return err if err
 
   else
     return 'Document does not exist' unless data.type
@@ -58,7 +75,19 @@ exports.apply = (data, opData) ->
     return 'Type not found' unless type
 
     try
-      data.data = type.apply data.data, op
+      atomicOps = if type.shatter then type.shatter op else [op]
+
+      for atom in atomicOps
+        # kinda dodgy.
+        opData.op = atom
+        err = preValidate opData, data
+        return err if err
+
+        data.data = type.apply data.data, atom
+
+        err = validate opData, data
+        return err if err
+
     catch e
       console.log e.stack
       return e.message

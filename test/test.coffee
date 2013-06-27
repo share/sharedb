@@ -140,19 +140,19 @@ describe 'livedb', ->
     describe 'pre validate', ->
       it 'runs a supplied pre validate function on the data', (done) ->
         validationRun = no
-        preValidate = (opData, snapshot, callback) ->
+        preValidate = (opData, snapshot) ->
           assert.deepEqual snapshot, {v:0}
           validationRun = yes
-          callback()
+          return
 
         @collection.submit @docName, {v:0, create:{type:'text'}, preValidate}, (err) ->
           assert.ok validationRun
           done()
 
       it 'does not submit if pre validation fails', (done) -> @create =>
-        preValidate = (opData, snapshot, callback) ->
+        preValidate = (opData, snapshot) ->
           assert.deepEqual opData.op, ['hi']
-          callback 'no you!'
+          return 'no you!'
 
         @collection.submit @docName, {v:1, op:['hi'], preValidate}, (err) =>
           assert.equal err, 'no you!'
@@ -162,6 +162,7 @@ describe 'livedb', ->
             assert.deepEqual data, ''
             done()
 
+      it 'calls prevalidate on each component in turn, and applies them incrementally'
 
 
     describe 'validate', ->
@@ -170,7 +171,7 @@ describe 'livedb', ->
         validate = (opData, snapshot, callback) ->
           assert.deepEqual snapshot, {v:1, data:'', type:otTypes.text.uri}
           validationRun = yes
-          callback()
+          return
 
         @collection.submit @docName, {v:0, create:{type:'text'}, validate}, (err) ->
           assert.ok validationRun
@@ -179,7 +180,7 @@ describe 'livedb', ->
       it 'does not submit if validation fails', (done) -> @create =>
         validate = (opData, snapshot, callback) ->
           assert.deepEqual opData.op, ['hi']
-          callback 'no you!'
+          return 'no you!'
 
         @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
           assert.equal err, 'no you!'
@@ -189,6 +190,7 @@ describe 'livedb', ->
             assert.deepEqual data, ''
             done()
 
+      it 'calls validate on each component in turn, and applies them incrementally'
 
   describe 'fetch', ->
     it 'can fetch created documents', (done) -> @create 'hi', =>

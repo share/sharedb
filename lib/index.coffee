@@ -1,6 +1,7 @@
 {Readable} = require 'stream'
 {EventEmitter} = require 'events'
 assert = require 'assert'
+{isError} = require 'util'
 deepEquals = require 'deep-is'
 redisLib = require 'redis'
 arraydiff = require 'arraydiff'
@@ -120,9 +121,6 @@ end
       redis.publish prefixChannel(channel), (if data then JSON.stringify data)
 
     submit: (cName, docName, opData, callback) ->
-      validate = opData.validate or (opData, snapshot, callback) -> callback()
-      preValidate = opData.preValidate or (opData, snapshot, callback) -> callback()
-
       #console.log 'submit opdata ', opData
       err = ot.checkOpData opData
       return callback? err if err
@@ -186,18 +184,15 @@ end
           # If there's actually a chance of submitting, try applying the operation to make sure
           # its valid.
           if snapshot.v is opData.v
-            preValidate opData, snapshot, (err) ->
-              return callback? err if err
+            err = ot.apply snapshot, opData
+            if err
+              if typeof err isnt 'string' and !isError err
+                console.warn 'INVALID VALIDATION FN!!!!'
+                console.warn 'Your validation function must return null/undefined, a string or an error object.'
+                console.warn 'Instead we got', err
+              return callback? err
 
-              err = ot.apply snapshot, opData
-              return callback? err if err
-
-              validate opData, snapshot, (err) ->
-                return callback? err if err
-                trySubmit()
-          else
-            trySubmit()
-
+          trySubmit()
 
     # Subscribe to a redis pubsub channel and get a nodejs stream out
     _subscribeChannels: (channels, callback) ->
@@ -309,9 +304,9 @@ end
         snapshot ?= {v:0}
         return callback 'Invalid snapshot data' unless snapshot.v?
 
-        @getOps cName, docName, snapshot.v, (err, opData) ->
+        @getOps cName, docName, snapshot.v, (err, results) ->
           return callback? err if err
-          err = ot.apply snapshot, d for d in opData
+          err = ot.apply snapshot, opData for opData in results
           callback err, snapshot
 
     fetchAndSubscribe: (cName, docName, callback) ->
