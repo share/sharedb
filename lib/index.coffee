@@ -6,13 +6,15 @@ redisLib = require 'redis'
 arraydiff = require 'arraydiff'
 ot = require './ot'
 
-exports.client = (snapshotDb, redis = redisLib.createClient(), extraDbs = {}) ->
+exports.client = (snapshotDb, redis = redisLib.createClient(), redisObserver, extraDbs = {}) ->
   # This is a set.
   streams = {}
   nextStreamId = 0
 
-  redisObserver = redisLib.createClient redis.port, redis.host, redis.options
-  redisObserver.auth redis.auth_pass if redis.auth_pass
+  if redisObserver.constructor is Object
+    extraDbs = redisObserver
+    redisObserver = redisLib.createClient redis.port, redis.host, redis.options
+    redisObserver.auth redis.auth_pass if redis.auth_pass
   redisObserver.setMaxListeners 0
 
   subscribeCounts = {}
@@ -133,10 +135,9 @@ end
         # Get doc snapshot. We don't need it for transform, but we will
         # try to apply the operation locally before saving it.
         @fetch cName, docName, (err, snapshot) =>
-          opData.v = snapshot.v if !opData.v?
-
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
+          opData.v = snapshot.v if !opData.v?
 
           trySubmit = =>
             # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
