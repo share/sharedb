@@ -88,6 +88,9 @@ exports.apply = (data, opData) ->
         err = validate opData, data
         return err if err
 
+      # Make sure to restore the original operation before we return.
+      opData.op = op
+
     catch e
       console.log e.stack
       return e.message
