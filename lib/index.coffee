@@ -159,8 +159,8 @@ end
 
                   # If we want to remove the need to @fetch again when we retry, do something
                   # like this, but with the original snapshot object:
-                  #err = ot.apply snapshot, old
-                  #return callback? err if err
+                  #ot.apply snapshot, old, (err) ->
+                  #  return callback? err if err
 
                 #console.log 'retry'
                 return retry()
@@ -186,15 +186,17 @@ end
           # If there's actually a chance of submitting, try applying the operation to make sure
           # its valid.
           if snapshot.v is opData.v
-            err = ot.apply snapshot, opData
-            if err
-              if typeof err isnt 'string' and !isError err
-                console.warn 'INVALID VALIDATION FN!!!!'
-                console.warn 'Your validation function must return null/undefined, a string or an error object.'
-                console.warn 'Instead we got', err
-              return callback? err
-
-          trySubmit()
+            ot.apply snapshot, opData, (err) ->
+              if err
+                if typeof err isnt 'string' and !isError err
+                  console.warn 'INVALID VALIDATION FN!!!!'
+                  console.warn 'Your validation function must return null/undefined, a string or an error object.'
+                  console.warn 'Instead we got', err
+                return callback? err
+              else
+                trySubmit()
+          else
+            trySubmit()
 
     # Subscribe to a redis pubsub channel and get a nodejs stream out
     _subscribeChannels: (channels, callback) ->
@@ -308,8 +310,13 @@ end
 
         @getOps cName, docName, snapshot.v, (err, results) ->
           return callback? err if err
-          err = ot.apply snapshot, opData for opData in results
-          callback err, snapshot
+
+          if not results.length
+            callback null, snapshot
+          else
+            for opData in results
+              ot.apply snapshot, opData, (err) ->
+                callback err, snapshot
 
     fetchAndSubscribe: (cName, docName, callback) ->
       @fetch cName, docName, (err, data) =>

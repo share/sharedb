@@ -3,6 +3,7 @@
 # create & delete operations.
 
 otTypes = require 'ottypes'
+async = require 'async'
 
 exports.normalize = (opData) ->
   if opData.create
@@ -19,84 +20,101 @@ exports.checkOpData = (opData) ->
   return 'Invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
   return 'seq but not src' if !!opData.seq isnt !!opData.src
 
-defaultValidate = ->
+defaultValidate = (opData, data, callback) ->
+  callback()
 
 # This is the super apply function that takes in snapshot data (including the type) and edits it in-place.
 # Returns an error string or null for success.
-exports.apply = (data, opData) ->
+exports.apply = (data, opData, callback) ->
   #console.log 'apply', data, opData
-  return 'Missing data' unless typeof opData is 'object'
-  return 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
+  return callback 'Missing data' unless typeof opData is 'object'
+  return callback 'Missing op' unless typeof (opData.op or opData.create) is 'object' or opData.del is true
 
-  return 'Version mismatch' if data.v? && opData.v? and data.v != opData.v
+  return callback 'Version mismatch' if data.v? && opData.v? and data.v != opData.v
 
   validate = opData.validate or defaultValidate
   preValidate = opData.preValidate or defaultValidate
 
   if opData.create
-    return 'Document already exists' if data.type
+    return callback 'Document already exists' if data.type
 
     # The document doesn't exist, although it might have once existed. Here we will only allow creates.
     create = opData.create
 
     type = otTypes[create.type]
-    return "Type not found" unless type
+    return callback "Type not found" unless type
 
-    err = preValidate opData, data
-    return err if err
+    preValidate opData, data, (err) ->
 
-    snapshot = type.create create.data
+      return callback err if err
 
-    data.data = snapshot
-    data.type = type.uri
-    data.v++
+      snapshot = type.create create.data
 
-    err = validate opData, data
-    return err if err
+      data.data = snapshot
+      data.type = type.uri
+      data.v++
+
+      validate opData, data, (err) ->
+        return callback err, data
 
   else if opData.del
-    err = preValidate opData, data
-    return err if err
+    preValidate opData, data, (err) ->
+      return callback err if err
 
-    opData.prev = {data:data.data, type:data.type}
-    delete data.data
-    delete data.type
-    data.v++
+      opData.prev = {data:data.data, type:data.type}
+      delete data.data
+      delete data.type
+      data.v++
 
-    err = validate opData, data
-    return err if err
+      validate opData, data, (err) ->
+        return callback err, data
 
   else
-    return 'Document does not exist' unless data.type
+    return callback 'Document does not exist' unless data.type
     # Apply the op data
     op = opData.op
-    return 'Missing op' unless typeof op is 'object'
+    return callback 'Missing op' unless typeof op is 'object'
     type = otTypes[data.type]
-    return 'Type not found' unless type
+    return callback 'Type not found' unless type
 
-    try
-      atomicOps = if type.shatter then type.shatter op else [op]
+    #try
+    atomicOps = if type.shatter then type.shatter op else [op]
+
+    series = []
+
+    for atom in atomicOps
+      # kinda dodgy.
+      opData.op = atom
+
+      series.push (cb) ->
+        preValidate opData, data, cb
+
+    async.series series, (err, results) ->
+      return callback err if err
 
       for atom in atomicOps
-        # kinda dodgy.
+
         opData.op = atom
-        err = preValidate opData, data
-        return err if err
 
         data.data = type.apply data.data, atom
 
-        err = validate opData, data
-        return err if err
+        series.push (cb) ->
+          validate opData, data, cb
 
-      # Make sure to restore the original operation before we return.
-      opData.op = op
+        async.series series, (err, results) ->
+          return callback err if err
 
-    catch e
-      console.log e.stack
-      return e.message
-    data.v++
+          # Make sure to restore the original operation before we return.
+          opData.op = op
 
-  return
+          data.v++
+
+          callback()
+
+    #catch e
+    #  console.log e.stack
+    #  return e.message
+
 
 exports.transform = (type, opData, appliedOpData) ->
   return 'Document was deleted' if appliedOpData.del
