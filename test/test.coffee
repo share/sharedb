@@ -140,21 +140,22 @@ describe 'livedb', ->
     describe 'pre validate', ->
       it 'runs a supplied pre validate function on the data', (done) ->
         validationRun = no
-        preValidate = (opData, snapshot) ->
+        preValidate = (opData, snapshot, callback) ->
           assert.deepEqual snapshot, {v:0}
           validationRun = yes
-          return
+          callback()
 
         @collection.submit @docName, {v:0, create:{type:'text'}, preValidate}, (err) ->
           assert.ok validationRun
           done()
 
       it 'does not submit if pre validation fails', (done) -> @create =>
-        preValidate = (opData, snapshot) ->
+        preValidate = (opData, snapshot, callback) ->
           assert.deepEqual opData.op, ['hi']
-          return 'no you!'
+          callback 'no you!'
 
         @collection.submit @docName, {v:1, op:['hi'], preValidate}, (err) =>
+          console.log err
           assert.equal err, 'no you!'
 
           @collection.fetch @docName, (err, {v, data}) =>
@@ -171,7 +172,7 @@ describe 'livedb', ->
         validate = (opData, snapshot, callback) ->
           assert.deepEqual snapshot, {v:1, data:'', type:otTypes.text.uri}
           validationRun = yes
-          return
+          callback()
 
         @collection.submit @docName, {v:0, create:{type:'text'}, validate}, (err) ->
           assert.ok validationRun
@@ -180,7 +181,7 @@ describe 'livedb', ->
       it 'does not submit if validation fails', (done) -> @create =>
         validate = (opData, snapshot, callback) ->
           assert.deepEqual opData.op, ['hi']
-          return 'no you!'
+          callback 'no you!'
 
         @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
           assert.equal err, 'no you!'

@@ -8,7 +8,8 @@
     "redis": "~0.8",
     "ottypes": "~1",
     "deep-is": "0.1.2",
-    "arraydiff": "~0.1.1"
+    "arraydiff": "~0.1.1",
+    "async": "~0.2.9"
   },
   "optionalDependencies": {
     "hiredis": "~0.1.14"
