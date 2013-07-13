@@ -175,7 +175,7 @@ end
                 # And SOLR or whatever. Not entirely sure of the timing here.
                 for name, db of extraDbs
                   db.submit? cName, docName, opData, snapshot, this, (err) ->
-                    console.warn "Error updating db #{db.name} #{cName}.#{docName} with new snapshot data: ", err if err
+                    console.warn "Error updating db #{name} #{cName}.#{docName} with new snapshot data: ", err if err
 
                 opData.docName = docName
                 redis.publish prefixChannel(cName), JSON.stringify opData
@@ -341,8 +341,10 @@ end
       if opts.backend
         return callback 'Backend not found' unless extraDbs.hasOwnProperty opts.backend
         db = extraDbs[opts.backend]
-      else
+      else if snapshotDb.query
         db = snapshotDb
+      else
+        return callback 'Backend not specified and database does not support queries'
 
       poll = if !db.queryDoc
         true
