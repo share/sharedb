@@ -349,7 +349,7 @@ end
       poll = if !db.queryDoc
         true
       else if opts.poll is undefined and db.queryNeedsPollMode
-        db.queryNeedsPollMode query
+        db.queryNeedsPollMode index, query
       else
         opts.poll
 
