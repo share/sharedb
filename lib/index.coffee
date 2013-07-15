@@ -311,6 +311,38 @@ end
           err = ot.apply snapshot, opData for opData in results
           callback err, snapshot
 
+    bulkFetchCached: (cName, docNames, callback) ->
+      if snapshotDb.getBulkSnapshots
+        snapshotDb.getBulkSnapshots cName, docNames, (err, results) ->
+          return callback err if err
+
+          # Results is unsorted and contains any documents that exist in the
+          # snapshot database.
+          map = {} # Map from docName -> data
+          map[r.docName] = r for r in results
+
+          list = (map[docName] or {v:0} for docName in docNames)
+          callback null, list
+      else
+        # Call fetch on all the documents.
+        results = new Array docNames.length
+        pending = docNames.length + 1
+        abort = false
+        for docName, i in docNames
+          do (i) =>
+            @fetch cName, docName, (err, data) ->
+              return if abort
+              if err
+                abort = true
+                return callback err
+
+              results[i] = data
+              pending--
+              callback results if pending is 0
+
+        pending--
+        callback results if pending is 0
+
     fetchAndSubscribe: (cName, docName, callback) ->
       @fetch cName, docName, (err, data) =>
         return callback err if err
