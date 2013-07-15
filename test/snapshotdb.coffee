@@ -14,7 +14,7 @@ module.exports = (create) ->
     beforeEach ->
       @db = create()
       @cName = 'users'
-      @docName = "doc #{counter++}"
+      @docName = "snapshottest #{counter++}"
 
     afterEach ->
       @db.close()
@@ -31,6 +31,7 @@ module.exports = (create) ->
       @db.setSnapshot @cName, @docName, data, (err) =>
         assert.ifError err
         @db.getSnapshot @cName, @docName, (err, storedData) ->
+          delete storedData.docName # The result is allowed to contain this but its ignored.
           assert.deepEqual data, storedData
           done()
 
@@ -40,14 +41,16 @@ module.exports = (create) ->
         @db.setSnapshot @cName, @docName, {v:6}, (err) =>
           assert.ifError err
           @db.getSnapshot @cName, @docName, (err, storedData) ->
-            assert.deepEqual storedData, {v:6}
+            assert.equal storedData.data, null
+            assert.equal storedData.type, null
+            assert.equal storedData.v, 6
             done()
 
     if hasGetBulkSnapshot then describe 'bulkSnapshots', ->
-      it 'returns undefined for entries corresponding to missing documents', (done) ->
+      it 'does not return missing documents', (done) ->
         @db.getBulkSnapshots @cName, [@docName], (err, results) ->
           assert.ifError err
-          assert.equal results[0], null
+          assert.equal results.length, 0
           done()
 
       it 'returns results', (done) ->
@@ -55,16 +58,16 @@ module.exports = (create) ->
         @db.setSnapshot @cName, @docName, data, (err) =>
           assert.ifError err
           @db.getBulkSnapshots @cName, [@docName], (err, results) ->
+            delete results[0].docName
             assert.deepEqual results, [data]
             done()
 
-      it 'returns mixed results', (done) ->
+      it "works when some results exist and some don't", (done) ->
         data = {v:5, type:ottypes.text.uri, data:'hi there'}
         @db.setSnapshot @cName, @docName, data, (err) =>
           assert.ifError err
-          @db.getBulkSnapshots @cName, ['does not exist', @docName, 'also does not exist'], (err, results) ->
-            assert.equal results[0], null
-            assert.deepEqual results[1], data
-            assert.equal results[2], null
+          @db.getBulkSnapshots @cName, ['does not exist', @docName, 'also does not exist'], (err, results) =>
+            data.docName = @docName
+            assert.deepEqual results[0], data
             done()
 
