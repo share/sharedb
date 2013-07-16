@@ -7,6 +7,15 @@ redisLib = require 'redis'
 arraydiff = require 'arraydiff'
 ot = require './ot'
 
+rateLimit = (time, fn) ->
+  timeout = null
+  ->
+    return if timeout
+    timeout = setTimeout ->
+      fn()
+      timeout = null
+    , time
+
 exports.client = (snapshotDb, redis = redisLib.createClient(), redisObserver, extraDbs = {}) ->
   # This is a set.
   streams = {}
@@ -424,6 +433,30 @@ end
             d.c ||= index
             docIdx["#{d.c}.#{d.docName}"] = i
 
+          if poll then runQuery = rateLimit 2000, ->
+            # We need to do a full poll of the query, because the query uses limits or something.
+            db.query client, index, query, (err, newResultset) ->
+              return emitter.emit 'error', new Error err if err
+
+              if !Array.isArray newResultset
+                if newResultset.extra
+                  unless deepEquals extra, newResultset.extra
+                    emitter.emit 'extra', newResultset.extra
+                    emitter.extra = extra = newResultset.extra
+                newResults = newResultset.results
+              else
+                newResults = newResultset
+
+              r.c ||= index for r in newResults
+
+              diff = arraydiff results, newResults, (a, b) ->
+                return false unless a and b
+                a.docName is b.docName and a.c is b.c
+              if diff.length
+                emitter.data = results = newResults
+                data.type = data.type for data in diff
+                emitter.emit 'diff', diff
+
           do f = -> while d = stream.read() then do (d) ->
             # Collection name.
             d.c = d.channel
@@ -443,30 +476,7 @@ end
             # Not sure whether the changed document should be in the result set
             if modifies is undefined
               if poll
-                # We need to do a full poll of the query, because the query uses limits or something.
-                db.query client, index, query, (err, newResultset) ->
-                  return emitter.emit 'error', new Error err if err
-
-                  if !Array.isArray newResultset
-                    if newResultset.extra
-                      unless deepEquals extra, newResultset.extra
-                        emitter.emit 'extra', newResultset.extra
-                        emitter.extra = extra = newResultset.extra
-                    newResults = newResultset.results
-                  else
-                    newResults = newResultset
-
-                  r.c ||= index for r in newResults
-
-                  diff = arraydiff results, newResults, (a, b) ->
-                    return false unless a and b
-                    a.docName is b.docName and a.c is b.c
-                  if diff.length
-                    emitter.data = results = newResults
-                    d.type = d.type for d in diff
-                    emitter.emit 'diff', diff
-
-                  #docIdx["#{d.c}.#{d.docName}"] = i for d, i in results
+                runQuery()
               else
                 db.queryDoc client, index, d.c, d.docName, query, (err, result) ->
                   return emitter.emit 'error', new Error err if err
