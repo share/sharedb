@@ -368,6 +368,12 @@ end
 
     # For mongo, the index is just the collection itself. For something like
     # SOLR, the index refers to the core we're actually querying.
+    #
+    # Options can contain:
+    # backend: the backend to use, or the name of the backend (if the backend
+    #  is specified in the otherDbs when the livedb instance is created)
+    # poll: true, false or undefined. Set true/false to force enable/disable
+    #  polling mode. Undefined will let the database decide.
     query: (index, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
