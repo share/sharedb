@@ -6,15 +6,7 @@ deepEquals = require 'deep-is'
 redisLib = require 'redis'
 arraydiff = require 'arraydiff'
 ot = require './ot'
-
-rateLimit = (time, fn) ->
-  timeout = null
-  ->
-    return if timeout
-    timeout = setTimeout ->
-      fn()
-      timeout = null
-    , time
+rateLimit = require './ratelimit'
 
 exports.client = (snapshotDb, redis = redisLib.createClient(), redisObserver, extraDbs = {}) ->
   # This is a set.
