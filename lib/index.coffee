@@ -374,6 +374,9 @@ end
     #  is specified in the otherDbs when the livedb instance is created)
     # poll: true, false or undefined. Set true/false to force enable/disable
     #  polling mode. Undefined will let the database decide.
+    # shouldPoll: function(collection, docName, opData, index, query) {return true or false; }
+    #  this is a syncronous function which can be used as an early filter for
+    #  operations going through the system to reduce the load on the backend. 
     query: (index, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
@@ -470,6 +473,8 @@ end
             # Hook here to do syncronous tests for query membership. This will become an important
             # way to speed this code up.
             modifies = undefined #snapshotDb.willOpMakeDocMatchQuery cachedData?, query, d.op
+
+            return if qopts.shouldPoll and !qopts.shouldPoll d.c, d.docName, d, index, query
 
             # Not sure whether the changed document should be in the result set
             if modifies is undefined
