@@ -474,7 +474,7 @@ end
             # way to speed this code up.
             modifies = undefined #snapshotDb.willOpMakeDocMatchQuery cachedData?, query, d.op
 
-            return if qopts.shouldPoll and !qopts.shouldPoll d.c, d.docName, d, index, query
+            return if opts.shouldPoll and !opts.shouldPoll d.c, d.docName, d, index, query
 
             # Not sure whether the changed document should be in the result set
             if modifies is undefined
