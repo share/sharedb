@@ -123,7 +123,7 @@ end
     publish: (channel, data) ->
       redis.publish prefixChannel(channel), (if data then JSON.stringify data)
 
-    submit: (cName, docName, opData, callback) ->
+    submit: (cName, docName, opData, options, callback) ->
       #console.log 'submit opdata ', opData
       err = ot.checkOpData opData
       return callback? err if err
