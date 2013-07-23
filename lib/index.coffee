@@ -124,6 +124,11 @@ end
       redis.publish prefixChannel(channel), (if data then JSON.stringify data)
 
     submit: (cName, docName, opData, options, callback) ->
+      # This changed recently. We'll support the old API for now.
+      [options, callback] = [{}, options] if typeof options is 'function'
+      options ?= {}
+
+      #options.channelPrefix
       #console.log 'submit opdata ', opData
       err = ot.checkOpData opData
       return callback? err if err
@@ -175,7 +180,7 @@ end
 
                 # And SOLR or whatever. Not entirely sure of the timing here.
                 for name, db of extraDbs
-                  db.submit? cName, docName, opData, snapshot, this, (err) ->
+                  db.submit? cName, docName, opData, options, snapshot, this, (err) ->
                     console.warn "Error updating db #{name} #{cName}.#{docName} with new snapshot data: ", err if err
 
                 opData.docName = docName
@@ -377,6 +382,9 @@ end
     # shouldPoll: function(collection, docName, opData, index, query) {return true or false; }
     #  this is a syncronous function which can be used as an early filter for
     #  operations going through the system to reduce the load on the backend. 
+    # pollDelay: Minimum delay between subsequent database polls. This is used
+    #  to batch updates to reduce load on the database at the expense of
+    #  liveness.
     query: (index, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
 
@@ -394,6 +402,9 @@ end
         db.queryNeedsPollMode index, query
       else
         opts.poll
+
+      # Default to 2 seconds
+      delay = if typeof opts.pollDelay is 'number' then opts.pollDelay else 2000
 
       # console.log 'poll mode:', !!poll
 
@@ -434,7 +445,7 @@ end
             d.c ||= index
             docIdx["#{d.c}.#{d.docName}"] = i
 
-          if poll then runQuery = rateLimit 2000, ->
+          if poll then runQuery = rateLimit delay, ->
             # We need to do a full poll of the query, because the query uses limits or something.
             db.query client, index, query, (err, newResultset) ->
               return emitter.emit 'error', new Error err if err
@@ -522,7 +533,7 @@ end
           callback null, emitter
 
     collection: (cName) ->
-      submit: (docName, opData, callback) -> client.submit cName, docName, opData, callback
+      submit: (docName, opData, options, callback) -> client.submit cName, docName, opData, options, callback
       subscribe: (docName, v, callback) -> client.subscribe cName, docName, v, callback
 
       getOps: (docName, from, to, callback) -> client.getOps cName, docName, from, to, callback

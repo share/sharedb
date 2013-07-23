@@ -45,7 +45,7 @@ describe 'livedb', ->
       [data, cb] = ['', data] if typeof data is 'function'
 
       type = if typeof data is 'string' then 'text' else 'json0'
-      @collection.submit docName, {v:0, create:{type, data}}, (err) ->
+      @collection.submit docName, {v:0, create:{type, data}}, null, (err) ->
         throw new Error err if err
         cb?()
 
@@ -128,7 +128,7 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
     it 'sends operations to any extra db backends', (done) ->
-      @testWrapper.submit = (cName, docName, opData, snapshot, callback) =>
+      @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
         assert.deepEqual opData, {v:0, create:{type:otTypes.text.uri, data:''}}
@@ -420,7 +420,7 @@ describe 'livedb', ->
           @create2 '_p4', {x:5, i:1.5}
       
       it 'will remove an element from the set', (done) ->
-        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
+        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true, pollDelay:0}, (err, emitter) =>
           emitter.once 'diff', (diff) ->
             assert.deepEqual diff, [type:'remove', index:0, howMany:1]
             emitter.once 'diff', (diff) ->
@@ -459,7 +459,7 @@ describe 'livedb', ->
         @testWrapper.subscribedChannels = (cName, query, opts) =>
           assert.strictEqual cName, 'internet'
           assert.deepEqual query, {x:5}
-          assert.deepEqual opts, {sexy:true, backend:'test'}
+          assert.deepEqual opts, {sexy:true, backend:'test', pollDelay:0}
           [@cName, @cName2]
 
         called = 0
@@ -475,7 +475,7 @@ describe 'livedb', ->
           if called is 3
             done()
 
-        @client.query 'internet', {x:5}, {sexy:true, backend:'test'}, (err) =>
+        @client.query 'internet', {x:5}, {sexy:true, backend:'test', pollDelay:0}, (err) =>
           throw Error err if err
           @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
           @client.submit @cName2, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
