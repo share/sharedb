@@ -4,11 +4,6 @@
 
 otTypes = require 'ottypes'
 
-exports.normalize = (opData) ->
-  if opData.create
-    # We should store the full URI of the type, not just its short name
-    opData.create.type = otTypes[opData.create.type].uri
-
 # Returns an error string on failure.
 exports.checkOpData = (opData) ->
   return 'Missing opData' unless typeof opData is 'object'
@@ -18,6 +13,14 @@ exports.checkOpData = (opData) ->
   return 'Invalid src' if opData.src? and typeof opData.src isnt 'string'
   return 'Invalid seq' if opData.seq? and typeof opData.seq isnt 'number'
   return 'seq but not src' if !!opData.seq isnt !!opData.src
+
+exports.normalize = (opData) ->
+  # I'd love to also normalize opData.op if it exists, but I don't know the
+  # type of the operation. And I can't find that out until after transforming
+  # the operation anyway.
+  if opData.create
+    # We should store the full URI of the type, not just its short name
+    opData.create.type = otTypes[opData.create.type].uri
 
 defaultValidate = ->
 
@@ -99,18 +102,25 @@ exports.apply = (data, opData) ->
   return
 
 exports.transform = (type, opData, appliedOpData) ->
-  return 'Document was deleted' if appliedOpData.del
+  if appliedOpData.del
+    if opData.del
+      opData.v++ if opData.v?
+      return
+    else
+      return 'Document was deleted'
     
   return 'Document created remotely' if appliedOpData.create # type will be null / undefined in this case.
 
   return 'Document does not exist' unless type
+
+  return 'Version mismatch' if opData.v? and opData.v != appliedOpData.v
 
   if typeof type is 'string'
     type = otTypes[type]
     return "Type not found" unless type
 
   opData.op = type.transform opData.op, appliedOpData.op, 'left'
-  opData.v++
+  opData.v++ if opData.v?
 
   return
 
