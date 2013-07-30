@@ -28,6 +28,10 @@ describe 'ot', ->
       assert.ok ot.checkOpData {del:true, v:5, seq:123}
       assert.ok ot.checkOpData {del:true, v:5, src:'hi', seq:'there'}
 
+    it 'fails if a create operation is missing its type', ->
+      assert.ok ot.checkOpData {create:{}}
+      assert.ok ot.checkOpData {create:123}
+
     it 'accepts valid create operations', ->
       assert.equal null, ot.checkOpData {create:{type:simple.uri}}
       assert.equal null, ot.checkOpData {create:{type:simple.uri, data:'hi there'}}
