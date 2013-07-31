@@ -109,24 +109,53 @@ describe 'ot', ->
       assert.equal 'Version mismatch', ot.transform simple.uri, op1, op2
       assert.deepEqual op1, {v:5, op:{position:10, text:'hi'}}
 
-    it 'works if the version is only specified on the first op', ->
-      op1 = {op:{position:10, text:'hi'}}
+    # There's 9 cases here.
+    it 'create by create fails', ->
+      assert.equal 'Document created remotely', ot.transform null, {v:10, create:type:simple.uri}, {v:10, create:type:simple.uri}
+
+    it 'create by delete fails', ->
+      assert.ok ot.transform null, {create:type:simple.uri}, {del:true}
+
+    it 'create by op fails', ->
+      assert.equal 'Document created remotely', ot.transform null, {v:10, create:type:simple.uri}, {v:10, op:{position:15, text:'hi'}}
+
+    it 'delete by create fails', ->
+      assert.ok ot.transform null, {del:true}, {create:type:simple.uri}
+
+    it 'delete by delete ok', ->
+      op = del:true, v:6
+      assert.equal null, ot.transform simple.uri, op, {del:true, v:6}
+      assert.deepEqual op, {del:true, v:7}
+
+      op = del:true # And with no version specified should work too.
+      assert.equal null, ot.transform simple.uri, op, {del:true, v:6}
+      assert.deepEqual op, del:true
+
+    it 'delete by op ok', ->
+      op = del:true, v:8
+      assert.equal null, ot.transform simple.uri, op, {op:{}, v:8}
+      assert.deepEqual op, {del:true, v:9}
+
+      op = del:true # And with no version specified should work too.
+      assert.equal null, ot.transform simple.uri, op, {op:{}, v:8}
+      assert.deepEqual op, {del:true}
+
+    it 'op by create fails', ->
+      assert.ok ot.transform null, {op:{}}, {create:type:simple.uri}
+
+    it 'op by delete fails', ->
+      assert.equal 'Document was deleted', ot.transform simple.uri, {v:10, op:{}}, {v:10, del:true}
+
+    it 'op by op ok', ->
+      op1 = {v:6, op:{position:10, text:'hi'}}
+      op2 = {v:6, op:{position:5, text:'abcde'}}
+      assert.equal null, ot.transform simple.uri, op1, op2
+      assert.deepEqual op1, {v:7, op:{position:15, text:'hi'}}
+
+      op1 = {op:{position:10, text:'hi'}} # No version specified
       op2 = {v:6, op:{position:5, text:'abcde'}}
       assert.equal null, ot.transform simple.uri, op1, op2
       assert.deepEqual op1, {op:{position:15, text:'hi'}}
 
-    it 'fails if you transform an op by a delete', ->
-      assert.equal 'Document was deleted', ot.transform simple.uri, {v:10, op:{}}, {v:10, del:true}
-
-    it 'lets you transform a delete by a delete', ->
-      op = del:true
-      assert.equal null, ot.transform simple.uri, op, {del:true}
-      assert.deepEqual op, del:true
-
-    it 'fails if you transform a create by a create', ->
-      assert.equal 'Document created remotely', ot.transform null, {v:10, create:type:simple.uri}, {v:10, create:type:simple.uri}
-
-    # Not considering create vs delete, del vs create, etc because transform
-    # shouldn't be called in those cases anyway.
-
+    # And op by op is tested in the first couple of tests.
 
