@@ -175,7 +175,7 @@ end
               return callback? null, opData.v, transformedOps, snapshot if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
               # Update the snapshot for queries
-              snapshotDb.setSnapshot cName, docName, snapshot, (err) =>
+              snapshotDb.writeSnapshot cName, docName, snapshot, (err) =>
                 return callback? err if err
 
                 # And SOLR or whatever. Not entirely sure of the timing here.
