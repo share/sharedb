@@ -1,10 +1,9 @@
 # Mocha test
-mongoskin = require 'mongoskin'
 redisLib = require 'redis'
 livedb = require '../lib'
+Memory = require '../lib/memory'
 assert = require 'assert'
 util = require 'util'
-liveDbMongo = require 'livedb-mongo'
 
 otTypes = require 'ottypes'
 #otTypes['json-racer'] = require './lib/mutate'
@@ -12,14 +11,14 @@ otTypes = require 'ottypes'
 id = 0
 
 createClient = ->
-  mongoWrapper = liveDbMongo 'localhost:27017/test?auto_reconnect', safe: false
+  db = new Memory()
 
   redis = redisLib.createClient()
   redis.select redis.selected_db = 15
 
   testWrapper = {name:'test'}
-  client = livedb.client mongoWrapper, redis, {test:testWrapper}
-  {client, redis, mongoWrapper, testWrapper}
+  client = livedb.client db, redis, {test:testWrapper}
+  {client, redis, db, testWrapper}
 
 describe 'livedb', ->
   beforeEach ->
@@ -27,14 +26,7 @@ describe 'livedb', ->
     @cName2 = '_test2'
     @cName3 = '_test3'
 
-    # Clear mongo
-    mongo = mongoskin.db 'localhost:27017/test?auto_reconnect', safe:true
-    mongo.dropCollection @cName
-    mongo.dropCollection @cName2
-    mongo.dropCollection @cName3
-    mongo.close()
-
-    {@client, @redis, @mongoWrapper, @testWrapper} = createClient()
+    {@client, @redis, @db, @testWrapper} = createClient()
 
     # & clear redis.
     @redis.flushdb()
@@ -54,7 +46,7 @@ describe 'livedb', ->
 
   afterEach ->
     @client.destroy()
-    @mongoWrapper.close()
+    @db.close()
  
   describe 'submit', ->
     it 'creates a doc', (done) ->
@@ -297,7 +289,7 @@ describe 'livedb', ->
 
             for c, i in clients
               c.redis.quit()
-              c.mongoWrapper.close()
+              c.db.close()
             done()
 
             # Uncomment to see the actually submitted data

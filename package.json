@@ -4,7 +4,6 @@
   "description": "Realtime database wrapper",
   "main": "lib/index.js",
   "dependencies": {
-    "mongoskin": "~0.5",
     "redis": "~0.8",
     "ottypes": "~1",
     "deep-is": "0.1.2",
@@ -15,7 +14,6 @@
   },
   "devDependencies": {
     "coffee-script": "~1.6.2",
-    "livedb-mongo": "0.1.2",
     "mocha": "~1"
   },
   "scripts": {
