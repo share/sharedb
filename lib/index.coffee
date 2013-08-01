@@ -355,6 +355,12 @@ end
         @subscribe cName, docName, data.v, (err, stream) ->
           callback err, data, stream
 
+
+
+
+    # ------ Queries
+
+
     queryFetch: (cName, query, opts, callback) ->
       [opts, callback] = [{}, opts] if typeof opts is 'function'
       if opts.backend
