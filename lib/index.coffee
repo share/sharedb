@@ -8,49 +8,117 @@ arraydiff = require 'arraydiff'
 ot = require './ot'
 rateLimit = require './ratelimit'
 
-exports.client = (snapshotDb, redis = redisLib.createClient(), redisObserver, extraDbs = {}) ->
-  # This is a set.
-  streams = {}
-  nextStreamId = 0
+exports.client = (options) ->
+  # Database which stores the documents.
+  snapshotDb = options.snapshotDb or options.db or options
+  throw new Error 'Missing or invalid snapshot db' unless snapshotDb.getSnapshot && snapshotDb.writeSnapshot
 
-  if redisObserver && redisObserver.constructor is Object
-    extraDbs = redisObserver
-    redisObserver = null
+  # Database which stores the operations.
+  oplog = options.oplog or options.db or options
+  throw new Error 'Missing or invalid operation log' unless oplog.writeOp && oplog.getVersion && oplog.getOps
+
+  # Redis is used for submitting canonical operations and pubsub.
+  redis = options.redis or redisLib.createClient()
+
+  # Redis doesn't allow the same connection to both listen to channels and do
+  # operations. We make an extra redis connection for the streams.
+  redisObserver = options.redisObserver
   unless redisObserver
     redisObserver = redisLib.createClient redis.port, redis.host, redis.options
     redisObserver.auth redis.auth_pass if redis.auth_pass
   redisObserver.setMaxListeners 0
 
+  # This contains any extra databases that can be queried & notified when documents change
+  extraDbs = options.extraDbs or {}
+
+
+  # This is a set of all the outstanding streams that have been subscribed by clients
+  streams = {}
+  nextStreamId = 0
+
+  # Map from channel name -> number of subscribers. Used for garbage collection
+  # - when the count reaches 0, the listener is abandoned.
   subscribeCounts = {}
 
   # Redis has different databases, which are namespaced separately. We need to
   # make sure our pubsub messages are constrained to the database where we
   # published the op.
   prefixChannel = (channel) -> "#{redis.selected_db || 0} #{channel}"
+  getVersionKey = (cName, docName) -> "#{cName}.#{docName} v"
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
-  redisSubmit = (cName, docName, opData, callback) ->
-    logEntry = JSON.stringify {op:opData.op, src:opData.src, seq:opData.seq, create:opData.create, del:opData.del}
-    # the opData object here contains deleted data for del operations. We don't use this... but fyi.
-    docPubEntry = JSON.stringify opData # Publish everything to the document's channel
+  processRedisOps = (to, result) ->
+    # The ops are stored in redis as JSON strings without versions. They're
+    # returned with the final version at the end of the lua table.
 
-    #console.log opData.src, getOpLogKey(cName, docName), getDocOpChannel(cName, docName), # KEYS table
-    #  opData.seq, opData.v, logEntry, docPubEntry, # ARGV table
+    # version of the document
+    docV = result.pop()
+    v = if to is -1
+      docV - result.length
+    else
+      to
+
+    for value in result
+      op = JSON.parse value
+      op.v = v++
+      op
+
+  logEntryForData = (opData) ->
+    # Only put the op itself and the op's id in redis's log. The version can be inferred via the version field.
+    entry = {}
+    entry.src = opData.src if opData.src
+    entry.seq = opData.seq if opData.seq
+    if opData.op
+      entry.op = opData.op
+    else if opData.del
+      entry.del = opData.del
+    else if opData.create
+      entry.create = opData.create
+    entry
+
+  # docVersion is optional - if specified, this is set & used if redis doesn't know the doc's version
+  redisSubmitScript = (cName, docName, opData, docVersion, callback) ->
+    logEntry = JSON.stringify logEntryForData opData
+    docPubEntry = JSON.stringify opData # Publish everything in opdata to the document's channel.
+
     redis.eval """
--- ops here is a JSON string.
-local clientNonceKey, opLogKey, docOpChannel = unpack(KEYS)
-local seq, v, logEntry, docPubEntry = unpack(ARGV) -- From redisSubmit, below.
+local clientNonceKey, versionKey, opLogKey, docOpChannel = unpack(KEYS)
+local seq, v, logEntry, docPubEntry, docVersion = unpack(ARGV) -- From redisSubmit, below.
 v = tonumber(v)
 seq = tonumber(seq)
+docVersion = tonumber(docVersion)
 
 -- Check the version matches.
-local realv = redis.call('LLEN', opLogKey)
+if docVersion ~= nil then
+  -- setnx returns true if we set the value.
+  if redis.call('setnx', versionKey, docVersion) == 0 then
+    docVersion = tonumber(redis.call('get', versionKey))
+  end
+else
+  docVersion = tonumber(redis.call('get', versionKey))
+end
 
-if v < realv then
-  --redis.log(redis.LOG_NOTICE, "k: " .. opLogKey .. " v: " .. v)
-  return redis.call('LRANGE', opLogKey, v, -1)
-elseif v > realv then
+if docVersion == nil then
+  -- This is not an error - it will happen whenever the TTL expires or redis is wiped.
+  return "Missing data"
+end
+
+
+if v < docVersion then
+  -- The operation needs transformation. I could short-circuit here for
+  -- performance and return any ops in redis, but livedb logic is simpler if I
+  -- simply punt to getOps() below, and I don't think its a bottleneck.
+  return "Transform needed"
+  --local ops = redis.call('lrange', opLogKey, -(docVersion - v), -1) 
+  --ops[#ops + 1] = docVersion
+  --return ops
+elseif v > docVersion then
+  -- Redis's version is older than the snapshot database. We might just be out
+  -- of date, though it should be mostly impossible to get into this state.
+  -- We'll dump all our data and expect to be refilled from whatever is in the
+  -- persistant oplog.
+  redis.call('del', versionKey)
   return "Version from the future"
 end
 
@@ -63,8 +131,13 @@ if seq ~= nil then
 end
 
 -- Ok to submit. Save the op in the oplog and publish.
-redis.call('RPUSH', opLogKey, logEntry)
-redis.call('PUBLISH', docOpChannel, docPubEntry)
+redis.call('rpush', opLogKey, logEntry)
+redis.call('set', versionKey, v + 1)
+
+redis.call('persist', opLogKey)
+redis.call('persist', versionKey)
+
+redis.call('publish', docOpChannel, docPubEntry)
 
 -- Finally, save the new nonce. We do this here so we only update the nonce if
 -- we're at the most recent version in the oplog.
@@ -73,57 +146,186 @@ if seq ~= nil then
   redis.call('SET', clientNonceKey, seq)
   redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
 end
-    """, 3, # num keys
-      opData.src, (getOpLogKey cName, docName), (prefixChannel getDocOpChannel cName, docName), # KEYS table
-      opData.seq, opData.v, logEntry, docPubEntry, # ARGV table
-      callback
+    """, 4, # num keys
+      opData.src, getVersionKey(cName, docName), getOpLogKey(cName, docName), prefixChannel(getDocOpChannel cName, docName), # KEYS table
+      opData.seq, opData.v, logEntry, docPubEntry, docVersion, # ARGV table
+      (err, result) ->
+        return callback err if err
+        #result = processRedisOps -1, result if Array.isArray result
+        callback err, result
+
+  atomicSubmit = (cName, docName, opData, callback) ->
+    redisSubmitScript cName, docName, opData, null, (err, result) ->
+      return callback err if err
+
+      if result is 'Missing data' or result is 'Version from the future'
+        # The data in redis has been dumped. Fill redis with data from the oplog and retry.
+        oplog.getVersion cName, docName, (err, version) ->
+          return callback err if err
+
+          console.warn "Repopulating redis for #{cName}.#{docName} #{opData.v}#{version}", result if version > 0
+
+          if version < opData.v
+            # This is nate's awful hell error state. The oplog is basically
+            # corrupted - the snapshot database is further in the future than
+            # the oplog.
+            #
+            # In this case, we should write a no-op ramp to the snapshot
+            # version, followed by a delete & a create to fill in the missing
+            # ops.
+            throw new Error "Missing oplog for #{cName} #{docName}"
+
+          redisSubmitScript cName, docName, opData, version, callback
+
+      else
+        # The result here will contain more errors (for example we might still be at an early version).
+        # Thats totally ok.
+        callback null, result
+
+  # Follows same semantics as getOps elsewhere - returns ops [from, to). May
+  # not return all operations in this range.
+  redisGetOps = (cName, docName, from, to, callback) ->
+    to ?= -1
+
+    if to >= 0
+      return callback null, [] if from >= to or to == 0
+      to--
+
+    redis.eval """
+local versionKey, opLogKey = unpack(KEYS)
+local from = tonumber(ARGV[1])
+local to = tonumber(ARGV[2])
+
+local v = tonumber(redis.call('get', versionKey))
+
+-- We're asking for ops the server doesn't have.
+if v == nil or from >= v then return nil end
+
+--redis.log(redis.LOG_NOTICE, "v " .. tostring(v) .. " from " .. from .. " to " .. to)
+if to >= 0 then
+  to = to - v
+end
+from = from - v
+
+local ops = redis.call('lrange', opLogKey, from, to)
+ops[#ops+1] = v -- We'll put the version of the document at the end.
+return ops
+    """, 2, getVersionKey(cName, docName), getOpLogKey(cName, docName), from, to, (err, result) ->
+      return callback err if err
+      return callback null, [] if result is null # No data in redis. Punt to the persistant oplog.
+      ops = processRedisOps to, result
+      callback null, ops
+
+  # After we submit an operation, reset redis's TTL so the data is allowed to expire.
+  redisSetExpire = (cName, docName, v, callback) ->
+    redis.eval """
+local versionKey, opLogKey = unpack(KEYS)
+local v = unpack(ARGV)
+
+v = tonumber(v)
+
+-- Check the version matches.
+local realv = tonumber(redis.call('get', versionKey))
+
+if v == realv - 1 then
+  redis.call('expire', versionKey, 60*60*24) -- 1 day
+  redis.call('expire', opLogKey, 60*60*24) -- 1 day
+  redis.call('ltrim', opLogKey, -100, -1) -- Only 100 ops, counted from the end.
+   
+  --redis.call('del', versionKey)
+  --redis.call('del', opLogKey)
+  --redis.call('del', opLogKey)
+
+  -- Doing this directly for now. I don't know the performance impact, but its cleaner.
+  --redis.call('PUBLISH', publishChannel, opData)
+end
+                  """, 2, getVersionKey(cName, docName), getOpLogKey(cName, docName), v, callback
+
+
+
+  # Wrapper around the oplog to insert versions.
+  oplogGetOps = (cName, docName, from, to, callback) ->
+    oplog.getOps cName, docName, from, to, (err, ops) ->
+      return callback err if err
+      throw new Error 'Oplog is returning incorrect ops' if ops.length && ops[0].v isnt from
+      op.v = from++ for op in ops
+      callback null, ops
+
+  # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is
+  # not defined (null or undefined) then it returns all ops. Due to certain
+  # race conditions, its possible that this misses operations at the end of the
+  # range. Callers have to deal with this case (semantically it should be the
+  # same as an operation being submitted right after a getOps call)
+  getOps = (cName, docName, from, to, callback) ->
+    #console.log 'getOps', from, to
+
+    # First try to get the ops from redis.
+    redisGetOps cName, docName, from, to, (err, ops) ->
+      return callback err if err
+
+      if ops.length
+        # We have at least some of the ops at the end of the range.
+        if ops[0].v is from
+          # Yay!
+          return callback null, ops
+        else
+          # The ops we got from redis are at the end of the op list.
+          oplogGetOps cName, docName, from, ops[0].v, (err, firstOps) ->
+            return callback err if err
+            callback null, firstOps.concat ops
+      else
+        # No ops in redis. Just get all the ops from the oplog.
+        oplogGetOps cName, docName, from, to, callback
+
+  # Internal method for updating the persistant oplog. This should only be called after atomicSubmit (above).
+  writeOpToLog = (cName, docName, opData, callback) ->
+    # Shallow copy the important fields from opData
+    entry = logEntryForData opData
+    entry.v = opData.v # The oplog API needs the version too.
+
+    oplog.getVersion cName, docName, (err, version) ->
+      return callback err if err
+
+      if version < opData.v
+        console.log 'populating oplog', version, opData.v
+        redisGetOps cName, docName, version, opData.v, (err, results) ->
+          return callback err if err
+
+          results.push entry
+
+          do f = ->
+            return callback() if results.length is 0
+
+            oplog.writeOp cName, docName, results.shift(), (err) ->
+              return callback err if err
+              # In a nexttick to prevent stack overflows with syncronous oplog
+              # implementations
+              process.nextTick f
+
+      else if version == opData.v
+        oplog.writeOp cName, docName, entry, (err) =>
+          callback err
 
   client =
-    ###
-    create: (cName, docName, type, initialData, meta, callback) ->
-      # Not matching all possible cases here. Eh.
-      [initialData, callback] = [null, initialData] if typeof initialData is 'function'
-      [meta, callback] = [{}, meta] if typeof meta is 'function'
-
-      type = otTypes[type] if typeof type is 'string'
-      return callback? new Error 'Type not found' unless type
-
-      # + NOTIFY! Otherwise this won't work correctly with queries.
-
-      snapshotDb.create cName, docName,
-        type:type.url || type.name
-        v:0
-        data:type.create initialData
-        meta:meta or {}
-      , callback # Just passing the error straight through. Should probably sanitize it.
-    ###
-
     snapshotDb: snapshotDb
+    oplog: oplog
 
     # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
     # (null or undefined) then it returns all ops.
     getOps: (cName, docName, from, to, callback) ->
-      [to, callback] = [-1, to] if typeof to is 'function'
-      to ?= -1
-
+      [to, callback] = [null, to] if typeof to is 'function'
       if to >= 0
-        return callback? null, [] if from >= to
-        to--
+        return callback null, [] if to? && from > to
 
-      return callback 'invalid getOps fetch' unless from?
+      return callback 'Invalid from field in getOps' unless from?
       #console.trace 'getOps', getOpLogKey(cName, docName), from, to
-      redis.lrange getOpLogKey(cName, docName), from, to, (err, values) ->
-        return callback? err if err
-        ops = for value in values
-          op = JSON.parse value
-          op.v = from++ # The version is stripped from the ops in the oplog. Add it back.
-          op
-        callback null, ops
+      getOps cName, docName, from, to, callback
 
     publish: (channel, data) ->
       redis.publish prefixChannel(channel), (if data then JSON.stringify data)
 
     submit: (cName, docName, opData, options, callback) ->
+      #console.log 'submit', opData
       # This changed recently. We'll support the old API for now.
       [options, callback] = [{}, options] if typeof options is 'function'
       options ?= {}
@@ -148,45 +350,56 @@ end
           trySubmit = =>
             # Eagarly try to submit to redis. If this fails, redis will return all the ops we need to
             # transform by.
-            redisSubmit cName, docName, opData, (err, result) =>
+            atomicSubmit cName, docName, opData, (err, result) =>
               return callback? err if err
-              return callback? result if typeof result is 'string'
 
-              if result and typeof result is 'object'
-                # There are ops that should be applied before our new operation.
-                oldOpData = (JSON.parse d for d in result)
-
-                for old in oldOpData
-                  old.v = opData.v
-                  transformedOps.push old
-
-                  err = ot.transform snapshot.type, opData, old
+              if result is 'Transform needed'
+                return getOps cName, docName, opData.v, null, (err, ops) ->
                   return callback? err if err
+                  return callback? 'Intermediate operations missing - cannot apply op' if ops.length is 0
 
-                  # If we want to remove the need to @fetch again when we retry, do something
-                  # like this, but with the original snapshot object:
-                  #err = ot.apply snapshot, old
-                  #return callback? err if err
+                  # There are ops that should be applied before our new operation.
+                  for old in ops
+                    transformedOps.push old
 
-                #console.log 'retry'
-                return retry()
+                    err = ot.transform snapshot.type, opData, old
+                    return callback? err if err
 
+                    # If we want to remove the need to @fetch again when we retry, do something
+                    # like this, but with the original snapshot object:
+                    #err = ot.apply snapshot, old
+                    #return callback? err if err
+
+                  #console.log 'retry'
+                  return retry()
+
+              return callback? result if typeof result is 'string'
               # Call callback with op submit version
-              return callback? null, opData.v, transformedOps, snapshot if snapshotDb.closed # Happens in the tests sometimes. Its ok.
+              #return callback? null, opData.v, transformedOps, snapshot if snapshotDb.closed # Happens in the tests sometimes. Its ok.
 
-              # Update the snapshot for queries
-              snapshotDb.writeSnapshot cName, docName, snapshot, (err) =>
+              writeOpToLog cName, docName, opData, (err) =>
+                # Its kinda too late for this to error out - we've committed.
                 return callback? err if err
 
-                # And SOLR or whatever. Not entirely sure of the timing here.
-                for name, db of extraDbs
-                  db.submit? cName, docName, opData, options, snapshot, this, (err) ->
-                    console.warn "Error updating db #{name} #{cName}.#{docName} with new snapshot data: ", err if err
+                # Update the snapshot for queries
+                snapshotDb.writeSnapshot cName, docName, snapshot, (err) =>
+                  return callback? err if err
 
-                opData.docName = docName
-                redis.publish prefixChannel(cName), JSON.stringify opData
+                  # And SOLR or whatever. Not entirely sure of the timing here.
+                  for name, db of extraDbs
+                    db.submit? cName, docName, opData, options, snapshot, this, (err) ->
+                      console.warn "Error updating db #{name} #{cName}.#{docName} with new snapshot data: ", err if err
 
-                callback? null, opData.v, transformedOps, snapshot
+                  opData.docName = docName
+                  # Publish the change to the collection for queries and set
+                  # the TTL on the document now that it has been written to the
+                  # oplog.
+                  redis.publish prefixChannel(cName), JSON.stringify opData
+                  redisSetExpire cName, docName, opData.v, (err) ->
+                    console.error err if err # This shouldn't happen, but its non-fatal. It just means ops won't get flushed from redis.
+
+                  callback? null, opData.v, transformedOps, snapshot
+
 
 
           # If there's actually a chance of submitting, try applying the operation to make sure
@@ -301,6 +514,7 @@ end
             stream.push d
           # Then all the ops between then and now..
           for d in queue when d.v >= v
+            console.log 'queued', d
             assert d.v is v
             v++
             stream.push d
