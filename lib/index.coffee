@@ -8,6 +8,9 @@ arraydiff = require 'arraydiff'
 ot = require './ot'
 rateLimit = require './ratelimit'
 
+# I'm not really sure how the memory store should be exported...
+exports.memory = require './memory'
+
 exports.client = (options) ->
   # Database which stores the documents.
   snapshotDb = options.snapshotDb or options.db or options
@@ -514,7 +517,6 @@ end
             stream.push d
           # Then all the ops between then and now..
           for d in queue when d.v >= v
-            console.log 'queued', d
             assert d.v is v
             v++
             stream.push d

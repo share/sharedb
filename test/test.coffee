@@ -129,6 +129,23 @@ describe 'livedb', ->
 
       @create()
 
+    it 'works if the data in redis is missing'
+
+    it.only 'works if data in the oplog is missing', (done) ->
+      # This test depends on the actual format in redis. Try to avoid adding
+      # too many tests like this - its brittle.
+      @redis.set "#{@cName}.#{@docName} v", 2
+      @redis.rpush "#{@cName}.#{@docName} ops", JSON.stringify({create:{type:otTypes.text.uri}}), JSON.stringify({op:['hi']}), (err) =>
+        throw Error err if err
+
+        @collection.fetch @docName, (err, data) ->
+          throw Error err if err
+          assert.deepEqual data, {v:2, data:'hi', type:otTypes.text.uri}
+          done()
+
+
+
+
     describe 'pre validate', ->
       it 'runs a supplied pre validate function on the data', (done) ->
         validationRun = no
