@@ -52,6 +52,7 @@ exports.client = (options) ->
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
   processRedisOps = (to, result) ->
+    #console.log 'processRedisOps', to, result
     # The ops are stored in redis as JSON strings without versions. They're
     # returned with the final version at the end of the lua table.
 
@@ -60,7 +61,7 @@ exports.client = (options) ->
     v = if to is -1
       docV - result.length
     else
-      to
+      to - result.length + 1 # the 'to' argument here is the version of the last op.
 
     for value in result
       op = JSON.parse value
@@ -193,6 +194,8 @@ end
     if to >= 0
       return callback null, [] if from >= to or to == 0
       to--
+
+    #console.log 'redisGetOps', from, to
 
     redis.eval """
 local versionKey, opLogKey = unpack(KEYS)
