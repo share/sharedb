@@ -20,10 +20,17 @@ counter = 1
 
 module.exports = (create) ->
   describe 'oplog', ->
-    beforeEach ->
-      @db = create()
+    beforeEach (done) ->
       @cName = 'users'
       @docName = "optest #{counter++}"
+
+      if create.length is 0
+        @db = create()
+        done()
+      else
+        create (@db) =>
+          done()
+
 
     afterEach ->
       @db.close()
@@ -57,6 +64,18 @@ module.exports = (create) ->
             assert.strictEqual v, 1
             @db.getOps @cName, @docName, 0, null, (err, ops) ->
               assert.strictEqual ops.length, 1
+              done()
+
+    it 'does not decrement the version when receiving old ops', (done) ->
+      @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+        throw new Error err if err
+        @db.writeOp @cName, @docName, {v:1, op:{position:2, text:'hi'}}, (err) =>
+          throw new Error err if err
+          @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+            throw new Error err if err
+            @db.getVersion @cName, @docName, (err, v) =>
+              throw new Error err if err
+              assert.strictEqual v, 2
               done()
 
     it 'ignores concurrent attempts to write the same operation', (done) ->

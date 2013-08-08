@@ -11,10 +11,15 @@ module.exports = (create) ->
   db.close()
 
   describe 'snapshot db', ->
-    beforeEach ->
-      @db = create()
+    beforeEach (done) ->
       @cName = 'users'
       @docName = "snapshottest #{counter++}"
+      if create.length is 0
+        @db = create()
+        done()
+      else
+        create (@db) =>
+          done()
 
     afterEach ->
       @db.close()
