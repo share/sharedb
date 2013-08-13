@@ -12,7 +12,7 @@ module.exports = (create) ->
 
   describe 'snapshot db', ->
     beforeEach (done) ->
-      @cName = 'users'
+      @cName = 'testcollection'
       @docName = "snapshottest #{counter++}"
       if create.length is 0
         @db = create()

@@ -6,7 +6,6 @@ assert = require 'assert'
 util = require 'util'
 
 otTypes = require 'ottypes'
-#otTypes['json-racer'] = require './lib/mutate'
 
 id = 0
 
@@ -131,7 +130,7 @@ describe 'livedb', ->
 
     it 'works if the data in redis is missing'
 
-    it.only 'works if data in the oplog is missing', (done) ->
+    it 'works if data in the oplog is missing', (done) ->
       # This test depends on the actual format in redis. Try to avoid adding
       # too many tests like this - its brittle.
       @redis.set "#{@cName}.#{@docName} v", 2
@@ -237,6 +236,8 @@ describe 'livedb', ->
             throw new Error err if err
             assert.deepEqual ops, [{create:{type:otTypes.text.uri, data:''}, v:0}, {op:['hi'], v:1}]
             done()
+    
+    it 'errors if ops are missing from the snapshotdb and oplogs'
 
   describe 'Observe', ->
     it 'observes local changes', (done) -> @create =>

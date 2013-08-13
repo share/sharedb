@@ -21,7 +21,7 @@ counter = 1
 module.exports = (create) ->
   describe 'oplog', ->
     beforeEach (done) ->
-      @cName = 'users'
+      @cName = 'testcollection'
       @docName = "optest #{counter++}"
 
       if create.length is 0
