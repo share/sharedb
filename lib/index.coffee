@@ -11,6 +11,41 @@ rateLimit = require './ratelimit'
 # I'm not really sure how the memory store should be exported...
 exports.memory = require './memory'
 
+# The client is created using either an options object or a database backend
+# which is used as both oplog and snapshot.
+#
+# Eg:
+#  db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+#  livedb = require('livedb').client(db);
+#
+# Or using an options object:
+#
+#  db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+#  livedb = require('livedb').client({db:db});
+#
+# If you want, you can use a different database for both snapshots and operations:
+#
+#  snapshotdb = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+#  oplog = {writeOp:..., getVersion:..., getOps:...}
+#  livedb = require('livedb').client({snapshotDb:snapshotdb, oplog:oplog});
+#
+# Other options:
+#
+# - redis:<redis client>. This can be specified if there is any further
+#     configuration of redis that you want to perform. The obvious examples of
+#     this are when redis is running on a remote machine, redis requires
+#     authentication or you want to use something other than redis db 0.
+#
+# - redisObserver:<redis client>. Livedb actually needs 2 redis connections,
+#     because redis doesn't let you use a connection with pubsub subscriptions
+#     to edit data. Livedb will automatically try to clone the first connection
+#     to make the observer connection, but if you want to do anything
+#     particularly fancy, you can provide it explicitly.
+#
+# - extraDbs:{}  This is used to register extra database backends which will be
+#     notified whenever operations are submitted. They can also be used in
+#     queries.
+#
 exports.client = (options) ->
   # Database which stores the documents.
   snapshotDb = options.snapshotDb or options.db or options
