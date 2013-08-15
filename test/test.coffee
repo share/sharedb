@@ -128,7 +128,29 @@ describe 'livedb', ->
 
       @create()
 
-    it 'works if the data in redis is missing'
+    it 'works if the data in redis is missing', (done) -> @create =>
+      @redis.flushdb =>
+        @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+          throw new Error err if err
+          @collection.fetch @docName, (err, {v, data}) =>
+            throw new Error err if err
+            assert.deepEqual data, 'hi'
+            done()
+
+    it 'ignores redis operations if the version isnt set', (done) -> @create =>
+      @redis.del "#{@cName}.#{@docName} v", (err, result) =>
+        throw Error err if err
+        # If the key format ever changes, this test should fail instead of becoming silently ineffective
+        assert.equal result, 1
+
+        @redis.lset "#{@cName}.#{@docName} ops", 0, "junk that will crash livedb", (err) =>
+
+          @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+            throw new Error err if err
+            @collection.fetch @docName, (err, {v, data}) =>
+              throw new Error err if err
+              assert.deepEqual data, 'hi'
+              done()
 
     it 'works if data in the oplog is missing', (done) ->
       # This test depends on the actual format in redis. Try to avoid adding
@@ -237,6 +259,44 @@ describe 'livedb', ->
             assert.deepEqual ops, [{create:{type:otTypes.text.uri, data:''}, v:0}, {op:['hi'], v:1}]
             done()
     
+    it 'works if redis has no data', (done) -> @create =>
+      @redis.flushdb =>
+        @collection.getOps @docName, 0, (err, ops) =>
+          throw new Error err if err
+          assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+          done()
+
+    it 'ignores redis operations if the version isnt set', (done) -> @create =>
+      @redis.del "#{@cName}.#{@docName} v", (err, result) =>
+        throw Error err if err
+        # If the key format ever changes, this test should fail instead of becoming silently ineffective
+        assert.equal result, 1
+
+        @redis.lset "#{@cName}.#{@docName} ops", 0, "junk that will crash livedb", (err) =>
+
+          @collection.getOps @docName, 0, (err, ops) =>
+            throw new Error err if err
+            assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+            done()
+
+    it 'removes junk in the redis oplog on submit', (done) -> @create =>
+      @redis.del "#{@cName}.#{@docName} v", (err, result) =>
+        throw Error err if err
+        # If the key format ever changes, this test should fail instead of becoming silently ineffective
+        assert.equal result, 1
+
+        @redis.lset "#{@cName}.#{@docName} ops", 0, "junk that will crash livedb", (err) =>
+
+          @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+            throw new Error err if err
+
+            @collection.getOps @docName, 0, (err, ops) =>
+              throw new Error err if err
+              assert.deepEqual ops, [{create:{type:otTypes.text.uri, data:''}, v:0}, {op:['hi'], v:1}]
+              done()
+
+
+
     it 'errors if ops are missing from the snapshotdb and oplogs'
 
   describe 'Observe', ->
@@ -322,10 +382,11 @@ describe 'livedb', ->
 
           tryRead()
 
+  # Query-based tests currently disabled because memory backend has such a primitive query system.
   describe.skip 'Query', ->
     # Do these tests with polling turned on and off.
     for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
-      opts = {poll}
+      opts = {poll:poll, pollDelay:0}
 
       it 'returns a result it already applies to', (done) -> @create {x:5}, =>
         @collection.query {'x':5}, opts, (err, emitter) =>

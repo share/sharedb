@@ -39,8 +39,10 @@ exports.memory = require './memory'
 # - redisObserver:<redis client>. Livedb actually needs 2 redis connections,
 #     because redis doesn't let you use a connection with pubsub subscriptions
 #     to edit data. Livedb will automatically try to clone the first connection
-#     to make the observer connection, but if you want to do anything
-#     particularly fancy, you can provide it explicitly.
+#     to make the observer connection, but we can't copy some options, like the
+#     selected database. if you want to change that (or do anything else thats
+#     fancy), you should make 2 redis instances and provide livedb with both of
+#     them.
 #
 # - extraDbs:{}  This is used to register extra database backends which will be
 #     notified whenever operations are submitted. They can also be used in
@@ -133,6 +135,9 @@ if docVersion ~= nil then
   -- setnx returns true if we set the value.
   if redis.call('setnx', versionKey, docVersion) == 0 then
     docVersion = tonumber(redis.call('get', versionKey))
+  else
+    -- We've just set the version ourselves. Wipe any junk in the oplog.
+    redis.call('del', opLogKey)
   end
 else
   docVersion = tonumber(redis.call('get', versionKey))
@@ -305,6 +310,9 @@ end
       return callback err if err
 
       if ops.length
+        # What should we do in this case, when redis returns ops but is missing ops at the end of the requested range?
+        #if to? && ops[ops.length - 1].v != to
+
         # We have at least some of the ops at the end of the range.
         if ops[0].v is from
           # Yay!
@@ -807,6 +815,7 @@ end
     destroy: ->
       #snapshotDb.close()
       redis.quit()
+      redisObserver.quit()
 
       # ... and close any remaining subscription streams.
       for id, s of streams
