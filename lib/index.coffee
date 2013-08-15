@@ -39,10 +39,11 @@ exports.memory = require './memory'
 # - redisObserver:<redis client>. Livedb actually needs 2 redis connections,
 #     because redis doesn't let you use a connection with pubsub subscriptions
 #     to edit data. Livedb will automatically try to clone the first connection
-#     to make the observer connection, but we can't copy some options, like the
-#     selected database. if you want to change that (or do anything else thats
-#     fancy), you should make 2 redis instances and provide livedb with both of
-#     them.
+#     to make the observer connection, but we can't copy some options. if you
+#     want to do anything thats particularly fancy, you should make 2 redis
+#     instances and provide livedb with both of them. Note that because redis
+#     pubsub messages aren't constrained to the selected database, the
+#     redisObserver doesn't need to select the db you have your data in.
 #
 # - extraDbs:{}  This is used to register extra database backends which will be
 #     notified whenever operations are submitted. They can also be used in
@@ -64,6 +65,7 @@ exports.client = (options) ->
   # operations. We make an extra redis connection for the streams.
   redisObserver = options.redisObserver
   unless redisObserver
+    # We can't copy the selected db, but pubsub messages aren't namespaced to their db anyway.
     redisObserver = redisLib.createClient redis.port, redis.host, redis.options
     redisObserver.auth redis.auth_pass if redis.auth_pass
   redisObserver.setMaxListeners 0
@@ -310,7 +312,8 @@ end
       return callback err if err
 
       if ops.length
-        # What should we do in this case, when redis returns ops but is missing ops at the end of the requested range?
+        # What should we do in this case, when redis returns ops but is missing
+        # ops at the end of the requested range?
         #if to? && ops[ops.length - 1].v != to
 
         # We have at least some of the ops at the end of the range.
