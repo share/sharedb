@@ -68,11 +68,11 @@ livedb = require('livedb').client({snapshotDb:snapshotdb, oplog:oplog});
 
 The options object can also be passed:
 
-- **redis:<redis client>**. This can be specified if there is any further
+- **redis:** *redis client*. This can be specified if there is any further
     configuration of redis that you want to perform. The obvious examples of
     this are when redis is running on a remote machine, redis requires
     authentication or you want to use something other than redis db 0.
-- **redisObserver:<redis client>**. Livedb actually needs 2 redis connections,
+- **redisObserver:** *redis client*. Livedb actually needs 2 redis connections,
     because redis doesn't let you use a connection with pubsub subscriptions
     to edit data. Livedb will automatically try to clone the first connection
     to make the observer connection, but we can't copy some options. if you
@@ -80,7 +80,7 @@ The options object can also be passed:
     instances and provide livedb with both of them. Note that because redis
     pubsub messages aren't constrained to the selected database, the
     redisObserver doesn't need to select the db you have your data in.
-- **extraDbs:{}** This is used to register extra database backends which will be
+- **extraDbs:** *{name:query db}* This is used to register extra database backends which will be
     notified whenever operations are submitted. They can also be used in
     queries.
 
