@@ -35,6 +35,56 @@ OT). Finally you can delete the document with a delete operation. By
 default, livedb stores all operations forever - nothing is truly deleted.
 
 
+## Using Livedb
+
+Livedb requires a backend database to store snapshots & operations. You can put snapshots & operations in different places if you want, though its easier to put all data in the same place.
+
+The backend database(s) needs to implement a [simple API which has documentation and a sample implementation here](https://github.com/share/livedb/blob/master/lib/memory.js). Currently the only database binding is [livedb-mongo](https://github.com/share/livedb-mongo).
+
+A livedb client is created using either an options object or a database backend. If you specify a database backend, its used as both oplog and snapshot.
+
+```javascript
+db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+livedb = require('livedb').client(db);
+```
+
+Or using an options object:
+
+```
+db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+livedb = require('livedb').client({db:db});
+```
+
+You can use a different database for both snapshots and operations:
+
+```
+snapshotdb = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+oplog = {writeOp:..., getVersion:..., getOps:...};
+livedb = require('livedb').client({snapshotDb:snapshotdb, oplog:oplog});
+```
+
+
+`client({db:db});` is a shorthand for `client({snapshotDb:db, oplog:db})`.
+
+The options object can also be passed:
+
+- **redis:<redis client>**. This can be specified if there is any further
+    configuration of redis that you want to perform. The obvious examples of
+    this are when redis is running on a remote machine, redis requires
+    authentication or you want to use something other than redis db 0.
+- **redisObserver:<redis client>**. Livedb actually needs 2 redis connections,
+    because redis doesn't let you use a connection with pubsub subscriptions
+    to edit data. Livedb will automatically try to clone the first connection
+    to make the observer connection, but we can't copy some options. if you
+    want to do anything thats particularly fancy, you should make 2 redis
+    instances and provide livedb with both of them. Note that because redis
+    pubsub messages aren't constrained to the selected database, the
+    redisObserver doesn't need to select the db you have your data in.
+- **extraDbs:{}** This is used to register extra database backends which will be
+    notified whenever operations are submitted. They can also be used in
+    queries.
+
+
 ### Snapshot backend, operation logs and query backends
 
 Oh my.
