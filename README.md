@@ -85,14 +85,6 @@ The options object can also be passed:
     queries.
 
 
-### Snapshot backend, operation logs and query backends
-
-Oh my.
-
-LiveDB lets you store your documents and operations wherever you want. It can
-use custom query sources to back its live queries. Some of these APIs are in
-flux at the moment - **Document ME!**
-
 ### Creating documents
 
 To create a document, you first need to submit a create operation to the
