@@ -32,6 +32,9 @@ describe 'ot', ->
       assert.ok ot.checkOpData {create:{}}
       assert.ok ot.checkOpData {create:123}
 
+    it 'fails if the type is missing', ->
+      assert.ok ot.checkOpData {create:{type:"something that does not exist"}}
+
     it 'accepts valid create operations', ->
       assert.equal null, ot.checkOpData {create:{type:simple.uri}}
       assert.equal null, ot.checkOpData {create:{type:simple.uri, data:'hi there'}}
