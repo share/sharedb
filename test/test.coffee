@@ -9,6 +9,14 @@ otTypes = require 'ottypes'
 
 id = 0
 
+stripTs = (ops) ->
+  if Array.isArray ops
+    for op in ops
+      delete op.m.ts if op.m
+  else
+    delete ops.m.ts if ops.m
+  ops
+
 createClient = (db = new Memory()) ->
   redis = redisLib.createClient()
   redis.select redis.selected_db = 15
@@ -75,7 +83,7 @@ describe 'livedb', ->
         assert.deepEqual ops, []
         @collection.submit @docName, v:1, op:['b'], (err, v, ops) =>
           throw new Error err if err
-          assert.deepEqual ops, [{v:1, op:['a'], src:'abc', seq:123}]
+          assert.deepEqual stripTs(ops), [{v:1, op:['a'], src:'abc', seq:123, m:{}}]
           done()
 
     it 'allows ops with a null version', (done) -> @create =>
@@ -122,7 +130,7 @@ describe 'livedb', ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
-        assert.deepEqual opData, {v:0, create:{type:otTypes.text.uri, data:''}}
+        assert.deepEqual stripTs(opData), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
         assert.deepEqual snapshot, {v:1, data:"", type:otTypes.text.uri}
         done()
 
@@ -241,29 +249,58 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, op:['hi'], (err, v) =>
         @collection.getOps @docName, 0, 1, (err, ops) =>
           throw new Error err if err
-          assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+          assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
 
           @collection.getOps @docName, 1, 2, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual ops, [op:['hi'], v:1]
+            assert.deepEqual stripTs(ops), [op:['hi'], v:1, m:{}]
+            done()
+
+    it 'puts a decent timestamp in ops', (done) ->
+      # TS should be between start and end.
+      start = Date.now()
+      @create =>
+        end = Date.now()
+        @collection.getOps @docName, 0, (err, ops) ->
+          throw Error(err) if err
+          assert.equal ops.length, 1
+          assert ops[0].m.ts >= start
+          assert ops[0].m.ts <= end
+          done()
+
+    it 'puts a decent timestamp in ops which already have a m:{} field', (done) ->
+      # TS should be between start and end.
+      start = Date.now()
+      @collection.submit @docName, {v:0, create:{type:'text'}, m:{}}, (err) =>
+        throw Error(err) if err
+        @collection.submit @docName, {v:1, op:['hi there'], m:{ts:123}}, (err) =>
+          throw Error(err) if err
+
+          end = Date.now()
+          @collection.getOps @docName, 0, (err, ops) ->
+            throw Error(err) if err
+            assert.equal ops.length, 2
+            for op in ops
+              assert op.m.ts >= start
+              assert op.m.ts <= end
             done()
 
     it 'returns all ops if to is not defined', (done) -> @create =>
       @collection.getOps @docName, 0, (err, ops) =>
         throw new Error err if err
-        assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+        assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
 
         @collection.submit @docName, v:1, op:['hi'], (err, v) =>
           @collection.getOps @docName, 0, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual ops, [{create:{type:otTypes.text.uri, data:''}, v:0}, {op:['hi'], v:1}]
+            assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
             done()
     
     it 'works if redis has no data', (done) -> @create =>
       @redis.flushdb =>
         @collection.getOps @docName, 0, (err, ops) =>
           throw new Error err if err
-          assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+          assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
           done()
 
     it 'ignores redis operations if the version isnt set', (done) -> @create =>
@@ -276,7 +313,7 @@ describe 'livedb', ->
 
           @collection.getOps @docName, 0, (err, ops) =>
             throw new Error err if err
-            assert.deepEqual ops, [create:{type:otTypes.text.uri, data:''}, v:0]
+            assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
             done()
 
     it 'removes junk in the redis oplog on submit', (done) -> @create =>
@@ -292,7 +329,7 @@ describe 'livedb', ->
 
             @collection.getOps @docName, 0, (err, ops) =>
               throw new Error err if err
-              assert.deepEqual ops, [{create:{type:otTypes.text.uri, data:''}, v:0}, {op:['hi'], v:1}]
+              assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
               done()
 
 
@@ -306,7 +343,7 @@ describe 'livedb', ->
 
         stream.on 'readable', ->
           try
-            assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
+            assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
             stream.destroy()
             done()
           catch e
@@ -319,19 +356,19 @@ describe 'livedb', ->
       # The document has version 1
       @collection.subscribe @docName, 0, (err, stream) =>
         stream.once 'readable', =>
-          assert.deepEqual stream.read(), {v:0, create:{type:otTypes.text.uri, data:''}}
+          assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
 
           # And we still get ops that come in now.
           @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
           stream.once 'readable', ->
-            assert.deepEqual stream.read(), {v:1, op:['hi'], src:'abc', seq:123}
+            assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
             stream.destroy()
             done()
 
     it 'can observe a document that doesnt exist yet', (done) ->
       @collection.subscribe @docName, 0, (err, stream) =>
         stream.on 'readable', ->
-          assert.deepEqual stream.read(), {v:0, create:{type:otTypes.text.uri, data:''}}
+          assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
           stream.destroy()
           done()
 
@@ -363,7 +400,7 @@ describe 'livedb', ->
           return unless data
           #console.log 'read', data
           delete data.op
-          assert.deepEqual data, {v:seq} #, op:{op:'ins', p:['x', -1]}}
+          assert.deepEqual stripTs(data), {v:seq, m:{}} #, op:{op:'ins', p:['x', -1]}}
 
           if seq is numClients
             #console.log 'destroy stream'

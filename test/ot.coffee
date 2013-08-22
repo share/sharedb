@@ -49,6 +49,7 @@ describe 'ot', ->
     it 'expands type names', ->
       opData = create:type:'simple'
       ot.normalize opData
+      delete opData.m
       assert.deepEqual opData, {create:type:simple.uri}
 
   describe 'apply', ->

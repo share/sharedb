@@ -118,6 +118,7 @@ exports.client = (options) ->
       entry.del = opData.del
     else if opData.create
       entry.create = opData.create
+    entry.m = opData.m # Metadata.
     entry
 
   # docVersion is optional - if specified, this is set & used if redis doesn't know the doc's version
