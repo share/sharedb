@@ -723,7 +723,7 @@ end
               return emitter.emit 'error', new Error err if err
 
               if !Array.isArray newResultset
-                if newResultset.extra
+                if newResultset.extra isnt undefined
                   unless deepEquals extra, newResultset.extra
                     emitter.emit 'extra', newResultset.extra
                     emitter.extra = extra = newResultset.extra
