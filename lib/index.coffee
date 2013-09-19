@@ -219,7 +219,7 @@ end
             # In this case, we should write a no-op ramp to the snapshot
             # version, followed by a delete & a create to fill in the missing
             # ops.
-            throw new Error "Missing oplog for #{cName} #{docName}"
+            throw Error "Missing oplog for #{cName} #{docName}"
 
           redisSubmitScript cName, docName, opData, version, callback
 
@@ -294,6 +294,16 @@ if v == realv - 1 then
 end
                   """, 2, getVersionKey(cName, docName), getOpLogKey(cName, docName), v, callback
 
+  redisCacheVersion = (cName, docName, v, callback) ->
+    # At some point it'll be worth caching the snapshot in redis as well and
+    # checking performance.
+    redis.setnx getVersionKey(cName, docName), v, (err, didSet) ->
+      return callback? err if err or !didSet
+
+      # Just in case. The oplog shouldn't be in redis if the version isn't in
+      # redis, but whatever.
+      redis.del getOpLogKey(cName, docName)
+      redisSetExpire cName, docName, v, callback
 
 
   # Wrapper around the oplog to insert versions.
@@ -339,9 +349,20 @@ end
           callback null, firstOps.concat ops
       else
         # No ops in redis. Just get all the ops from the oplog.
-        oplogGetOps cName, docName, from, to, callback
+        oplogGetOps cName, docName, from, to, (err, ops) ->
+          return callback err if err
 
-  # Internal method for updating the persistant oplog. This should only be called after atomicSubmit (above).
+          # I'm going to do a sneaky cache here if its not in redis.
+          if !v? and !to?
+            oplog.getVersion cName, docName, (err, version) ->
+              return if err
+              redisCacheVersion cName, docName, version
+
+          callback null, ops
+
+
+  # Internal method for updating the persistant oplog. This should only be
+  # called after atomicSubmit (above).
   writeOpToLog = (cName, docName, opData, callback) ->
     # Shallow copy the important fields from opData
     entry = logEntryForData opData
@@ -370,12 +391,32 @@ end
         oplog.writeOp cName, docName, entry, (err) =>
           callback err
 
+  # Variant of fetch (below) which doesn't cache the version after fetching.
+  # Useful for submit, where we'll be setting the version in the db anyway.
+  fetchNoCache = (cName, docName, callback) ->
+    snapshotDb.getSnapshot cName, docName, (err, snapshot) =>
+      return callback? err if err
+      snapshot ?= {v:0}
+      return callback 'Invalid snapshot data' unless snapshot.v?
+
+      client.getOps cName, docName, snapshot.v, (err, results) ->
+        return callback? err if err
+        err = ot.apply snapshot, opData for opData in results
+
+        # I don't actually care if the caching fails - so I'm ignoring the error callback.
+        #
+        # We could call our callback immediately without waiting for the
+        # cache to be warmed, but that causes basically all the livedb tests
+        # to fail. ... Eh.
+        redisCacheVersion cName, docName, snapshot.v, ->
+          callback null, snapshot
+
   client =
     snapshotDb: snapshotDb
     oplog: oplog
 
-    # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is not defined
-    # (null or undefined) then it returns all ops.
+    # Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is
+    # not defined (null or undefined) then it returns all ops.
     getOps: (cName, docName, from, to, callback) ->
       [to, callback] = [null, to] if typeof to is 'function'
       if to >= 0
@@ -406,7 +447,7 @@ end
       do retry = =>
         # Get doc snapshot. We don't need it for transform, but we will
         # try to apply the operation locally before saving it.
-        @fetch cName, docName, (err, snapshot) =>
+        fetchNoCache cName, docName, (err, snapshot) =>
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
           opData.v = snapshot.v if !opData.v?
@@ -584,15 +625,16 @@ end
 
     # Callback called with (err, {v, data})
     fetch: (cName, docName, callback) ->
-      snapshotDb.getSnapshot cName, docName, (err, snapshot) =>
-        return callback? err if err
-        snapshot ?= {v:0}
-        return callback 'Invalid snapshot data' unless snapshot.v?
+      fetchNoCache cName, docName, (err, snapshot) ->
+        return callback err if err
 
-        @getOps cName, docName, snapshot.v, (err, results) ->
-          return callback? err if err
-          err = ot.apply snapshot, opData for opData in results
-          callback err, snapshot
+        # I don't actually care if the caching fails - so I'm ignoring the error callback.
+        #
+        # We could call our callback immediately without waiting for the
+        # cache to be warmed, but that causes basically all the livedb tests
+        # to fail. ... Eh. :/
+        redisCacheVersion cName, docName, snapshot.v, ->
+          callback null, snapshot
 
     bulkFetchCached: (cName, docNames, callback) ->
       if snapshotDb.getBulkSnapshots
