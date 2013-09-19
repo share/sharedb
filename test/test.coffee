@@ -1,4 +1,7 @@
-# Mocha test
+# This used to be the whole set of tests - now some of the ancillary parts of
+# livedb have been pulled out. These tests should probably be split out into
+# multiple files.
+
 redisLib = require 'redis'
 livedb = require '../lib'
 Memory = require '../lib/memory'
@@ -332,6 +335,25 @@ describe 'livedb', ->
               assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
               done()
 
+    describe 'does not hit the database if the version is current in redis', ->
+      beforeEach (done) -> @create =>
+        @db.getVersion = -> throw Error 'getVersion should not be called'
+        @db.getOps = -> throw Error 'getOps should not be called'
+        done()
+      
+      it 'from previous version', (done) ->
+        # This one operation is in redis. It should be fetched.
+        @collection.getOps @docName, 0, (err, ops) =>
+          throw new Error err if err
+          assert.strictEqual ops.length, 1
+          done()
+
+      it 'from current version', (done) ->
+        # Redis knows that the document is at version 1, so we should return [] here.
+        @collection.getOps @docName, 1, (err, ops) ->
+          throw new Error err if err
+          assert.deepEqual ops, []
+          done()
 
 
     it 'errors if ops are missing from the snapshotdb and oplogs'

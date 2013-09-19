@@ -90,13 +90,12 @@ exports.client = (options) ->
   getOpLogKey = (cName, docName) -> "#{cName}.#{docName} ops"
   getDocOpChannel = (cName, docName) -> "#{cName}.#{docName}"
 
-  processRedisOps = (to, result) ->
+  processRedisOps = (docV, to, result) ->
     #console.log 'processRedisOps', to, result
     # The ops are stored in redis as JSON strings without versions. They're
     # returned with the final version at the end of the lua table.
 
     # version of the document
-    docV = result.pop()
     v = if to is -1
       docV - result.length
     else
@@ -235,7 +234,8 @@ end
     to ?= -1
 
     if to >= 0
-      return callback null, [] if from >= to or to == 0
+      # Early abort if the range is flat.
+      return callback null, null, [] if from >= to or to == 0
       to--
 
     #console.log 'redisGetOps', from, to
@@ -248,7 +248,8 @@ local to = tonumber(ARGV[2])
 local v = tonumber(redis.call('get', versionKey))
 
 -- We're asking for ops the server doesn't have.
-if v == nil or from >= v then return nil end
+if v == nil then return nil end
+if from >= v then return {v} end
 
 --redis.log(redis.LOG_NOTICE, "v " .. tostring(v) .. " from " .. from .. " to " .. to)
 if to >= 0 then
@@ -261,9 +262,12 @@ ops[#ops+1] = v -- We'll put the version of the document at the end.
 return ops
     """, 2, getVersionKey(cName, docName), getOpLogKey(cName, docName), from, to, (err, result) ->
       return callback err if err
-      return callback null, [] if result is null # No data in redis. Punt to the persistant oplog.
-      ops = processRedisOps to, result
-      callback null, ops
+      return callback null, null, [] if result is null # No data in redis. Punt to the persistant oplog.
+
+      # Version of the document is at the end of the results list.
+      docV = result.pop()
+      ops = processRedisOps docV, to, result
+      callback null, docV, ops
 
   # After we submit an operation, reset redis's TTL so the data is allowed to expire.
   redisSetExpire = (cName, docName, v, callback) ->
@@ -309,23 +313,30 @@ end
     #console.log 'getOps', from, to
 
     # First try to get the ops from redis.
-    redisGetOps cName, docName, from, to, (err, ops) ->
+    redisGetOps cName, docName, from, to, (err, v, ops) ->
+      #console.log "redisGetOps #{from}-#{to} returned #{v} #{ops?.length}"
+ 
+      # There are sort of three cases here:
+      #
+      # - Redis has no data at all: v is null
+      # - Redis has some of the ops, but not all of them. v is set, and ops
+      #   might not contain everything we want.
+      # - Redis has all of the operations we need
       return callback err if err
 
-      if ops.length
-        # What should we do in this case, when redis returns ops but is missing
-        # ops at the end of the requested range?
-        #if to? && ops[ops.length - 1].v != to
-
-        # We have at least some of the ops at the end of the range.
-        if ops[0].v is from
-          # Yay!
-          return callback null, ops
-        else
-          # The ops we got from redis are at the end of the op list.
-          oplogGetOps cName, docName, from, ops[0].v, (err, firstOps) ->
-            return callback err if err
-            callback null, firstOps.concat ops
+      # What should we do in this case, when redis returns ops but is missing
+      # ops at the end of the requested range? It shouldn't be possible, but
+      # we should probably detect that case at least.
+      #if to? && ops[ops.length - 1].v != to
+      
+      if (v? and from >= v) or (ops.length > 0 && ops[0].v is from)
+        # Yay!
+        callback null, ops
+      else if ops.length > 0
+        # The ops we got from redis are at the end of the list of ops we need.
+        oplogGetOps cName, docName, from, ops[0].v, (err, firstOps) ->
+          return callback err if err
+          callback null, firstOps.concat ops
       else
         # No ops in redis. Just get all the ops from the oplog.
         oplogGetOps cName, docName, from, to, callback
@@ -341,7 +352,7 @@ end
 
       if version < opData.v
         console.log 'populating oplog', version, opData.v
-        redisGetOps cName, docName, version, opData.v, (err, results) ->
+        redisGetOps cName, docName, version, opData.v, (err, docV, results) ->
           return callback err if err
 
           results.push entry
