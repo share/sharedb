@@ -355,6 +355,17 @@ describe 'livedb', ->
           assert.deepEqual ops, []
           done()
 
+    it 'caches the version in redis', (done) -> @create =>
+      @redis.flushdb =>
+        @collection.getOps @docName, 0, (err, ops) =>
+          throw new Error err if err
+
+          @redis.get "#{@cName}.#{@docName} v", (err, result) ->
+            throw new Error err if err
+            assert.equal result, 1
+            done()
+
+
 
     it 'errors if ops are missing from the snapshotdb and oplogs'
 
