@@ -17,7 +17,6 @@
     "mocha": "~1"
   },
   "scripts": {
-    "prepublish": "make all",
     "test": "mocha"
   },
   "repository": {
