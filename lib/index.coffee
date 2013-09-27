@@ -512,7 +512,7 @@ return results
 
   # This function is optional in snapshot dbs, so monkey-patch in a replacement
   # if its missing.
-  snapshotDb.bulkFetch ?= (requests, callback) ->
+  snapshotDb.bulkGetSnapshot ?= (requests, callback) ->
     results = {}
 
     pending = 1
@@ -874,7 +874,7 @@ return results
     # But I don't think it buys us anything in terms of concurrency for the extra
     # redis calls.
     bulkFetch: (requests, callback) ->
-      snapshotDb.bulkFetch requests, (err, results) ->
+      snapshotDb.bulkGetSnapshot requests, (err, results) ->
         return callback err if err
 
         # We need to add {v:0} for missing snapshots in the results.

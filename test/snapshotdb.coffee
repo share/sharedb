@@ -50,9 +50,9 @@ module.exports = (create) ->
             assert.equal storedData.v, 6
             done()
 
-    if db.bulkFetch then describe 'bulk fetch', ->
+    if db.bulkGetSnapshot then describe 'bulk get snapshot', ->
       it 'does not return missing documents', (done) ->
-        @db.bulkFetch {testcollection:[@docName]}, (err, results) ->
+        @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) ->
           throw Error(err) if err
           assert.deepEqual results, {testcollection:[]}
           done()
@@ -61,7 +61,7 @@ module.exports = (create) ->
         data = {v:5, type:ottypes.text.uri, data:'hi there'}
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
-          @db.bulkFetch {testcollection:[@docName]}, (err, results) =>
+          @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) =>
             expected = {testcollection:{}}
             expected.testcollection[@docName] = data
             assert.deepEqual results, expected
@@ -71,9 +71,12 @@ module.exports = (create) ->
         data = {v:5, type:ottypes.text.uri, data:'hi there'}
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
-          @db.bulkFetch {testcollection:['does not exist', @docName, 'also does not exist']}, (err, results) =>
+          @db.bulkGetSnapshot {testcollection:['does not exist', @docName, 'also does not exist']}, (err, results) =>
             expected = {testcollection:{}}
             expected.testcollection[@docName] = data
             assert.deepEqual results, expected
             done()
+
+    else
+      console.warn 'Warning: db.bulkGetSnapshot not defined in snapshot db. Bulk subscribes will be slower.'
 
