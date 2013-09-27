@@ -241,6 +241,53 @@ describe 'livedb', ->
         assert.strictEqual v, 1
         done()
 
+  describe 'bulk fetch', ->
+    it 'can fetch created documents', (done) -> @create 'hi', =>
+      request = {}
+      request[@cName] = [@docName]
+      @client.bulkFetch request, (err, data) =>
+        throw new Error err if err
+        expected = {} # Urgh javascript :(
+        expected[@cName] = {}
+        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri}
+
+        assert.deepEqual data, expected
+        done()
+
+    # creating anyway here just 'cos.
+    it 'doesnt return anything for missing documents', (done) -> @create 'hi', =>
+      request = {}
+      request[@cName] = ['doesNotExist']
+      @client.bulkFetch request, (err, data) =>
+        throw new Error err if err
+        expected = {}
+        expected[@cName] = {doesNotExist:{v:0}}
+        assert.deepEqual data, expected
+        done()
+
+    it 'works with multiple collections', (done) -> @create 'hi', =>
+      # This test fetches a bunch of documents that don't exist, but whatever.
+      request =
+        aaaaa: []
+        bbbbb: ['a', 'b', 'c']
+
+      request[@cName] = [@docName]
+      # Adding this afterwards to make sure @cName doesn't come last in native iteration order
+      request.zzzzz = ['d', 'e', 'f']
+
+      @client.bulkFetch request, (err, data) =>
+        throw new Error err if err
+        expected =
+          aaaaa: {}
+          bbbbb: {a:{v:0}, b:{v:0}, c:{v:0}}
+          zzzzz: {d:{v:0}, e:{v:0}, f:{v:0}}
+        expected[@cName] = {}
+        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri}
+
+        assert.deepEqual data, expected
+        done()
+
+
   describe 'getOps', ->
     it 'returns an empty list for nonexistant documents', (done) ->
       @collection.getOps @docName, 0, -1, (err, ops) ->
@@ -369,50 +416,80 @@ describe 'livedb', ->
 
     it 'errors if ops are missing from the snapshotdb and oplogs'
 
-  describe 'Observe', ->
-    it 'observes local changes', (done) -> @create =>
-      @collection.subscribe @docName, 1, (err, stream) =>
-        throw new Error err if err
+  describe 'subscribe', ->
+    for subType in ['single', 'bulk']
+      beforeEach ->
+        @subscribe = if subType is 'single'
+          @collection.subscribe
+        else
+          (docName, v, callback) =>
+            request = {}
+            request[@cName] = {}
+            request[@cName][docName] = v
+            @client.bulkSubscribe request, (err, streams) =>
+              callback err, if streams then streams[@cName]?[docName]
 
-        stream.on 'readable', ->
-          try
-            assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+      describe subType, ->
+        it 'observes local changes', (done) -> @create =>
+          @subscribe @docName, 1, (err, stream) =>
+            throw new Error err if err
+
+            stream.on 'data', (op) ->
+              try
+                assert.deepEqual stripTs(op), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+                stream.destroy()
+                done()
+              catch e
+                console.error e.stack
+                throw e
+
+            @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
+
+        it 'sees ops when you observe an old version', (done) -> @create =>
+          # The document has version 1
+          @subscribe @docName, 0, (err, stream) =>
+            #stream.once 'readable', =>
+              assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+
+              # And we still get ops that come in now.
+              @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
+              stream.once 'readable', ->
+                assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+                stream.destroy()
+                done()
+
+        it 'can observe a document that doesnt exist yet', (done) ->
+          @subscribe @docName, 0, (err, stream) =>
+            stream.on 'readable', ->
+              assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+              stream.destroy()
+              done()
+
+            @create()
+
+        it 'does not throw when you double stream.destroy', (done) ->
+          @subscribe @docName, 1, (err, stream) =>
+            stream.destroy()
             stream.destroy()
             done()
-          catch e
-            console.error e.stack
-            throw e
 
-        @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
-
-    it 'sees ops when you observe an old version', (done) -> @create =>
-      # The document has version 1
-      @collection.subscribe @docName, 0, (err, stream) =>
-        stream.once 'readable', =>
-          assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
-
-          # And we still get ops that come in now.
-          @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
-          stream.once 'readable', ->
-            assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+        it 'has no dangling listeners after subscribing and unsubscribing', (done) ->
+          @subscribe @docName, 0, (err, stream) =>
             stream.destroy()
-            done()
 
-    it 'can observe a document that doesnt exist yet', (done) ->
-      @collection.subscribe @docName, 0, (err, stream) =>
-        stream.on 'readable', ->
-          assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
-          stream.destroy()
-          done()
+            redis = redisLib.createClient()
+            # I want to count the number of subscribed channels. Redis 2.8 adds
+            # the 'pubsub' command, which does this. However, I can't rely on
+            # pubsub existing so I'll use a dodgy method.
+            #redis.send_command 'pubsub', ['CHANNELS'], (err, channels) ->
+            redis.publish "15 #{@cName}.#{@docName}", '{}', (err, numSubscribers) ->
+              assert.equal numSubscribers, 0
+              redis.quit()
+              done()
 
-        @create()
 
-    it 'does not throw when you double stream.destroy', (done) ->
-      @collection.subscribe @docName, 1, (err, stream) =>
-        stream.destroy()
-        stream.destroy()
-        done()
-    
+
+        
     it 'works with separate clients', (done) -> @create =>
       numClients = 10 # You can go way higher, but it gets slow.
 

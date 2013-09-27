@@ -77,10 +77,17 @@ exports.client = (options) ->
   # This is a set of all the outstanding streams that have been subscribed by clients
   streams = {}
   nextStreamId = 0
+  addStream = (stream) ->
+    stream._id = nextStreamId++
+    streams[stream._id] = stream
+  removeStream = (stream) ->
+    delete streams[stream._id]
 
-  # Map from channel name -> number of subscribers. Used for garbage collection
-  # - when the count reaches 0, the listener is abandoned.
-  subscribeCounts = {}
+  # Map from channel name -> list of subscriber functions. The function is
+  # called with (prefixed channel, msg)
+  subscribers = new EventEmitter()
+  redisObserver.on 'message', (channel, msg) ->
+    subscribers.emit channel, channel, JSON.parse msg
 
   # Redis has different databases, which are namespaced separately. We need to
   # make sure our pubsub messages are constrained to the database where we
@@ -269,6 +276,7 @@ return ops
       ops = processRedisOps docV, to, result
       callback null, docV, ops
 
+
   # After we submit an operation, reset redis's TTL so the data is allowed to expire.
   redisSetExpire = (cName, docName, v, callback) ->
     redis.eval """
@@ -360,6 +368,117 @@ end
 
           callback null, ops
 
+  # requests is an object from {cName: {docName:v, ...}, ...}. This function
+  # returns all operations since the requested version for each specified
+  # document. Calls callback with
+  # (err, {cName: {docName:[...], docName:[...], ...}}). Results are allowed to
+  # be missing in the result set. If they are missing, that means there are no
+  # operations since the specified version. (Ie, its the same as returning an
+  # empty list. This is the 99% case for this method, so reducing the memory
+  # usage is nice).
+  bulkGetOpsSince = (requests, callback) ->
+    # Not considering the case where redis has _some_ data but not all of it.
+    # The script will just return all the data since the specified version ([]
+    # if we know there's no ops) or nil if we don't have enough information to
+    # know.
+
+    # First I'll unpack all the things I need to know into these arrays. The
+    # indexes all line up. I could use one array of object literals, but I
+    # *think* this is faster, and I need the versionKeys, opLogKeys and froms
+    # in separate arrays anyway to pass to redis.
+    cNames = []
+    docNames = []
+
+    # Its kind of gross to do it like this, but I don't see any other good
+    # options. We can't pass JS arrays directly into lua tables in the script,
+    # so the arguments list will have to contain a splay of all the values.
+    redisArgs = ["""
+-- We'll preserve order in the results.
+local results = {}
+
+for i=1,#KEYS,2 do
+  local versionKey = KEYS[i]
+  local opLogKey = KEYS[i+1]
+  local from = tonumber(ARGV[(i+1)/2])
+
+  local v = tonumber(redis.call('get', versionKey))
+
+  if v == nil then
+    -- We're asking for ops that redis doesn't have. Have to get them from the oplog.
+    results[#results+1] = 0 -- A nil in a lua table doesn't have the semantics I need.
+  elseif from >= v then
+    -- Most common case. There's no ops, get over it & move on with your life.
+    results[#results+1] = {}
+  else
+    local numExpected = v - from
+    from = from - v
+    local ops = redis.call('lrange', opLogKey, from, -1)
+    if #ops ~= numExpected then
+      results[#results+1] = 0 -- Punt back to the oplog for the ops themselves.
+    else
+      results[#results+1] = ops
+    end
+  end
+end
+
+return results
+    """, 0] # 0 is a sentinal to be replaced with the number of keys
+
+    froms = []
+
+    for cName, data of requests
+      for docName, version of data
+        cNames.push cName
+        docNames.push docName
+
+        redisArgs.push getVersionKey cName, docName
+        redisArgs.push getOpLogKey cName, docName
+        froms.push version
+
+    # The froms have to come after the version keys and oplog keys because its
+    # an argument list rather than a key list.
+    redisArgs[1] = redisArgs.length - 2
+    redisArgs = redisArgs.concat froms
+
+    redis.eval redisArgs, (err, redisResults) ->
+      return callback err if err
+      return callback 'Invalid data from redis' if redisResults.length isnt cNames.length
+
+      results = {}
+      pending = 1
+      done = ->
+        pending--
+        return callback null, results if pending is 0
+
+      for result, i in redisResults
+        results[cNames[i]] ?= {}
+
+        if result is 0 # sentinal value to mean we should go to the oplog.
+          pending++
+          do (i) ->
+            cName = cNames[i]
+            docName = docNames[i]
+            from = froms[i]
+
+            # We could have a bulkGetOps in the oplog too, but because we cache
+            # anything missing in redis, I'm not super worried about the extra
+            # calls here.
+            oplogGetOps cName, docName, from, null, (err, ops) ->
+              return callback err if err
+              results[cName][docName] = ops
+
+              version = from + ops.length
+              redisCacheVersion cName, docName, version, done
+        else
+          v = froms[i]
+          ops = for value in result
+            op = JSON.parse value
+            op.v = v++
+            op
+
+          results[cNames[i]][docNames[i]] = ops
+
+      done()
 
   # Internal method for updating the persistant oplog. This should only be
   # called after atomicSubmit (above).
@@ -391,25 +510,102 @@ end
         oplog.writeOp cName, docName, entry, (err) =>
           callback err
 
-  # Variant of fetch (below) which doesn't cache the version after fetching.
-  # Useful for submit, where we'll be setting the version in the db anyway.
-  fetchNoCache = (cName, docName, callback) ->
-    snapshotDb.getSnapshot cName, docName, (err, snapshot) =>
-      return callback? err if err
-      snapshot ?= {v:0}
-      return callback 'Invalid snapshot data' unless snapshot.v?
+  # This function is optional in snapshot dbs, so monkey-patch in a replacement
+  # if its missing.
+  snapshotDb.bulkFetch ?= (requests, callback) ->
+    results = {}
 
-      client.getOps cName, docName, snapshot.v, (err, results) ->
-        return callback? err if err
-        err = ot.apply snapshot, opData for opData in results
+    pending = 1
+    done = ->
+      pending--
+      callback null, results if pending is 0
 
-        # I don't actually care if the caching fails - so I'm ignoring the error callback.
-        #
-        # We could call our callback immediately without waiting for the
-        # cache to be warmed, but that causes basically all the livedb tests
-        # to fail. ... Eh.
-        redisCacheVersion cName, docName, snapshot.v, ->
-          callback null, snapshot
+    for cName, docs of requests
+      cResults = results[cName] = {}
+
+      pending += docs.length
+
+      for docName in docs
+        # We need to save cResults and docName for the closure.
+        do (cResults, docName) ->
+          snapshotDb.getSnapshot cName, docName, (err, data) ->
+            return callback err if err
+            cResults[docName] = data if data
+            done()
+
+    done()
+
+  # Register a listener (or many listeners) on redis channels. channels can be
+  # just a single channel or a list. listeners should be either a function or
+  # an array of the same length as channels.
+  redisAddChannelListeners = (channels, listeners, callback) ->
+    # Not the most efficient way to do this, but I bet its not a bottleneck.
+    channels = [channels] if !Array.isArray channels
+
+    assert(listeners.length == channels.length) if Array.isArray listeners
+
+    needsSubscribe = []
+
+    for channel, i in channels
+      channel = prefixChannel channel
+      listener = listeners[i] or listeners
+
+      if EventEmitter.listenerCount(subscribers, channel) == 0
+        needsSubscribe.push channel
+
+      subscribers.on channel, listener
+
+
+    if needsSubscribe.length > 0
+      redisObserver.subscribe needsSubscribe, callback
+    else
+      callback?()
+
+  # Register the removal of a listener or a list of listeners on the given
+  # channel(s).
+  redisRemoveChannelListeners = (channels, listeners, callback) ->
+    channels = [channels] if !Array.isArray channels
+    assert(listeners.length == channels.length) if Array.isArray listeners
+
+    needsUnSubscribe = []
+
+    for channel, i in channels
+      channel = prefixChannel channel
+      listener = listeners[i] or listeners
+
+      subscribers.removeListener channel, listener
+
+      if EventEmitter.listenerCount(subscribers, channel) == 0
+        needsUnSubscribe.push channel
+
+    if needsUnSubscribe.length > 0
+      redisObserver.unsubscribe needsUnSubscribe, callback
+    else
+      callback?()
+
+
+  # Helper for subscribe & bulkSubscribe to repack the start of a stream given
+  # potential operations which happened while the listeners were getting
+  # established
+  packOpStream = (v, stream, ops) ->
+    # Ok, so if there's anything in the stream right now, it might overlap with the
+    # historical operations. We'll pump the reader and (probably!) prefix it with the
+    # getOps result.
+    queue = (d while d = stream.read())
+
+    #callback null, stream
+
+    # First send all the operations between v and when we called getOps
+    for d in ops
+      assert.equal d.v, v
+      v++
+      stream.push d
+    # Then all the ops between then and now..
+    for d in queue when d.v >= v
+      assert.equal d.v, v
+      v++
+      stream.push d
+
 
   client =
     snapshotDb: snapshotDb
@@ -447,7 +643,7 @@ end
       do retry = =>
         # Get doc snapshot. We don't need it for transform, but we will
         # try to apply the operation locally before saving it.
-        fetchNoCache cName, docName, (err, snapshot) =>
+        @fetch cName, docName, (err, snapshot) =>
           return callback? err if err
           return callback? 'Invalid version' if snapshot.v < opData.v
           opData.v = snapshot.v if !opData.v?
@@ -519,12 +715,9 @@ end
               return callback? err
 
           trySubmit()
-
+        
     # Subscribe to a redis pubsub channel and get a nodejs stream out
     _subscribeChannels: (channels, callback) ->
-      # TODO: 2 refactors:
-      #        - Make the redis observer we use here reusable
-      #        - Reuse listens on channels
       stream = new Readable objectMode:yes
 
       # This function is for notifying us that the stream is empty and needs data.
@@ -535,59 +728,43 @@ end
 
       open = true
 
-      stream._id = nextStreamId++
-      streams[stream._id] = stream
+      # Registered so we can clean up the stream if the livedb instance is destroyed.
+      addStream stream
 
       stream.destroy = ->
         return unless open
 
         stream.push null
         open = false
-        delete streams[stream._id]
-        if Array.isArray channels
-          for channel, i in channels
-            continue if --subscribeCounts[channel] > 0
-            redisObserver.unsubscribe channel
-            delete subscribeCounts[channel]
-        else
-          unless --subscribeCounts[channels] > 0
-            redisObserver.unsubscribe channels
-            delete subscribeCounts[channels]
-        redisObserver.removeListener 'message', onMessage
+        removeStream stream
+
+        redisRemoveChannelListeners channels, listener
 
         stream.emit 'close'
         stream.emit 'end'
 
-      if Array.isArray channels
-        for channel, i in channels
-          channel = channels[i] = prefixChannel channel
-          subscribeCounts[channel] = (subscribeCounts[channel] || 0) + 1
-        onMessage = (msgChannel, msg) ->
+
+      listener = if Array.isArray channels
+        (msgChannel, data) ->
           # We shouldn't get messages after unsubscribe, but it's happened.
           return if !open || channels.indexOf(msgChannel) == -1
 
-          data = JSON.parse msg
-          # Unprefix database name from the channel
+          # Unprefix database name from the channel and add it to the message.
           data.channel = msgChannel.slice msgChannel.indexOf(' ') + 1
           stream.push data
-        channelList = channels
       else
-        channels = prefixChannel channels
-        subscribeCounts[channels] = (subscribeCounts[channels] || 0) + 1
-        onMessage = (msgChannel, msg) ->
+        (msgChannel, data) ->
           # We shouldn't get messages after unsubscribe, but it's happened.
-          return if !open || msgChannel isnt channels
-          data = JSON.parse msg
+          return if !open || msgChannel isnt prefixChannel channels
           stream.push data
-        channelList = [channels]
 
-      redisObserver.on 'message', onMessage
-
-      redisObserver.subscribe channelList..., (err) ->
+      redisAddChannelListeners channels, listener, (err) ->
         if err
           stream.destroy()
-          return callback err
-        callback null, stream
+          callback err
+        else
+          callback null, stream
+
 
     # Callback called with (err, op stream). v must be in the past or present. Behaviour
     # with a future v is undefined (because I don't think thats an interesting case).
@@ -600,42 +777,118 @@ end
         callback err if err
 
         # From here on, we need to call stream.destroy() if there are errors.
-        @getOps cName, docName, v, (err, data) ->
+        @getOps cName, docName, v, (err, ops) ->
           if err
             stream.destroy()
             return callback err
 
-          # Ok, so if there's anything in the stream right now, it might overlap with the
-          # historical operations. We'll pump the reader and (probably!) prefix it with the
-          # getOps result.
-          queue = (d while d = stream.read())
-
+          packOpStream v, stream, ops
           callback null, stream
 
-          # First send all the operations between v and when we called getOps
-          for d in data
-            assert d.v is v
-            v++
-            stream.push d
-          # Then all the ops between then and now..
-          for d in queue when d.v >= v
-            assert d.v is v
-            v++
-            stream.push d
+    # Requests is a map from {cName:{doc1:version, doc2:version, doc3:version}, ...}
+    bulkSubscribe: (requests, callback) ->
+      # So, I'm not sure if this is slow, but for now I'll use
+      # _subscribeChannels to subscribe to all the channels for all the
+      # documents, then make a stream for each document that has been
+      # subscribed. It might turn out that the right architecture is to reuse
+      # the stream, but filter in ShareJS (or wherever) when things pop out of
+      # the stream, but thats more complicated to implement. So fingers crossed
+      # that nodejs Stream objects are lightweight.
+
+      docStreams = {}
+
+      channels = []
+      listener = (channel, msg) ->
+        docStreams[channel]?.push msg
+
+      for cName, docs of requests
+        for docName, version of docs
+          channelName = getDocOpChannel cName, docName
+          prefixedName = prefixChannel channelName
+
+          channels.push channelName
+
+          # TODO: Also register this stream in the streams set for cleanup.
+          docStream = docStreams[prefixedName] = new Readable objectMode:true
+          docStream._read = ->
+          docStream.channelName = channelName
+          docStream.prefixedName = prefixedName
+          docStream.destroy = ->
+            removeStream docStream
+            delete docStreams[@prefixedName]
+            redisRemoveChannelListeners @channelName, listener
+
+          addStream docStream
+
+      onError = (err) ->
+        s.destroy() for channel, s of docStreams
+        callback err
+
+      # Could just use Object.keys(docStreams) here....
+      redisAddChannelListeners channels, listener, (err) ->
+        return onError err if err
+
+        bulkGetOpsSince requests, (err, ops) =>
+          return onError err if err
+
+          # Map from cName -> docName -> stream.
+          result = {}
+          for cName, docs of requests
+            result[cName] = {}
+            for docName, version of docs
+              channelName = getDocOpChannel cName, docName
+              prefixedName = prefixChannel channelName
+
+              stream = result[cName][docName] = docStreams[prefixedName]
+
+              packOpStream version, stream, ops[cName][docName]
+          
+          callback null, result
+
+
 
     # Callback called with (err, {v, data})
     fetch: (cName, docName, callback) ->
-      fetchNoCache cName, docName, (err, snapshot) ->
+      snapshotDb.getSnapshot cName, docName, (err, snapshot) =>
+        return callback? err if err
+        snapshot ?= {v:0}
+        return callback 'Invalid snapshot data' unless snapshot.v?
+
+        client.getOps cName, docName, snapshot.v, (err, results) ->
+          return callback? err if err
+          err = ot.apply snapshot, opData for opData in results
+
+          # I don't actually care if the caching fails - so I'm ignoring the error callback.
+          #
+          # We could call our callback immediately without waiting for the
+          # cache to be warmed, but that causes basically all the livedb tests
+          # to fail. ... Eh.
+          redisCacheVersion cName, docName, snapshot.v, ->
+            callback null, snapshot
+
+    # requests is a map from collection name -> list of documents to fetch. The
+    # callback is called with a map from collection name -> map from docName ->
+    # data.
+    #
+    # I'm not getting ops in redis here for all documents - I certainly could.
+    # But I don't think it buys us anything in terms of concurrency for the extra
+    # redis calls.
+    bulkFetch: (requests, callback) ->
+      snapshotDb.bulkFetch requests, (err, results) ->
         return callback err if err
 
-        # I don't actually care if the caching fails - so I'm ignoring the error callback.
-        #
-        # We could call our callback immediately without waiting for the
-        # cache to be warmed, but that causes basically all the livedb tests
-        # to fail. ... Eh. :/
-        redisCacheVersion cName, docName, snapshot.v, ->
-          callback null, snapshot
+        # We need to add {v:0} for missing snapshots in the results.
+        for cName, docs of requests
+          for docName in docs
+            results[cName][docName] ?= {v:0}
 
+        callback null, results
+
+    # DEPRECATED - use bulkFetch.
+    #
+    # Bulk fetch documents from the snapshot db. This function assumes that the
+    # latest version of all the document snaphots are in the snapshot DB - it
+    # doesn't get any missing operations from the oplog.
     bulkFetchCached: (cName, docNames, callback) ->
       if snapshotDb.getBulkSnapshots
         snapshotDb.getBulkSnapshots cName, docNames, (err, results) ->
