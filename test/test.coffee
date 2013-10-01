@@ -418,7 +418,7 @@ describe 'livedb', ->
     it 'errors if ops are missing from the snapshotdb and oplogs'
 
   describe 'subscribe', ->
-    for subType in ['single', 'bulk']
+    for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
       beforeEach ->
         @subscribe = if subType is 'single'
           @collection.subscribe
@@ -430,63 +430,61 @@ describe 'livedb', ->
             @client.bulkSubscribe request, (err, streams) =>
               callback err, if streams then streams[@cName]?[docName]
 
-      describe subType, ->
-        it 'observes local changes', (done) -> @create =>
-          @subscribe @docName, 1, (err, stream) =>
-            throw new Error err if err
+      it 'observes local changes', (done) -> @create =>
+        @subscribe @docName, 1, (err, stream) =>
+          throw new Error err if err
 
-            stream.on 'data', (op) ->
-              try
-                assert.deepEqual stripTs(op), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
-                stream.destroy()
-                done()
-              catch e
-                console.error e.stack
-                throw e
+          stream.on 'data', (op) ->
+            try
+              assert.deepEqual stripTs(op), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+              stream.destroy()
+              done()
+            catch e
+              console.error e.stack
+              throw e
 
-            @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
+          @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
 
-        it 'sees ops when you observe an old version', (done) -> @create =>
-          # The document has version 1
-          @subscribe @docName, 0, (err, stream) =>
+      it 'sees ops when you observe an old version', (done) -> @create =>
+        # The document has version 1
+        @subscribe @docName, 0, (err, stream) =>
             #stream.once 'readable', =>
-              assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
-
-              # And we still get ops that come in now.
-              @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
-              stream.once 'readable', ->
-                assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
-                stream.destroy()
-                done()
-
-        it 'can observe a document that doesnt exist yet', (done) ->
-          @subscribe @docName, 0, (err, stream) =>
-            stream.on 'readable', ->
-              assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+            assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+            # And we still get ops that come in now.
+            @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123,
+            stream.once 'readable', ->
+              assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
               stream.destroy()
               done()
 
-            @create()
-
-        it 'does not throw when you double stream.destroy', (done) ->
-          @subscribe @docName, 1, (err, stream) =>
-            stream.destroy()
+      it 'can observe a document that doesnt exist yet', (done) ->
+        @subscribe @docName, 0, (err, stream) =>
+          stream.on 'readable', ->
+            assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
             stream.destroy()
             done()
 
-        it 'has no dangling listeners after subscribing and unsubscribing', (done) ->
-          @subscribe @docName, 0, (err, stream) =>
-            stream.destroy()
+          @create()
 
-            redis = redisLib.createClient()
-            # I want to count the number of subscribed channels. Redis 2.8 adds
-            # the 'pubsub' command, which does this. However, I can't rely on
-            # pubsub existing so I'll use a dodgy method.
-            #redis.send_command 'pubsub', ['CHANNELS'], (err, channels) ->
-            redis.publish "15 #{@cName}.#{@docName}", '{}', (err, numSubscribers) ->
-              assert.equal numSubscribers, 0
-              redis.quit()
-              done()
+      it 'does not throw when you double stream.destroy', (done) ->
+        @subscribe @docName, 1, (err, stream) =>
+          stream.destroy()
+          stream.destroy()
+          done()
+
+      it 'has no dangling listeners after subscribing and unsubscribing', (done) ->
+        @subscribe @docName, 0, (err, stream) =>
+          stream.destroy()
+
+          redis = redisLib.createClient()
+          # I want to count the number of subscribed channels. Redis 2.8 adds
+          # the 'pubsub' command, which does this. However, I can't rely on
+          # pubsub existing so I'll use a dodgy method.
+          #redis.send_command 'pubsub', ['CHANNELS'], (err, channels) ->
+          redis.publish "15 #{@cName}.#{@docName}", '{}', (err, numSubscribers) ->
+            assert.equal numSubscribers, 0
+            redis.quit()
+            done()
 
     it 'does not throw when you double stream.destroy', (done) ->
       @collection.subscribe @docName, 1, (err, stream) =>
