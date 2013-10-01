@@ -4,21 +4,18 @@ ottypes = require 'ottypes'
 
 counter = 1
 
-module.exports = (create) ->
-  # Test if the database has getBulkSnapshots so we know to run the tests (below).
-  db = create()
-  db.close()
+module.exports = (create, noBulkGetSnapshot) ->
+  if create.length is 0
+    innerCreate = create
+    create = (callback) ->
+      callback(innerCreate())
 
   describe 'snapshot db', ->
     beforeEach (done) ->
       @cName = 'testcollection'
       @docName = "snapshottest #{counter++}"
-      if create.length is 0
-        @db = create()
+      create (@db) =>
         done()
-      else
-        create (@db) =>
-          done()
 
     afterEach ->
       @db.close()
@@ -45,12 +42,13 @@ module.exports = (create) ->
         @db.writeSnapshot @cName, @docName, {v:6}, (err) =>
           throw Error(err) if err
           @db.getSnapshot @cName, @docName, (err, storedData) ->
+            throw Error(err) if err
             assert.equal storedData.data, null
             assert.equal storedData.type, null
             assert.equal storedData.v, 6
             done()
 
-    if db.bulkGetSnapshot then describe 'bulk get snapshot', ->
+    if !noBulkGetSnapshot then describe 'bulk get snapshot', ->
       it 'does not return missing documents', (done) ->
         @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) ->
           throw Error(err) if err
@@ -62,8 +60,10 @@ module.exports = (create) ->
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
           @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) =>
+            throw Error(err) if err
             expected = {testcollection:{}}
             expected.testcollection[@docName] = data
+            delete results[@cName][@docName].docName
             assert.deepEqual results, expected
             done()
 
@@ -72,8 +72,10 @@ module.exports = (create) ->
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
           @db.bulkGetSnapshot {testcollection:['does not exist', @docName, 'also does not exist']}, (err, results) =>
+            throw Error(err) if err
             expected = {testcollection:{}}
             expected.testcollection[@docName] = data
+            delete results[@cName][@docName].docName
             assert.deepEqual results, expected
             done()
 
