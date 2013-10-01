@@ -216,7 +216,7 @@ end
         oplog.getVersion cName, docName, (err, version) ->
           return callback err if err
 
-          console.warn "Repopulating redis for #{cName}.#{docName} #{opData.v}#{version}", result if version > 0
+          #console.warn "Repopulating redis for #{cName}.#{docName} #{opData.v}#{version}", result if version > 0
 
           if version < opData.v
             # This is nate's awful hell error state. The oplog is basically
@@ -746,11 +746,14 @@ return results
 
       listener = if Array.isArray channels
         (msgChannel, data) ->
+          # Unprefix the channel name
+          msgChannel = msgChannel.slice msgChannel.indexOf(' ') + 1
+
           # We shouldn't get messages after unsubscribe, but it's happened.
           return if !open || channels.indexOf(msgChannel) == -1
 
           # Unprefix database name from the channel and add it to the message.
-          data.channel = msgChannel.slice msgChannel.indexOf(' ') + 1
+          data.channel = msgChannel
           stream.push data
       else
         (msgChannel, data) ->
