@@ -453,30 +453,32 @@ return results
       for result, i in redisResults
         results[cNames[i]] ?= {}
 
+        cName = cNames[i]
+        docName = docNames[i]
+        from = froms[i]
+
         if result is 0 # sentinal value to mean we should go to the oplog.
           pending++
-          do (i) ->
-            cName = cNames[i]
-            docName = docNames[i]
-            from = froms[i]
-
+          do (cName, docName, from) ->
             # We could have a bulkGetOps in the oplog too, but because we cache
             # anything missing in redis, I'm not super worried about the extra
             # calls here.
             oplogGetOps cName, docName, from, null, (err, ops) ->
               return callback err if err
+              #console.log "ops strategy 1 for #{cName}.#{docName}", ops
               results[cName][docName] = ops
 
               version = from + ops.length
               redisCacheVersion cName, docName, version, done
         else
-          v = froms[i]
+          v = from
           ops = for value in result
             op = JSON.parse value
             op.v = v++
             op
 
-          results[cNames[i]][docNames[i]] = ops
+          #console.log "ops strategy 2 for #{cName}.#{docName}", ops
+          results[cName][docName] = ops
 
       done()
 
