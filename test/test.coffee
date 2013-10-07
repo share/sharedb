@@ -7,6 +7,7 @@ livedb = require '../lib'
 Memory = require '../lib/memory'
 assert = require 'assert'
 util = require 'util'
+sinon = require 'sinon'
 
 otTypes = require 'ottypes'
 
@@ -55,7 +56,7 @@ describe 'livedb', ->
   afterEach ->
     @client.destroy()
     @db.close()
- 
+
   describe 'submit', ->
     it 'creates a doc', (done) ->
       @collection.submit @docName, {v:0, create:{type:'text'}}, (err) ->
@@ -241,6 +242,53 @@ describe 'livedb', ->
         assert.strictEqual v, 1
         done()
 
+  describe 'bulk fetch', ->
+    it 'can fetch created documents', (done) -> @create 'hi', =>
+      request = {}
+      request[@cName] = [@docName]
+      @client.bulkFetch request, (err, data) =>
+        throw new Error err if err
+        expected = {} # Urgh javascript :(
+        expected[@cName] = {}
+        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri}
+
+        assert.deepEqual data, expected
+        done()
+
+    # creating anyway here just 'cos.
+    it 'doesnt return anything for missing documents', (done) -> @create 'hi', =>
+      request = {}
+      request[@cName] = ['doesNotExist']
+      @client.bulkFetch request, (err, data) =>
+        throw new Error err if err
+        expected = {}
+        expected[@cName] = {doesNotExist:{v:0}}
+        assert.deepEqual data, expected
+        done()
+
+    it 'works with multiple collections', (done) -> @create 'hi', =>
+      # This test fetches a bunch of documents that don't exist, but whatever.
+      request =
+        aaaaa: []
+        bbbbb: ['a', 'b', 'c']
+
+      request[@cName] = [@docName]
+      # Adding this afterwards to make sure @cName doesn't come last in native iteration order
+      request.zzzzz = ['d', 'e', 'f']
+
+      @client.bulkFetch request, (err, data) =>
+        throw new Error err if err
+        expected =
+          aaaaa: {}
+          bbbbb: {a:{v:0}, b:{v:0}, c:{v:0}}
+          zzzzz: {d:{v:0}, e:{v:0}, f:{v:0}}
+        expected[@cName] = {}
+        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri}
+
+        assert.deepEqual data, expected
+        done()
+
+
   describe 'getOps', ->
     it 'returns an empty list for nonexistant documents', (done) ->
       @collection.getOps @docName, 0, -1, (err, ops) ->
@@ -298,7 +346,7 @@ describe 'livedb', ->
             throw new Error err if err
             assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
             done()
-    
+
     it 'works if redis has no data', (done) -> @create =>
       @redis.flushdb =>
         @collection.getOps @docName, 0, (err, ops) =>
@@ -340,7 +388,7 @@ describe 'livedb', ->
         @db.getVersion = -> throw Error 'getVersion should not be called'
         @db.getOps = -> throw Error 'getOps should not be called'
         done()
-      
+
       it 'from previous version', (done) ->
         # This one operation is in redis. It should be fetched.
         @collection.getOps @docName, 0, (err, ops) =>
@@ -369,50 +417,82 @@ describe 'livedb', ->
 
     it 'errors if ops are missing from the snapshotdb and oplogs'
 
-  describe 'Observe', ->
-    it 'observes local changes', (done) -> @create =>
-      @collection.subscribe @docName, 1, (err, stream) =>
-        throw new Error err if err
+  describe 'subscribe', ->
+    for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
+      beforeEach ->
+        @subscribe = if subType is 'single'
+          @collection.subscribe
+        else
+          (docName, v, callback) =>
+            request = {}
+            request[@cName] = {}
+            request[@cName][docName] = v
+            @client.bulkSubscribe request, (err, streams) =>
+              callback err, if streams then streams[@cName]?[docName]
 
-        stream.on 'readable', ->
-          try
-            assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
-            stream.destroy()
-            done()
-          catch e
-            console.error e.stack
-            throw e
+      it 'observes local changes', (done) -> @create =>
+        @subscribe @docName, 1, (err, stream) =>
+          throw new Error err if err
 
-        @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
+          stream.on 'data', (op) ->
+            try
+              assert.deepEqual stripTs(op), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+              stream.destroy()
+              done()
+            catch e
+              console.error e.stack
+              throw e
 
-    it 'sees ops when you observe an old version', (done) -> @create =>
-      # The document has version 1
-      @collection.subscribe @docName, 0, (err, stream) =>
-        stream.once 'readable', =>
-          assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
-
-          # And we still get ops that come in now.
           @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123
-          stream.once 'readable', ->
-            assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+
+      it 'sees ops when you observe an old version', (done) -> @create =>
+        # The document has version 1
+        @subscribe @docName, 0, (err, stream) =>
+            #stream.once 'readable', =>
+            assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+            # And we still get ops that come in now.
+            @collection.submit @docName, v:1, op:['hi'], src:'abc', seq:123,
+            stream.once 'readable', ->
+              assert.deepEqual stripTs(stream.read()), {v:1, op:['hi'], src:'abc', seq:123, m:{}}
+              stream.destroy()
+              done()
+
+      it 'can observe a document that doesnt exist yet', (done) ->
+        @subscribe @docName, 0, (err, stream) =>
+          stream.on 'readable', ->
+            assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
             stream.destroy()
             done()
 
-    it 'can observe a document that doesnt exist yet', (done) ->
-      @collection.subscribe @docName, 0, (err, stream) =>
-        stream.on 'readable', ->
-          assert.deepEqual stripTs(stream.read()), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+          @create()
+
+      it 'does not throw when you double stream.destroy', (done) ->
+        @subscribe @docName, 1, (err, stream) =>
+          stream.destroy()
           stream.destroy()
           done()
 
-        @create()
+      it 'has no dangling listeners after subscribing and unsubscribing', (done) ->
+        @subscribe @docName, 0, (err, stream) =>
+          stream.destroy()
+
+          redis = redisLib.createClient()
+          # I want to count the number of subscribed channels. Redis 2.8 adds
+          # the 'pubsub' command, which does this. However, I can't rely on
+          # pubsub existing so I'll use a dodgy method.
+          #redis.send_command 'pubsub', ['CHANNELS'], (err, channels) ->
+          redis.publish "15 #{@cName}.#{@docName}", '{}', (err, numSubscribers) ->
+            assert.equal numSubscribers, 0
+            redis.quit()
+            done()
 
     it 'does not throw when you double stream.destroy', (done) ->
       @collection.subscribe @docName, 1, (err, stream) =>
         stream.destroy()
         stream.destroy()
         done()
-    
+
+
     it 'works with separate clients', (done) -> @create =>
       numClients = 10 # You can go way higher, but it gets slow.
 
@@ -453,19 +533,56 @@ describe 'livedb', ->
           tryRead()
 
   # Query-based tests currently disabled because memory backend has such a primitive query system.
-  describe.skip 'Query', ->
+  describe 'Query', ->
+
+    beforeEach ->
+      sinon.stub @db, 'queryNeedsPollMode', -> no
+      #sinon.stub @db, 'query', (db, index, query, cb) -> cb()
+      #sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
+
+    afterEach ->
+      @db.query.restore() if @db.query.restore
+      @db.queryDoc.restore() if @db.queryDoc.restore
+      @db.queryNeedsPollMode.restore() if @db.queryNeedsPollMode.restore
+
     # Do these tests with polling turned on and off.
     for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
       opts = {poll:poll, pollDelay:0}
 
-      it 'returns a result it already applies to', (done) -> @create {x:5}, =>
+      it 'returns the error from the querry', (done) ->
+        sinon.stub @db, 'query', (db, index, query, cb) ->
+          cb 'Something went wrong'
+
+        @collection.query {}, opts, (err, emitter) =>
+          assert.equal err, 'Something went wrong'
+          done()
+
+      it 'passes the right arguments to db.query', (done) ->
+        sinon.spy @db, 'query'
         @collection.query {'x':5}, opts, (err, emitter) =>
-          expected = [docName:@docName, data:{x:5}, type:otTypes.json0.uri, v:1, c:@cName]
+          assert @db.query.calledWith @client, @cName, {'x':5}
+          done()
+
+      it 'returns a result it already applies to', (done) ->
+        expected = [
+          docName: @docName,
+          data: {x:5},
+          type: otTypes.json0.uri,
+          v:1,
+          c:@cName
+        ]
+
+        sinon.stub @db, 'query', (db, index, query, cb) ->
+          cb null, expected
+        @collection.query {'x':5}, opts, (err, emitter) =>
           assert.deepEqual emitter.data, expected
           emitter.destroy()
           done()
 
       it 'gets an empty result set when you query something with no results', (done) ->
+        sinon.stub @db, 'query', (db, index, query, cb) ->
+          cb null, []
+
         @collection.query {'xyz':123}, opts, (err, emitter) ->
           assert.deepEqual emitter.data, []
           emitter.on 'diff', -> throw new Error 'should not have added results'
@@ -475,20 +592,19 @@ describe 'livedb', ->
             done()
 
       it 'adds an element when it matches', (done) ->
+        result = c:@cName, docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri
+
         @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'diff', (diff) =>
-            assert.deepEqual diff, [
-              index: 0
-              values: [c:@cName, docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri]
-              type: 'insert'
-            ]
-
+            assert.deepEqual diff, [index: 0, values: [result], type: 'insert']
             emitter.destroy()
             done()
-      
+
+          sinon.stub @db, 'query', (db, index, query, cb) -> cb null, [result]
+          sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb null, result
+
           @create {x:5}
 
-      #console.log util.inspect diff, colors:yes, depth:null
       it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
         @collection.query {'x':5}, opts, (err, emitter) =>
           emitter.on 'diff', (diff) =>
@@ -498,11 +614,14 @@ describe 'livedb', ->
             # we can read doc stuff off here.
             process.nextTick ->
               assert.deepEqual emitter.data, []
-              
+
               emitter.destroy()
               done()
 
           op = op:'rm', p:[]
+          sinon.stub @db, 'query', (db, index, query, cb) -> cb null, []
+          sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
+
           @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
       it 'removes deleted elements', (done) -> @create {x:5}, =>
@@ -515,6 +634,9 @@ describe 'livedb', ->
               assert.deepEqual emitter.data, []
               emitter.destroy()
               done()
+
+          sinon.stub @db, 'query', (db, index, query, cb) -> cb null, []
+          sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
 
           @collection.submit @docName, v:1, del:true, (err, v) =>
             throw new Error err if err
@@ -530,72 +652,35 @@ describe 'livedb', ->
             setTimeout (-> done()), 20
 
       it 'works if you remove then re-add a document from a query' # Regression.
-      
-
-    describe 'pagination', ->
-      beforeEach (callback) ->
-        @create2 '_p1', {x:5, i:1}, => @create2 '_p2', {x:5, i:2}, => @create2 '_p3', {x:5, i:3}, => callback()
-
-      it 'respects limit queries', (done) ->
-        @collection.query {$query:{'x':5}, $orderby:{'i':1}, $limit:1}, {poll:true}, (err, emitter) ->
-          assert.strictEqual emitter.data.length, 1
-          assert.strictEqual emitter.data[0].docName, '_p1'
-          done()
-
-      it 'respects skips', (done) ->
-        @collection.query {$query:{'x':5}, $orderby:{'i':1}, $limit:1, $skip:1}, {poll:true}, (err, emitter) ->
-          assert.strictEqual emitter.data.length, 1
-          assert.strictEqual emitter.data[0].docName, '_p2'
-          done()
-
-      it 'will insert an element in the set', (done) ->
-        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true}, (err, emitter) =>
-          assert.equal emitter.data.length, 3
-
-          emitter.on 'diff', (diff) =>
-            assert.deepEqual diff, [
-              index: 1
-              values: [{c:@cName, docName:'_p4', type:otTypes.json0.uri, v:1, data:{x:5, i:1.5}}]
-              type: 'insert'
-            ]
-            assert.strictEqual emitter.data.length, 4
-
-            done()
-
-          @create2 '_p4', {x:5, i:1.5}
-      
-      it 'will remove an element from the set', (done) ->
-        @collection.query {$query:{'x':5}, $orderby:{'i':1}}, {poll:true, pollDelay:0}, (err, emitter) =>
-          emitter.once 'diff', (diff) ->
-            assert.deepEqual diff, [type:'remove', index:0, howMany:1]
-            emitter.once 'diff', (diff) ->
-              assert.deepEqual diff, [type:'remove', index:1, howMany:1]
-
-              process.nextTick ->
-                assert.strictEqual emitter.data.length, 1
-                assert.strictEqual emitter.data[0].docName, '_p2'
-                done()
-
-          # I'll delete the first _and_ last elements to be sure, and do it in this order.
-          @collection.submit '_p1', v:1, del:true, (err, v) =>
-            throw err if err
-            @collection.submit '_p3', v:1, del:true, (err, v) =>
-              throw err if err
 
     describe 'queryFetch', ->
       it 'query fetch with no results works', (done) ->
+        sinon.stub @db, 'query', (db, index, query, cb) -> cb null, []
+
         @collection.queryFetch {'somekeythatdoesnotexist':1}, (err, results) ->
           throw new Error err if err
           assert.deepEqual results, []
           done()
 
-      it 'query with some results returns those results', (done) -> @create2 @docName, 'qwertyuiop', =>
+      it 'query with some results returns those results', (done) ->
+        result = docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1
+        sinon.stub @db, 'query', (db, index, query, cb) -> cb null, [result]
+
         @collection.queryFetch {'_data':'qwertyuiop'}, (err, results) =>
-          expected = [docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1]
-          assert.deepEqual results, expected
+          assert.deepEqual results, [result]
           done()
 
-      it 'does the right thing with a backend that returns extra data'
+      it 'does the right thing with a backend that returns extra data', (done) ->
+        result =
+          results: [{docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1}]
+          extra: 'Extra stuff'
+        sinon.stub @db, 'query', (db, index, query, cb) -> cb null, result
+
+        @collection.queryFetch {'_data':'qwertyuiop'}, (err, results, extra) =>
+          assert.deepEqual results, result.results
+          assert.deepEqual extra, result.extra
+          done()
+
 
     describe 'selected collections', ->
       it 'asks the db to pick the interesting collections'
@@ -607,46 +692,54 @@ describe 'livedb', ->
           assert.deepEqual opts, {sexy:true, backend:'test', pollDelay:0}
           [@cName, @cName2]
 
-        called = 0
         @testWrapper.query = (livedb, cName, query, callback) ->
-          # This should get called three times:
-          # When client.query is called initially and when the c1 and c2 documents are created
-          called++
-          assert called <= 3
-
           assert.deepEqual query, {x:5}
           callback null, []
 
-          if called is 3
-            done()
+        sinon.spy @testWrapper, 'query'
+        sinon.spy @db, 'query'
 
         @client.query 'internet', {x:5}, {sexy:true, backend:'test', pollDelay:0}, (err) =>
           throw Error err if err
-          @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
-          @client.submit @cName2, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) => throw new Error err if err
-          @client.submit @cName3, @docName, {v:0, create:{type:otTypes.text.uri}}
+          @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) =>
+            throw new Error err if err
+            @client.submit @cName2, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) =>
+              throw new Error err if err
+              @client.submit @cName3, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) =>
+                throw new Error err if err
+                assert.equal @testWrapper.query.callCount, 3
+                assert.equal @db.query.callCount, 0
+                done()
 
-      it 'calls submit on the extra collections'
+      it 'calls submit on the extra collections', (done) ->
+        @testWrapper.subscribedChannels = (cName, query, opts) => [@cName]
+        @testWrapper.submit = (cName, docName, opData, opts, snapshot, db, cb) -> cb()
+
+        sinon.spy @testWrapper, 'submit'
+
+        @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, {backend: 'test'}, (err) =>
+          assert.equal @testWrapper.submit.callCount, 1
+          done()
 
       it 'can call publish'
 
     describe 'extra data', ->
       it 'gets extra data in the initial result set', (done) ->
-        @testWrapper.query = (client, cName, query, callback) ->
+        sinon.stub @db, 'query', (client, cName, query, callback) ->
           callback null, {results:[], extra:{x:5}}
 
-        @client.query 'internet', {x:5}, {backend:'test'}, (err, stream) =>
+        @client.query 'internet', {x:5}, (err, stream) =>
           assert.deepEqual stream.extra, {x:5}
           done()
 
       it 'gets updated extra data when the result set changes', (done) ->
         x = 1
-        @testWrapper.query = (client, cName, query, callback) ->
+        sinon.stub @db, 'query', (client, cName, query, callback) ->
           callback null, {results:[], extra:{x:x++}}
 
-        @collection.query {x:5}, {backend:'test'}, (err, stream) =>
+        @collection.query {x:5}, {poll:true}, (err, stream) =>
           assert.deepEqual stream.extra, {x:1}
-          
+
           stream.on 'extra', (extra) ->
             assert.deepEqual extra, {x:2}
             done()
@@ -654,8 +747,20 @@ describe 'livedb', ->
           @create()
 
 
-    it 'turns poll mode on or off automatically if opts.poll is undefined'
+    it 'turns poll mode off automatically if opts.poll is undefined', (done) ->
+      @db.subscribedChannels = (index, query, opts) ->
+        assert.deepEqual opts, {poll: false}
+        [index]
 
+      @collection.query {'x':5}, {}, (err, stream) => done()
+
+    it 'turns poll mode on automatically if opts.poll is undefined', (done) ->
+      @db.queryNeedsPollMode = -> true
+      @db.subscribedChannels = (index, query, opts) ->
+        assert.deepEqual opts, {poll: true}
+        [index]
+
+      @collection.query {'x':5}, {}, (err, stream) => done()
 
   it 'Fails to apply an operation to a document that was deleted and recreated'
 
