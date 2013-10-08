@@ -130,6 +130,15 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
       @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
+    it 'sends operations to the persistant oplog', (done) -> @create =>
+      @db.getVersion @cName, @docName, (err, v) =>
+        throw Error err if err
+        assert.strictEqual v, 1
+        @db.getOps @cName, @docName, 0, null, (err, ops) ->
+          throw Error err if err
+          assert.strictEqual ops.length, 1
+          done()
+
     it 'sends operations to any extra db backends', (done) ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
