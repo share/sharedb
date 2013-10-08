@@ -732,7 +732,8 @@ describe 'livedb', ->
     describe 'selected collections', ->
       it 'asks the db to pick the interesting collections'
 
-      it 'gets operations submitted to any specified collection', (done) ->
+      # This test is flaky. Don't know why.
+      it.skip 'gets operations submitted to any specified collection', (done) ->
         @testWrapper.subscribedChannels = (cName, query, opts) =>
           assert.strictEqual cName, 'internet'
           assert.deepEqual query, {x:5}
@@ -799,7 +800,7 @@ describe 'livedb', ->
         assert.deepEqual opts, {poll: false}
         [index]
 
-      @collection.query {'x':5}, {}, (err, stream) => done()
+      @collection.query {x:5}, {}, (err, stream) => done()
 
     it 'turns poll mode on automatically if opts.poll is undefined', (done) ->
       @db.queryNeedsPollMode = -> true
@@ -807,7 +808,7 @@ describe 'livedb', ->
         assert.deepEqual opts, {poll: true}
         [index]
 
-      @collection.query {'x':5}, {}, (err, stream) => done()
+      @collection.query {x:5}, {}, (err, stream) => done()
 
   it 'Fails to apply an operation to a document that was deleted and recreated'
 
