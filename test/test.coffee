@@ -139,6 +139,28 @@ describe 'livedb', ->
           assert.strictEqual ops.length, 1
           done()
 
+    it 'repopulates the persistant oplog if data is missing', (done) ->
+      @redis.set "#{@cName}.#{@docName} v", 2
+      @redis.rpush "#{@cName}.#{@docName} ops",
+        JSON.stringify({create:{type:otTypes.text.uri}}),
+        JSON.stringify({op:['hi']}),
+        (err) =>
+          throw Error err if err
+          @collection.submit @docName, v:2, op:['yo'], (err, v, ops, snapshot) =>
+            throw Error err if err
+            assert.strictEqual v, 2
+            assert.deepEqual ops, []
+            assert.deepEqual snapshot, {v:3, data:'yohi', type:otTypes.text.uri}
+
+            # And now the actual test - does the persistant oplog have our data?
+            @db.getVersion @cName, @docName, (err, v) =>
+              throw Error err if err
+              assert.strictEqual v, 3
+              @db.getOps @cName, @docName, 0, null, (err, ops) =>
+                throw Error err if err
+                assert.strictEqual ops.length, 3
+                done()
+
     it 'sends operations to any extra db backends', (done) ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
