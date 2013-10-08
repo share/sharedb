@@ -13,7 +13,6 @@
     "hiredis": "~0.1.14"
   },
   "devDependencies": {
-    "coffee-script": "~1.6.2",
     "mocha": "~1",
     "sinon": "~1.7.3"
   },
