@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "mocha": "~1",
-    "sinon": "~1"
+    "sinon": "~1",
+    "coffee-script": "*"
   },
   "scripts": {
     "test": "mocha"
