@@ -6,15 +6,16 @@
   "dependencies": {
     "redis": "~0.8",
     "ottypes": "~1",
-    "deep-is": "0.1.2",
-    "arraydiff": "~0.1.1"
+    "deep-is": "~0.1",
+    "arraydiff": "~0.1"
   },
   "optionalDependencies": {
-    "hiredis": "~0.1.14"
+    "hiredis": "~0.1",
+    "statsd-client": "*"
   },
   "devDependencies": {
     "mocha": "~1",
-    "sinon": "~1.7.3"
+    "sinon": "~1"
   },
   "scripts": {
     "test": "mocha"
