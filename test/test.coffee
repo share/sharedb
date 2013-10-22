@@ -2,6 +2,8 @@
 # livedb have been pulled out. These tests should probably be split out into
 # multiple files.
 
+require('better-stack-traces').install()
+
 redisLib = require 'redis'
 livedb = require '../lib'
 Memory = require '../lib/memory'
