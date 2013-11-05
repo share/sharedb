@@ -682,9 +682,6 @@ describe 'livedb', ->
               emitter.destroy()
               done()
 
-          sinon.stub @db, 'query', (db, index, query, cb) -> cb null, []
-          sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
-
           @collection.submit @docName, v:1, del:true, (err, v) =>
             throw new Error err if err
 
