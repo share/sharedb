@@ -28,7 +28,7 @@ module.exports = (create, noBulkGetSnapshot) ->
         done()
 
     it 'will store data', (done) ->
-      data = {v:5, type:ottypes.text.uri, data:'hi there'}
+      data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error(err) if err
         @db.getSnapshot @cName, @docName, (err, storedData) ->
@@ -37,7 +37,8 @@ module.exports = (create, noBulkGetSnapshot) ->
           done()
 
     it 'will remove data fields if the data has been deleted', (done) ->
-      @db.writeSnapshot @cName, @docName, {v:5, type:ottypes.text.uri, data:'hi there'}, (err) =>
+      data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
+      @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error(err) if err
         @db.writeSnapshot @cName, @docName, {v:6}, (err) =>
           throw Error(err) if err
@@ -45,6 +46,7 @@ module.exports = (create, noBulkGetSnapshot) ->
             throw Error(err) if err
             assert.equal storedData.data, null
             assert.equal storedData.type, null
+            assert.equal storedData.m, null
             assert.equal storedData.v, 6
             done()
 
@@ -56,7 +58,7 @@ module.exports = (create, noBulkGetSnapshot) ->
           done()
 
       it 'returns results', (done) ->
-        data = {v:5, type:ottypes.text.uri, data:'hi there'}
+        data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
           @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) =>
@@ -68,7 +70,7 @@ module.exports = (create, noBulkGetSnapshot) ->
             done()
 
       it "works when some results exist and some don't", (done) ->
-        data = {v:5, type:ottypes.text.uri, data:'hi there'}
+        data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
           @db.bulkGetSnapshot {testcollection:['does not exist', @docName, 'also does not exist']}, (err, results) =>
