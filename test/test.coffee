@@ -29,6 +29,21 @@ createClient = (db = new Memory()) ->
   client = livedb.client {db, redis, extraDbs:{test:testWrapper}}
   {client, redis, db, testWrapper}
 
+# Snapshots we get back from livedb will have a timestamp with a
+# m:{ctime:, mtime:} with the current time. We'll check the time is sometime
+# between when the module is loaded and 10 seconds later. This is a bit
+# brittle. It also copies functionality in ot.coffee.
+checkAndStripMetadata = do ->
+  before = Date.now()
+  after = before + 10 * 1000
+  (snapshot) ->
+    assert.ok snapshot.m
+    assert.ok before <= snapshot.m.ctime < after if snapshot.m.ctime
+    assert.ok before <= snapshot.m.mtime < after
+    delete snapshot.m.ctime
+    delete snapshot.m.mtime
+    snapshot
+
 describe 'livedb', ->
   beforeEach ->
     @cName = '_test'
@@ -150,7 +165,8 @@ describe 'livedb', ->
             throw Error err if err
             assert.strictEqual v, 2
             assert.deepEqual ops, []
-            assert.deepEqual snapshot, {v:3, data:'yohi', type:otTypes.text.uri}
+            checkAndStripMetadata snapshot
+            assert.deepEqual snapshot, {v:3, data:'yohi', type:otTypes.text.uri, m:{}}
 
             # And now the actual test - does the persistant oplog have our data?
             @db.getVersion @cName, @docName, (err, v) =>
@@ -166,7 +182,8 @@ describe 'livedb', ->
         assert.equal cName, @cName
         assert.equal docName, @docName
         assert.deepEqual stripTs(opData), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
-        assert.deepEqual snapshot, {v:1, data:"", type:otTypes.text.uri}
+        checkAndStripMetadata snapshot
+        assert.deepEqual snapshot, {v:1, data:"", type:otTypes.text.uri, m:{}}
         done()
 
       @create()
@@ -202,12 +219,12 @@ describe 'livedb', ->
       @redis.rpush "#{@cName}.#{@docName} ops", JSON.stringify({create:{type:otTypes.text.uri}}), JSON.stringify({op:['hi']}), (err) =>
         throw Error err if err
 
-        @collection.fetch @docName, (err, data) ->
+        @collection.fetch @docName, (err, snapshot) ->
           throw Error err if err
-          assert.deepEqual data, {v:2, data:'hi', type:otTypes.text.uri}
+
+          checkAndStripMetadata snapshot
+          assert.deepEqual snapshot, {v:2, data:'hi', type:otTypes.text.uri, m:{}}
           done()
-
-
 
 
     describe 'pre validate', ->
@@ -242,7 +259,8 @@ describe 'livedb', ->
       it 'runs a supplied validation function on the data', (done) ->
         validationRun = no
         validate = (opData, snapshot, callback) ->
-          assert.deepEqual snapshot, {v:1, data:'', type:otTypes.text.uri}
+          checkAndStripMetadata snapshot
+          assert.deepEqual snapshot, {v:1, data:'', type:otTypes.text.uri, m:{}}
           validationRun = yes
           return
 
@@ -281,7 +299,11 @@ describe 'livedb', ->
         throw new Error err if err
         expected = {} # Urgh javascript :(
         expected[@cName] = {}
-        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri}
+        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri, m:{}}
+
+        for cName, docs of data
+          for docName, snapshot of docs
+            checkAndStripMetadata snapshot
 
         assert.deepEqual data, expected
         done()
@@ -314,7 +336,9 @@ describe 'livedb', ->
           bbbbb: {a:{v:0}, b:{v:0}, c:{v:0}}
           zzzzz: {d:{v:0}, e:{v:0}, f:{v:0}}
         expected[@cName] = {}
-        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri}
+        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri, m:{}}
+
+        checkAndStripMetadata data[@cName][@docName]
 
         assert.deepEqual data, expected
         done()
