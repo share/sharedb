@@ -4,7 +4,7 @@ This is a database wrapper which exposes the API that realtime databases should
 have.
 
 You can submit operations (edit documents) and subscribe to documents.
-Subscribing gives you a stream of all operations applied to theh given
+Subscribing gives you a stream of all operations applied to the given
 document. You can also make queries, which give you a feed of changes in the
 result set while the query is open.
 
