@@ -620,8 +620,8 @@ describe 'livedb', ->
     for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
       opts = {poll:poll, pollDelay:0}
 
-      it 'returns the error from the querry', (done) ->
-        sinon.stub @db, 'query', (db, index, query, cb) ->
+      it 'returns the error from the query', (done) ->
+        sinon.stub @db, 'query', (db, index, query, options, cb) ->
           cb 'Something went wrong'
 
         @collection.query {}, opts, (err, emitter) =>
@@ -643,7 +643,7 @@ describe 'livedb', ->
           c:@cName
         ]
 
-        sinon.stub @db, 'query', (db, index, query, cb) ->
+        sinon.stub @db, 'query', (db, index, query, options, cb) ->
           cb null, expected
         @collection.query {'x':5}, opts, (err, emitter) =>
           assert.deepEqual emitter.data, expected
@@ -651,7 +651,7 @@ describe 'livedb', ->
           done()
 
       it 'gets an empty result set when you query something with no results', (done) ->
-        sinon.stub @db, 'query', (db, index, query, cb) ->
+        sinon.stub @db, 'query', (db, index, query, options, cb) ->
           cb null, []
 
         @collection.query {'xyz':123}, opts, (err, emitter) ->
@@ -671,7 +671,7 @@ describe 'livedb', ->
             emitter.destroy()
             done()
 
-          sinon.stub @db, 'query', (db, index, query, cb) -> cb null, [result]
+          sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
           sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb null, result
 
           @create {x:5}
@@ -690,7 +690,7 @@ describe 'livedb', ->
               done()
 
           op = op:'rm', p:[]
-          sinon.stub @db, 'query', (db, index, query, cb) -> cb null, []
+          sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, []
           sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
 
           @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
@@ -723,7 +723,7 @@ describe 'livedb', ->
 
     describe 'queryFetch', ->
       it 'query fetch with no results works', (done) ->
-        sinon.stub @db, 'query', (db, index, query, cb) -> cb null, []
+        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, []
 
         @collection.queryFetch {'somekeythatdoesnotexist':1}, (err, results) ->
           throw new Error err if err
@@ -732,7 +732,7 @@ describe 'livedb', ->
 
       it 'query with some results returns those results', (done) ->
         result = docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1
-        sinon.stub @db, 'query', (db, index, query, cb) -> cb null, [result]
+        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
 
         @collection.queryFetch {'_data':'qwertyuiop'}, (err, results) =>
           assert.deepEqual results, [result]
@@ -742,7 +742,7 @@ describe 'livedb', ->
         result =
           results: [{docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1}]
           extra: 'Extra stuff'
-        sinon.stub @db, 'query', (db, index, query, cb) -> cb null, result
+        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, result
 
         @collection.queryFetch {'_data':'qwertyuiop'}, (err, results, extra) =>
           assert.deepEqual results, result.results
@@ -761,7 +761,7 @@ describe 'livedb', ->
           assert.deepEqual opts, {sexy:true, backend:'test', pollDelay:0}
           [@cName, @cName2]
 
-        @testWrapper.query = (livedb, cName, query, callback) ->
+        @testWrapper.query = (livedb, cName, query, options, callback) ->
           assert.deepEqual query, {x:5}
           callback null, []
 
@@ -794,7 +794,7 @@ describe 'livedb', ->
 
     describe 'extra data', ->
       it 'gets extra data in the initial result set', (done) ->
-        sinon.stub @db, 'query', (client, cName, query, callback) ->
+        sinon.stub @db, 'query', (client, cName, query, options, callback) ->
           callback null, {results:[], extra:{x:5}}
 
         @client.query 'internet', {x:5}, (err, stream) =>
@@ -803,7 +803,7 @@ describe 'livedb', ->
 
       it 'gets updated extra data when the result set changes', (done) ->
         x = 1
-        sinon.stub @db, 'query', (client, cName, query, callback) ->
+        sinon.stub @db, 'query', (client, cName, query, options, callback) ->
           callback null, {results:[], extra:{x:x++}}
 
         @collection.query {x:5}, {poll:true}, (err, stream) =>
