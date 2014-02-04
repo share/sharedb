@@ -1,6 +1,12 @@
 language: node_js
 services:
   - mongodb
-  - redis-server
 node_js:
   - 0.10
+
+script:
+  - sudo stop redis-server
+  - sudo add-apt-repository -y ppa:rwky/redis && sudo apt-get update
+  - sudo apt-get install redis-server -qq
+  - sudo start redis-server
+  - npm test
