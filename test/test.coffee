@@ -122,6 +122,23 @@ describe 'livedb', ->
           assert.equal data.type, null
           done()
 
+    it 'removes a doc and allows creation of a new one', (done) ->
+      @collection.submit @docName, {create: {type: 'text', data: 'world'}}, (err) =>
+        throw new Error err if err
+        @collection.submit @docName, v:1, del:true, (err, v) =>
+          throw new Error err if err
+          @collection.fetch @docName, (err, data) =>
+            throw new Error err if err
+            assert.equal data.data, null
+            assert.equal data.type, null
+            @collection.submit @docName, {create: {type: 'text', data: 'hello'}}, (err) =>
+              throw new Error err if err
+              @collection.fetch @docName, (err, data) =>
+                throw new Error err if err
+                assert.equal data.data, 'hello'
+                assert.equal data.type, 'http://sharejs.org/types/textv1'
+                done()
+
     it 'passes an error back to fetch if fetching returns a document with no version'
 
     it 'does not execute repeated operations', (done) -> @create =>
@@ -834,5 +851,3 @@ describe 'livedb', ->
   it 'Fails to apply an operation to a document that was deleted and recreated'
 
   it 'correctly namespaces pubsub operations so other collections dont get confused'
-
-
