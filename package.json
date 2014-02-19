@@ -17,10 +17,10 @@
   "devDependencies": {
     "mocha": "~1",
     "sinon": "~1",
-    "coffee-script": "*"
+    "coffee-script": "~1.7.1"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
