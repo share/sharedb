@@ -16,7 +16,7 @@
   "devDependencies": {
     "mocha": "~1",
     "sinon": "~1",
-    "coffee-script": "*"
+    "coffee-script": "1.7"
   },
   "scripts": {
     "test": "mocha"
