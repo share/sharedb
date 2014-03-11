@@ -48,10 +48,10 @@ module.exports = (create) ->
           throw new Error err if err
           assert.strictEqual v, 1
           @db.writeOp @cName, @docName, {v:1, op:{position:2, text:'hi'}}, (err) =>
-          @db.getVersion @cName, @docName, (err, v) ->
-            throw new Error err if err
-            assert.strictEqual v, 2
-            done()
+            @db.getVersion @cName, @docName, (err, v) ->
+              throw new Error err if err
+              assert.strictEqual v, 2
+              done()
 
     it 'ignores subsequent attempts to write the same operation', (done) ->
       @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>

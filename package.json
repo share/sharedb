@@ -7,7 +7,8 @@
     "redis": "~0.8",
     "ottypes": "~1",
     "deep-is": "~0.1",
-    "arraydiff": "~0.1"
+    "arraydiff": "~0.1",
+    "async": "~0.2.9"
   },
   "optionalDependencies": {
     "hiredis": "~0.1",
@@ -16,10 +17,10 @@
   "devDependencies": {
     "mocha": "~1",
     "sinon": "~1",
-    "coffee-script": "1.7"
+    "coffee-script": "~1.7"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
