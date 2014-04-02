@@ -851,3 +851,29 @@ describe 'livedb', ->
   it 'Fails to apply an operation to a document that was deleted and recreated'
 
   it 'correctly namespaces pubsub operations so other collections dont get confused'
+
+  describe 'cleanup', ->
+    it 'does not leak streams when clients subscribe & unsubscribe from documents', (done) -> @create =>
+      assert.strictEqual 0, @client.numStreams
+      @collection.subscribe @docName, 1, (err, stream) =>
+        throw new Error err if err
+        assert.strictEqual 1, @client.numStreams
+        stream.destroy()
+        assert.strictEqual 0, @client.numStreams
+        done()
+
+    it 'does not leak streams from bulkSubscribe', (done) -> @create2 'x', => @create2 'y', =>
+      assert.strictEqual 0, @client.numStreams
+      bs = {}
+      bs[@cName] = {x:1, y:1}
+      @client.bulkSubscribe bs, (err, streams) =>
+        throw new Error err if err
+        assert.strictEqual 2, @client.numStreams
+        streams[@cName].x.destroy()
+        streams[@cName].y.destroy()
+        assert.strictEqual 0, @client.numStreams
+        assert.strictEqual 0, Object.keys(@client.streams).length
+        done()
+
+
+
