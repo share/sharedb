@@ -88,6 +88,14 @@ describe 'livedb', ->
         assert.ok err
         done()
 
+    it 'can create a document with meta', (done) -> @create =>
+      @collection.submit @docName+'1', {v:0, create:{type:'text',meta:{language:'en'}}}, (err, v) =>
+        throw new Error err if err
+        @collection.fetch @docName+'1', (err, {v, m}) =>
+          throw new Error err if err
+          assert.equal m.language, 'en'
+          done()
+
     it 'can modify a document', (done) -> @create =>
       @collection.submit @docName, v:1, op:['hi'], (err, v) =>
         throw new Error err if err
