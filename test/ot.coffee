@@ -198,7 +198,7 @@ describe 'ot', ->
 
     # And op by op is tested in the first couple of tests.
 
-  describe.only 'applyPresence', ->
+  describe 'applyPresence', ->
     it 'sets', ->
       p = {data:{}}
       assert.equal null, ot.applyPresence p, {val:{id:{y:6}}}
