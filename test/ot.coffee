@@ -198,3 +198,43 @@ describe 'ot', ->
 
     # And op by op is tested in the first couple of tests.
 
+  describe.only 'applyPresence', ->
+    it 'sets', ->
+      p = {data:{}}
+      assert.equal null, ot.applyPresence p, {val:{id:{y:6}}}
+      assert.deepEqual p, data:{id:{y:6}}
+
+      assert.equal null, ot.applyPresence p, {p:['id'], val:{z:7}}
+      assert.deepEqual p, data:{id:{z:7}}
+      
+      assert.equal null, ot.applyPresence p, {p:['id','z'], val:8}
+      assert.deepEqual p, data:{id:{z:8}}
+
+    it 'clears data', ->
+      p = {data:{id:{name:'sam'}}}
+      assert.equal null, ot.applyPresence p, {val:null}
+      assert.deepEqual p, data:{}
+      
+    it "doesn't allow special keys other than _cursor", ->
+      p = {}
+      # assert.equal 'Cannot set reserved value', ot.applyPresence p, {val:{id:{_x:'hi'}}}
+      # assert.deepEqual p, {}
+      assert.equal 'Cannot set reserved value', ot.applyPresence p, {p:['id'], val:{_x:'hi'}}
+      assert.deepEqual p, {}
+      assert.equal 'Cannot set reserved value', ot.applyPresence p, {p:['id','_x'], val:'hi'}
+      assert.deepEqual p, {}
+
+  describe 'transformPresence', ->
+    it 'updates cursor positions', ->
+
+
+
+
+
+
+
+
+
+
+
+
