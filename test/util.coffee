@@ -2,14 +2,17 @@ redisLib = require 'redis'
 livedb = require '../lib'
 Memory = require '../lib/memory'
 
+{createDriver} = require '../lib/redisdriver'
+
 createClient = exports.createClient = (db = new Memory()) ->
   redis = redisLib.createClient()
   redis.select redis.selected_db = 15
 
-  testWrapper = {name:'test'}
-  client = livedb.client {db, redis, extraDbs:{test:testWrapper}}
-  {client, redis, db, testWrapper}
+  driver = createDriver db, redis
 
+  testWrapper = {name:'test'}
+  client = livedb.client {db, driver, extraDbs:{test:testWrapper}}
+  {client, redis, db, testWrapper, driver}
 
 nextId = 0
 
@@ -18,7 +21,7 @@ nextId = 0
 exports.setup = ->
   @cName ?= '_test'
 
-  {@client, @redis, @db, @testWrapper} = createClient()
+  {@client, @redis, @db, @testWrapper, @driver} = createClient()
 
   # & clear redis.
   @redis.flushdb()
@@ -39,5 +42,6 @@ exports.setup = ->
 
 exports.teardown = ->
   @client.destroy()
+  @driver.destroy()
   @db.close()
 
