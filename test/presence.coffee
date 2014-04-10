@@ -18,7 +18,7 @@ describe 'presence', ->
     it 'subscribe returns empty presence data for an empty doc', (done) ->
       @client.subscribe @cName, @docName, 0, wantPresence:yes, (err, stream, presence) =>
         throw new Error err if err
-        assert.deepEqual presence, {data:{}}
+        assert.deepEqual presence, {}
         done()
 
     it 'lets you set presence data for the whole document', (done) ->
@@ -104,7 +104,7 @@ describe 'presence', ->
       @client.subscribe @cName, @docName, 0, wantPresence:yes, (err, stream, presence) =>
         # @client.submit @cName, @docName, v:1, op:['hi']
         throw new Error err if err
-        assert.deepEqual presence, {data:{}}
+        assert.deepEqual presence, {}
         stream.on 'data', (data) ->
           assert.deepEqual data, {pOp:{v:0, p:['id'], val:{x:'y'}}}
           done()
