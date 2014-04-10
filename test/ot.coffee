@@ -215,7 +215,7 @@ describe 'ot', ->
       assert.equal null, ot.applyPresence p, {val:null}
       assert.deepEqual p, data:{}
       
-    it "doesn't allow special keys other than _cursor", ->
+    it "doesn't allow special keys other than _selection", ->
       p = {}
       # assert.equal 'Cannot set reserved value', ot.applyPresence p, {val:{id:{_x:'hi'}}}
       # assert.deepEqual p, {}

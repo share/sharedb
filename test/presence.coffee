@@ -18,7 +18,7 @@ describe 'presence', ->
     it 'subscribe returns empty presence data for an empty doc', (done) ->
       @client.subscribe @cName, @docName, 0, wantPresence:yes, (err, stream, presence) =>
         throw new Error err if err
-        assert.deepEqual presence, {}
+        assert.deepEqual presence, {data:{}}
         done()
 
     it 'lets you set presence data for the whole document', (done) ->
@@ -63,21 +63,21 @@ describe 'presence', ->
         assert.strictEqual err, 'Cannot set reserved value'
         done()
 
-    it.skip 'does not let you set _cursor for a nonexistant doc', (done) ->
-      @client.submitPresence @cName, @docName, {v:0, p:['id'], val:{_cursor:6}}, (err) =>
+    it.skip 'does not let you set _selection for a nonexistant doc', (done) ->
+      @client.submitPresence @cName, @docName, {v:0, p:['id'], val:{_selection:6}}, (err) =>
         assert.strictEqual err, 'Cannot set reserved value'
         done()
 
-    it 'does let you set _cursor for a document', (done) -> @create =>
-      @client.submitPresence @cName, @docName, {v:1, p:['id'], val:{_cursor:0}}, (err) =>
+    it 'does let you set _selection for a document', (done) -> @create =>
+      @client.submitPresence @cName, @docName, {v:1, p:['id'], val:{_selection:0}}, (err) =>
         throw new Error err if err
-        @client.submitPresence @cName, @docName, {v:1, p:['id', '_cursor'], val:1}, (err) =>
+        @client.submitPresence @cName, @docName, {v:1, p:['id', '_selection'], val:1}, (err) =>
           throw new Error err if err
           done()
 
   describe 'edits from ops', ->
     it 'deletes the cursor when a document is deleted', (done) -> @create =>
-      @client.submitPresence @cName, @docName, {v:1, p:['id'], val:{x:'y', _cursor:0}}, (err) =>
+      @client.submitPresence @cName, @docName, {v:1, p:['id'], val:{x:'y', _selection:0}}, (err) =>
         throw new Error err if err
         @collection.submit @docName, v:1, del:true, (err) =>
           throw new Error err if err
@@ -87,28 +87,27 @@ describe 'presence', ->
             done()
 
     it 'moves the cursor when text is edited', (done) -> @create =>
-      @client.submitPresence @cName, @docName, {v:1, p:['id'], val:{_cursor:[1,1]}}, (err) =>
+      @client.submitPresence @cName, @docName, {v:1, p:['id'], val:{_selection:[1,1]}}, (err) =>
         throw new Error err if err
         @collection.submit @docName, v:1, op:['hi'], (err) =>
           throw new Error err if err
           @client.fetchPresence @cName, @docName, (err, presence) ->
             throw new Error err if err
-            assert.deepEqual presence, {id:{_cursor:[3,3]}}
+            assert.deepEqual presence, {id:{_selection:[3,3]}}
             done()
 
 
   describe 'subscribe', ->
-    it.skip 'propogates presence ops to subscribers', (done) -> @create =>
+    it 'propogates presence ops to subscribers', (done) ->
       # This test currently fails
 
       @client.subscribe @cName, @docName, 0, wantPresence:yes, (err, stream, presence) =>
-        @client.submit @cName, @docName, v:1, op:['hi']
+        # @client.submit @cName, @docName, v:1, op:['hi']
         throw new Error err if err
-        assert.deepEqual presence, {}
+        assert.deepEqual presence, {data:{}}
         stream.on 'data', (data) ->
-          console.log 'got data', data
-          # assert.deepEqual data, {}
-          # done()
+          assert.deepEqual data, {pOp:{v:0, p:['id'], val:{x:'y'}}}
+          done()
 
-        @client.submitPresence @cName, @docName, {v:0, id:'id', value:{x:'y'}}, (err) =>
+        @client.submitPresence @cName, @docName, {v:0, p:['id'], val:{x:'y'}}, (err) =>
           throw new Error err if err
