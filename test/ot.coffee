@@ -227,7 +227,8 @@ describe 'ot', ->
   describe 'transformPresence', ->
     it 'updates cursor positions', ->
 
-
+  describe 'updatePresence', ->
+    it 'does not crash if you do {x:null}'
 
 
 
