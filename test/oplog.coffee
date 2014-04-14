@@ -123,4 +123,3 @@ module.exports = (create) ->
           @db.getOps @cName, @docName, 0, null, check [opData]
           @db.getOps @cName, @docName, 1, 1, check []
           @db.getOps @cName, @docName, 1, null, check []
-

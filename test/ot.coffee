@@ -103,7 +103,7 @@ describe 'ot', ->
         assert.deepEqual doc, {v:6, type:simple.uri, m:{}, data:str:'Hi there'}
 
       it.skip 'runs pre and post validation functions'
-    
+
     describe 'del', ->
       it 'deletes the document data', ->
         doc = {v:6, type:simple.uri, data:str:'Hi there'}
@@ -206,7 +206,7 @@ describe 'ot', ->
 
       assert.equal null, ot.applyPresence p, {p:['id'], val:{z:7}}
       assert.deepEqual p, data:{id:{z:7}}
-      
+
       assert.equal null, ot.applyPresence p, {p:['id','z'], val:8}
       assert.deepEqual p, data:{id:{z:8}}
 
@@ -214,7 +214,7 @@ describe 'ot', ->
       p = {data:{id:{name:'sam'}}}
       assert.equal null, ot.applyPresence p, {val:null}
       assert.deepEqual p, data:{}
-      
+
     it "doesn't allow special keys other than _selection", ->
       p = {}
       # assert.equal 'Cannot set reserved value', ot.applyPresence p, {val:{id:{_x:'hi'}}}
@@ -229,13 +229,3 @@ describe 'ot', ->
 
   describe 'updatePresence', ->
     it 'does not crash if you do {x:null}'
-
-
-
-
-
-
-
-
-
-

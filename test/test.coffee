@@ -660,8 +660,3 @@ describe 'livedb', ->
 
       listener = @client.listener().add @cName, @docName, 0, (err, v) =>
         throw Error err if err
-
-
-
-
-

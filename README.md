@@ -124,5 +124,3 @@ livedb.submit('love letters', 'dear fred', {op:[6, "You never return my calls!"]
 ```
 
 You should always specify the version when submitting operations. If you don't, operations will do funny things in the face of concurrency.
-
-
