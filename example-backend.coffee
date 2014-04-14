@@ -7,7 +7,7 @@ module.exports = (options) ->
     console.log "set snapshot for #{cName} to ", snapshot
     callback()
 
-  
+
   subscribedChannels: (cName, query, opts) -> ['internet', 'forceSOLR']
 
   query: (cName, query, callback) ->
@@ -16,6 +16,3 @@ module.exports = (options) ->
 
     # or simply:
     #callback null, []
-
-
-

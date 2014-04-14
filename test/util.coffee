@@ -40,4 +40,3 @@ exports.setup = ->
 exports.teardown = ->
   @client.destroy()
   @db.close()
-
