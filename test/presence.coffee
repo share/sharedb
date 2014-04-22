@@ -111,3 +111,34 @@ describe 'presence', ->
 
         @client.submitPresence @cName, @docName, {v:0, p:['id'], val:{x:'y'}}, (err) =>
           throw new Error err if err
+
+  describe 'bulkSubscribe', ->
+    it 'returns empty presence information for docs with no presence information', (done) ->
+      requests = {}
+      requests[@cName] = {doc1: 0, doc2: 0}
+
+      @client.bulkSubscribe requests, wantPresence:yes, (err, stream, presence) =>
+        throw new Error err if err
+        result = {}
+        result[@cName] = {doc1: {}, doc2: {}}
+        assert.deepEqual presence, result
+        done()
+
+    it 'returns the presence information for docs with presence information', (done) ->
+      requests = {}
+      requests[@cName] = {doc1: 0, doc2: 0}
+      @client.submitPresence @cName, 'doc1', {v:0, p:['id01'], val:{x:'y'}}, (err) =>
+        throw new Error err if err
+        @client.submitPresence @cName, 'doc2', {v:0, p:['id02'], val:{x:'y'}}, (err) =>
+          throw new Error err if err
+
+          @client.bulkSubscribe requests, wantPresence:yes, (err, stream, presence) =>
+            throw new Error err if err
+
+            result = {}
+            result[@cName] =
+              doc1: {id01: {x:'y'}}
+              doc2: {id02: {x:'y'}}
+
+            assert.deepEqual presence, result
+            done()
