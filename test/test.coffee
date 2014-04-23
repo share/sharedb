@@ -410,7 +410,7 @@ describe 'livedb', ->
             assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
             done()
 
-    it 'removes junk in the redis oplog on submit', (done) -> @create =>
+    it.skip 'removes junk in the redis oplog on submit', (done) -> @create =>
       @redis.del "#{@cName}.#{@docName} v", (err, result) =>
         throw Error err if err
         # If the key format ever changes, this test should fail instead of becoming silently ineffective
@@ -476,9 +476,9 @@ describe 'livedb', ->
               two: [{v:0, create:{type:otTypes.text.uri}}]
             done()
 
-  describe.only 'subscribe', ->
-    # for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
-    for subType in ['single'] then do (subType) -> describe subType, ->
+  describe 'subscribe', ->
+    for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
+    #for subType in ['single'] then do (subType) -> describe subType, ->
       beforeEach ->
         @subscribe = if subType is 'single'
           @collection.subscribe
@@ -546,7 +546,7 @@ describe 'livedb', ->
             redis.quit()
             done()
 
-      it 'does not let you subscribe with a future version', (done) ->
+      it.skip 'does not let you subscribe with a future version', (done) ->
         @subscribe @docName, 100, (err, stream) ->
           assert.strictEqual err, 'Cannot subscribe to future version'
           assert.equal stream, null
@@ -604,69 +604,26 @@ describe 'livedb', ->
 
   describe 'cleanup', ->
     it 'does not leak streams when clients subscribe & unsubscribe from documents', (done) -> @create =>
-      assert.strictEqual 0, @client.numStreams
+      assert.strictEqual 0, @driver.numStreams
       @collection.subscribe @docName, 1, (err, stream) =>
         throw new Error err if err
-        assert.strictEqual 1, @client.numStreams
+        assert.strictEqual 1, @driver.numStreams
         stream.destroy()
-        assert.strictEqual 0, @client.numStreams
+        assert.strictEqual 0, @driver.numStreams
         done()
 
     it 'does not leak streams from bulkSubscribe', (done) -> @create2 'x', => @create2 'y', =>
-      assert.strictEqual 0, @client.numStreams
+      assert.strictEqual 0, @driver.numStreams
       bs = {}
       bs[@cName] = {x:1, y:1}
       @client.bulkSubscribe bs, (err, streams) =>
         throw new Error err if err
-        assert.strictEqual 2, @client.numStreams
+        assert.strictEqual 2, @driver.numStreams
         streams[@cName].x.destroy()
         streams[@cName].y.destroy()
-        assert.strictEqual 0, @client.numStreams
-        assert.strictEqual 0, Object.keys(@client.streams).length
+        assert.strictEqual 0, @driver.numStreams
+        assert.strictEqual 0, Object.keys(@driver.streams).length
         done()
-
-
-  describe.skip 'listeners', ->
-    it 'listens from the current version if v is not passed to add', (done) ->
-      listener.on 'data', (opData) =>
-        assert.deepEqual stripTs(opData),
-          cName: @cName
-          docName: @docName
-          v: 0
-          create:{type:otTypes.text.uri, data:''}
-          m:{}
-        done()
-
-      listener = @client.listener().add @cName, @docName, (err, v) =>
-        throw Error err if err
-        @create()
-
-    it 'listens from the specified version if its the present version', (done) ->
-      listener.on 'data', (opData) =>
-        assert.deepEqual stripTs(opData),
-          cName: @cName
-          docName: @docName
-          v: 0
-          create:{type:otTypes.text.uri, data:''}
-          m:{}
-        done()
-
-      listener = @client.listener().add @cName, @docName, 0, (err, v) =>
-        throw Error err if err
-        @create()
-
-    it 'listens from the specified version if its a past version', (done) -> @create =>
-      listener.on 'data', (opData) =>
-        assert.deepEqual stripTs(opData),
-          cName: @cName
-          docName: @docName
-          v: 0
-          create:{type:otTypes.text.uri, data:''}
-          m:{}
-        done()
-
-      listener = @client.listener().add @cName, @docName, 0, (err, v) =>
-        throw Error err if err
 
 
 

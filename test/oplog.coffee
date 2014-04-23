@@ -24,6 +24,7 @@ module.exports = (create) ->
       @cName = 'testcollection'
       @docName = "optest #{counter++}"
 
+      # Work with syncronous and asyncronous create() methods using their arity.
       if create.length is 0
         @db = create()
         done()
