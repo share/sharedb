@@ -560,6 +560,8 @@ describe 'livedb', ->
 
 
     it 'works with separate clients', (done) -> @create =>
+      return done() unless @driver.distributed
+
       numClients = 10 # You can go way higher, but it gets slow.
 
       # We have to share the database here because these tests are written
