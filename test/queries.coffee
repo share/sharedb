@@ -31,13 +31,13 @@ describe 'queries', ->
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb 'Something went wrong'
 
-      @collection.query {}, opts, (err, emitter) =>
+      @collection.queryPoll {}, opts, (err, emitter) =>
         assert.equal err, 'Something went wrong'
         done()
 
     it 'passes the right arguments to db.query', (done) ->
       sinon.spy @db, 'query'
-      @collection.query {'x':5}, opts, (err, emitter) =>
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         assert @db.query.calledWith @client, @cName, {'x':5}
         done()
 
@@ -52,7 +52,7 @@ describe 'queries', ->
 
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb null, expected
-      @collection.query {'x':5}, opts, (err, emitter) =>
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         assert.deepEqual emitter.data, expected
         emitter.destroy()
         done()
@@ -61,7 +61,7 @@ describe 'queries', ->
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb null, []
 
-      @collection.query {'xyz':123}, opts, (err, emitter) ->
+      @collection.queryPoll {'xyz':123}, opts, (err, emitter) ->
         assert.deepEqual emitter.data, []
         emitter.on 'diff', -> throw new Error 'should not have added results'
 
@@ -72,7 +72,7 @@ describe 'queries', ->
     it 'adds an element when it matches', (done) ->
       result = c:@cName, docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri
 
-      @collection.query {'x':5}, opts, (err, emitter) =>
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         emitter.on 'diff', (diff) =>
           assert.deepEqual diff, [index: 0, values: [result], type: 'insert']
           emitter.destroy()
@@ -84,7 +84,7 @@ describe 'queries', ->
         @create {x:5}
 
     it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
-      @collection.query {'x':5}, opts, (err, emitter) =>
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         emitter.on 'diff', (diff) =>
           assert.deepEqual diff, [type:'remove', index:0, howMany:1]
 
@@ -103,7 +103,7 @@ describe 'queries', ->
         @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
     it 'removes deleted elements', (done) -> @create {x:5}, =>
-      @collection.query {'x':5}, opts, (err, emitter) =>
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         assert.strictEqual emitter.data.length, 1
 
         emitter.on 'diff', (diff) =>
@@ -117,7 +117,7 @@ describe 'queries', ->
           throw new Error err if err
 
     it 'does not emit receive events to a destroyed query', (done) ->
-      @collection.query {'x':5}, opts, (err, emitter) =>
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         emitter.on 'diff', -> throw new Error 'add called after destroy'
 
         emitter.destroy()
@@ -204,7 +204,7 @@ describe 'queries', ->
       sinon.stub @db, 'query', (client, cName, query, options, callback) ->
         callback null, {results:[], extra:{x:5}}
 
-      @client.query 'internet', {x:5}, (err, stream) =>
+      @client.queryPoll 'internet', {x:5}, (err, stream) =>
         assert.deepEqual stream.extra, {x:5}
         done()
 
@@ -213,7 +213,7 @@ describe 'queries', ->
       sinon.stub @db, 'query', (client, cName, query, options, callback) ->
         callback null, {results:[], extra:{x:x++}}
 
-      @collection.query {x:5}, {poll:true}, (err, stream) =>
+      @collection.queryPoll {x:5}, {poll:true}, (err, stream) =>
         assert.deepEqual stream.extra, {x:1}
 
         stream.on 'extra', (extra) ->
@@ -228,7 +228,7 @@ describe 'queries', ->
       assert.deepEqual opts, {poll: false}
       [index]
 
-    @collection.query {x:5}, {}, (err, stream) => done()
+    @collection.queryPoll {x:5}, {}, (err, stream) => done()
 
   it 'turns poll mode on automatically if opts.poll is undefined', (done) ->
     @db.queryNeedsPollMode = -> true
@@ -236,4 +236,4 @@ describe 'queries', ->
       assert.deepEqual opts, {poll: true}
       [index]
 
-    @collection.query {x:5}, {}, (err, stream) => done()
+    @collection.queryPoll {x:5}, {}, (err, stream) => done()
