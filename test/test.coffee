@@ -279,7 +279,7 @@ describe 'livedb', ->
         assert.strictEqual v, 1
         done()
 
-  describe.skip 'bulk fetch', ->
+  describe 'bulk fetch', ->
     it 'can fetch created documents', (done) -> @create 'hi', =>
       request = {}
       request[@cName] = [@docName]
