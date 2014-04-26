@@ -3,7 +3,7 @@ livedb = require '../lib'
 Memory = require '../lib/memory'
 
 createRedisClient = exports.createClient = (db = new Memory()) ->
-  {createDriver} = require '../lib/redisdriver'
+  createDriver = require '../lib/redisdriver'
   redis = redisLib.createClient()
   redis.select redis.selected_db = 15
 

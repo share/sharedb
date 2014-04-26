@@ -460,21 +460,6 @@ describe 'livedb', ->
 
     it 'errors if ops are missing from the snapshotdb and oplogs'
 
-  describe.skip 'bulkGetOpsSince', ->
-    # This isn't really an external API, but there is a tricky edge case which
-    # can come up that its hard to recreate using bulkSubscribe directly.
-    it 'handles multiple gets which are missing from redis correctly', (done) -> # regression
-      # Nothing in redis, but the data of two documents are in the database.
-      @db.writeOp 'test', 'one', {v:0, create:{type:otTypes.text.uri}}, =>
-      @db.writeOp 'test', 'two', {v:0, create:{type:otTypes.text.uri}}, =>
-
-        @client.bulkGetOpsSince {test:{one:0, two:0}}, (err, result) ->
-          throw Error err if err
-          assert.deepEqual result,
-            test:
-              one: [{v:0, create:{type:otTypes.text.uri}}]
-              two: [{v:0, create:{type:otTypes.text.uri}}]
-            done()
 
   describe 'subscribe', ->
     for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
