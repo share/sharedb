@@ -5,13 +5,15 @@ have.
 
 You can submit operations (edit documents) and subscribe to documents.
 Subscribing gives you a stream of all operations applied to the given
-document. You can also make queries, which give you a feed of changes in the
-result set while the query is open.
+document. You can also make live bound queries, which give you the results of
+your query and a feed of changes to the result set over time.
 
-Currently this is very new and only used by ShareJS. To use it, you need a
-snapshot database wrapper. The obvious choice is mongodb. A database wrapper
-for mongo is available in
+To use it, you need a database to actually store your data in. The obvious
+A database wrapper for mongo is available in
 [share/livedb-mongo](https://github.com/share/livedb-mongo).
+
+If you want to mess about, livedb also has an in-memory database you can use.
+Don't use this in production.
 
 
 ## Data Model
