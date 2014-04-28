@@ -59,13 +59,25 @@ describe 'livedb', ->
         assert.ok err
         done()
 
-    it 'can create a document with meta', (done) -> @create =>
-      @collection.submit @docName+'1', {v:0, create:{type:'text',meta:{language:'en'}}}, (err, v) =>
+    it 'can create a document with metadata', (done) ->
+      @collection.submit @docName, {v:0, create:{type:'text', m:{language:'en'}}}, (err, v) =>
         throw new Error err if err
-        @collection.fetch @docName+'1', (err, {v, m}) =>
+        @collection.fetch @docName, (err, {v, m}) =>
           throw new Error err if err
           assert.equal m.language, 'en'
           done()
+
+    it 'removes metadata when documents are recreated', (done) ->
+      @collection.submit @docName, {create:{type:'text', m:{language:'en'}}}, (err, v) =>
+        throw new Error err if err
+        @collection.submit @docName, {del:true}, (err, v) =>
+          throw new Error err if err
+          @collection.submit @docName, {create:{type:'text'}}, (err, v) =>
+            throw new Error err if err
+            @collection.fetch @docName, (err, {v, m}) =>
+              throw new Error err if err
+              assert.equal m.language, null
+              done()
 
     it 'can modify a document', (done) -> @create =>
       @collection.submit @docName, v:1, op:['hi'], (err, v) =>
