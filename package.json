@@ -1,16 +1,16 @@
 {
   "name": "livedb",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Realtime database wrapper",
   "main": "lib/index.js",
   "dependencies": {
-    "redis": "~0.8",
     "ottypes": "~1",
     "deep-is": "~0.1",
     "arraydiff": "~0.1",
-    "async": "~0.2.9"
+    "async": "~0.7"
   },
   "optionalDependencies": {
+    "redis": "~0.10",
     "hiredis": "~0.1",
     "statsd-client": "*"
   },
