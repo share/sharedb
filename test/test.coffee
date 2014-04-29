@@ -2,7 +2,6 @@
 # livedb have been pulled out. These tests should probably be split out into
 # multiple files.
 
-redisLib = require 'redis'
 livedb = require '../lib'
 assert = require 'assert'
 
@@ -152,29 +151,6 @@ describe 'livedb', ->
           assert.strictEqual ops.length, 1
           done()
 
-    it 'repopulates the persistant oplog if data is missing', (done) ->
-      @redis.set "#{@cName}.#{@docName} v", 2
-      @redis.rpush "#{@cName}.#{@docName} ops",
-        JSON.stringify({create:{type:otTypes.text.uri}}),
-        JSON.stringify({op:['hi']}),
-        (err) =>
-          throw Error err if err
-          @collection.submit @docName, v:2, op:['yo'], (err, v, ops, snapshot) =>
-            throw Error err if err
-            assert.strictEqual v, 2
-            assert.deepEqual ops, []
-            checkAndStripMetadata snapshot
-            assert.deepEqual snapshot, {v:3, data:'yohi', type:otTypes.text.uri, m:{}}
-
-            # And now the actual test - does the persistant oplog have our data?
-            @db.getVersion @cName, @docName, (err, v) =>
-              throw Error err if err
-              assert.strictEqual v, 3
-              @db.getOps @cName, @docName, 0, null, (err, ops) =>
-                throw Error err if err
-                assert.strictEqual ops.length, 3
-                done()
-
     it 'sends operations to any extra db backends', (done) ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
@@ -185,45 +161,6 @@ describe 'livedb', ->
         done()
 
       @create()
-
-    it 'works if the data in redis is missing', (done) -> @create =>
-      @redis.flushdb =>
-        @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-          throw new Error err if err
-          @collection.fetch @docName, (err, {v, data}) =>
-            throw new Error err if err
-            assert.deepEqual data, 'hi'
-            done()
-
-    it 'ignores redis operations if the version isnt set', (done) -> @create =>
-      @redis.del "#{@cName}.#{@docName} v", (err, result) =>
-        throw Error err if err
-        # If the key format ever changes, this test should fail instead of becoming silently ineffective
-        assert.equal result, 1
-
-        @redis.lset "#{@cName}.#{@docName} ops", 0, "junk that will crash livedb", (err) =>
-
-          @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-            throw new Error err if err
-            @collection.fetch @docName, (err, {v, data}) =>
-              throw new Error err if err
-              assert.deepEqual data, 'hi'
-              done()
-
-    it 'works if data in the oplog is missing', (done) ->
-      # This test depends on the actual format in redis. Try to avoid adding
-      # too many tests like this - its brittle.
-      @redis.set "#{@cName}.#{@docName} v", 2
-      @redis.rpush "#{@cName}.#{@docName} ops", JSON.stringify({create:{type:otTypes.text.uri}}), JSON.stringify({op:['hi']}), (err) =>
-        throw Error err if err
-
-        @collection.fetch @docName, (err, snapshot) ->
-          throw Error err if err
-
-          checkAndStripMetadata snapshot
-          assert.deepEqual snapshot, {v:2, data:'hi', type:otTypes.text.uri, m:{}}
-          done()
-
 
     describe 'pre validate', ->
       it 'runs a supplied pre validate function on the data', (done) ->
@@ -400,72 +337,6 @@ describe 'livedb', ->
             assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
             done()
 
-    it 'works if redis has no data', (done) -> @create =>
-      @redis.flushdb =>
-        @collection.getOps @docName, 0, (err, ops) =>
-          throw new Error err if err
-          assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
-          done()
-
-    it 'ignores redis operations if the version isnt set', (done) -> @create =>
-      @redis.del "#{@cName}.#{@docName} v", (err, result) =>
-        throw Error err if err
-        # If the key format ever changes, this test should fail instead of becoming silently ineffective
-        assert.equal result, 1
-
-        @redis.lset "#{@cName}.#{@docName} ops", 0, "junk that will crash livedb", (err) =>
-
-          @collection.getOps @docName, 0, (err, ops) =>
-            throw new Error err if err
-            assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
-            done()
-
-    it.skip 'removes junk in the redis oplog on submit', (done) -> @create =>
-      @redis.del "#{@cName}.#{@docName} v", (err, result) =>
-        throw Error err if err
-        # If the key format ever changes, this test should fail instead of becoming silently ineffective
-        assert.equal result, 1
-
-        @redis.lset "#{@cName}.#{@docName} ops", 0, "junk that will crash livedb", (err) =>
-
-          @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-            throw new Error err if err
-
-            @collection.getOps @docName, 0, (err, ops) =>
-              throw new Error err if err
-              assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
-              done()
-
-    describe 'does not hit the database if the version is current in redis', ->
-      beforeEach (done) -> @create =>
-        @db.getVersion = -> throw Error 'getVersion should not be called'
-        @db.getOps = -> throw Error 'getOps should not be called'
-        done()
-
-      it 'from previous version', (done) ->
-        # This one operation is in redis. It should be fetched.
-        @collection.getOps @docName, 0, (err, ops) =>
-          throw new Error err if err
-          assert.strictEqual ops.length, 1
-          done()
-
-      it 'from current version', (done) ->
-        # Redis knows that the document is at version 1, so we should return [] here.
-        @collection.getOps @docName, 1, (err, ops) ->
-          throw new Error err if err
-          assert.deepEqual ops, []
-          done()
-
-    it 'caches the version in redis', (done) ->
-      @create => @redis.flushdb =>
-        @collection.getOps @docName, 0, (err, ops) =>
-          throw new Error err if err
-
-          @redis.get "#{@cName}.#{@docName} v", (err, result) ->
-            throw new Error err if err
-            assert.equal result, 1
-            done()
-
 
 
     it 'errors if ops are missing from the snapshotdb and oplogs'
@@ -514,33 +385,5 @@ describe 'livedb', ->
           tryRead()
 
   it 'Fails to apply an operation to a document that was deleted and recreated'
-
-  it 'correctly namespaces pubsub operations so other collections dont get confused'
-
-  describe 'cleanup', ->
-    it 'does not leak streams when clients subscribe & unsubscribe from documents', (done) -> @create =>
-      assert.strictEqual 0, @driver.numStreams
-      @collection.subscribe @docName, 1, (err, stream) =>
-        throw new Error err if err
-        assert.strictEqual 1, @driver.numStreams
-        stream.destroy()
-        assert.strictEqual 0, @driver.numStreams
-        done()
-
-    it 'does not leak streams from bulkSubscribe', (done) -> @create2 'x', => @create2 'y', =>
-      assert.strictEqual 0, @driver.numStreams
-      bs = {}
-      bs[@cName] = {x:1, y:1}
-      @client.bulkSubscribe bs, (err, streams) =>
-        throw new Error err if err
-        assert.strictEqual 2, @driver.numStreams
-        streams[@cName].x.destroy()
-        streams[@cName].y.destroy()
-        assert.strictEqual 0, @driver.numStreams
-        assert.strictEqual 0, Object.keys(@driver.streams).length
-        done()
-
-
-
 
 

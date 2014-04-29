@@ -25,6 +25,7 @@ describe 'queries', ->
 
   # Do these tests with polling turned on and off.
   for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
+  # for poll in [false] then do (poll) -> describe "poll:#{poll}", ->
     opts = {poll:poll, pollDelay:0}
 
     it 'returns the error from the query', (done) ->
@@ -98,7 +99,8 @@ describe 'queries', ->
 
         op = op:'rm', p:[]
         sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, []
-        sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
+        sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) ->
+          cb null, false
 
         @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
