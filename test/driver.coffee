@@ -113,8 +113,8 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
 
 
   describe 'subscribe', ->
-    # for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
-    for subType in ['single'] then do (subType) -> describe subType, ->
+    for subType in ['single', 'bulk'] then do (subType) -> describe subType, ->
+    # for subType in ['single'] then do (subType) -> describe subType, ->
       beforeEach ->
         @subscribe = if subType is 'single'
           @driver.subscribe.bind @driver
@@ -173,6 +173,20 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
           assert.strictEqual err, 'Cannot subscribe to future version'
           assert.equal stream, null
           done()
+
+      if subType is 'bulk'
+        it 'can handle bulkSubscribe on multiple docs with no ops', (done) -> @create =>
+          # Regression.
+          req = {users:{}}
+          req.users[@docName] = 0
+          req.users['does not exist'] = 0
+          @driver.bulkSubscribe req, (err, result) =>
+            throw Error err if err
+            assert.equal Object.keys(result.users).length, 2
+            assert result.users[@docName]
+            assert result.users['does not exist']
+            s.destroy() for name, s of result.users
+            done()
 
 
   describe 'distributed load', ->
