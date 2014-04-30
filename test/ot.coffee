@@ -67,7 +67,10 @@ describe 'ot', ->
       assert.equal null, ot.checkOpData {op:[1,2,3]}
 
   describe 'normalize', ->
-    it 'expands type names', ->
+    it 'expands type names in normalizeType', ->
+      assert.equal simple.uri, ot.normalizeType 'simple'
+
+    it 'expands type names in an op', ->
       opData = create:type:'simple'
       ot.normalize opData
       @checkOpTs opData
@@ -141,6 +144,18 @@ describe 'ot', ->
 
       it.skip 'shatters the operation if it can, and applies it incrementally'
 
+    describe 'noop', ->
+      it 'works on existing docs', ->
+        doc = {v:6, type:simple.uri, m:{ctime:1, mtime:2}, data:str:'Hi'}
+        assert.equal null, ot.apply doc, {v:6}
+        # same, but with v+1.
+        assert.deepEqual doc, {v:7, type:simple.uri, m:{ctime:1, mtime:2}, data:str:'Hi'}
+
+      it 'works on nonexistant docs', ->
+        doc = {v:0}
+        assert.equal null, ot.apply doc, {v:0}
+        assert.deepEqual doc, {v:1}
+
   describe 'transform', ->
     it 'fails if the version is specified on both and does not match', ->
       op1 = {v:5, op:{position:10, text:'hi'}}
@@ -157,6 +172,11 @@ describe 'ot', ->
 
     it 'create by op fails', ->
       assert.equal 'Document created remotely', ot.transform null, {v:10, create:type:simple.uri}, {v:10, op:{position:15, text:'hi'}}
+
+    it 'create by noop ok', ->
+      op = {create:{type:simple.uri}, v:6}
+      assert.equal null, ot.transform null, op, {v:6}
+      assert.deepEqual op, {create:{type:simple.uri}, v:7}
 
     it 'delete by create fails', ->
       assert.ok ot.transform null, {del:true}, {create:type:simple.uri}
@@ -179,6 +199,15 @@ describe 'ot', ->
       assert.equal null, ot.transform simple.uri, op, {op:{}, v:8}
       assert.deepEqual op, {del:true}
 
+    it 'delete by noop ok', ->
+      op = {del:true, v:6}
+      assert.equal null, ot.transform null, op, {v:6}
+      assert.deepEqual op, {del:true, v:7}
+
+      op = {del:true}
+      assert.equal null, ot.transform null, op, {v:6}
+      assert.deepEqual op, {del:true}
+
     it 'op by create fails', ->
       assert.ok ot.transform null, {op:{}}, {create:type:simple.uri}
 
@@ -195,6 +224,23 @@ describe 'ot', ->
       op2 = {v:6, op:{position:5, text:'abcde'}}
       assert.equal null, ot.transform simple.uri, op1, op2
       assert.deepEqual op1, {op:{position:15, text:'hi'}}
+
+    it 'op by noop ok', ->
+      # I don't think this is ever used, but whatever.
+      op = {v:6, op:{position:10, text:'hi'}}
+      assert.equal null, ot.transform simple.uri, op, {v:6}
+      assert.deepEqual op, {v:7, op:{position:10, text:'hi'}}
+
+    it 'noop by anything is ok', ->
+      op = {}
+      assert.equal null, ot.transform simple.uri, op, {v:6, op:{position:10, text:'hi'}}
+      assert.deepEqual op, {}
+      assert.equal null, ot.transform simple.uri, op, {del:true}
+      assert.deepEqual op, {}
+      assert.equal null, ot.transform null, op, {create:type:simple.uri}
+      assert.deepEqual op, {}
+      assert.equal null, ot.transform null, op, {}
+      assert.deepEqual op, {}
 
     # And op by op is tested in the first couple of tests.
 

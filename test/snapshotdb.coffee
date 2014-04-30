@@ -84,3 +84,21 @@ module.exports = (create, noBulkGetSnapshot) ->
     else
       console.warn 'Warning: db.bulkGetSnapshot not defined in snapshot db. Bulk subscribes will be slower.'
 
+
+    it 'projects fields using getProjectedSnapshot', (done) ->
+      if !@db.getProjectedSnapshot
+        console.warn 'No getProjectedSnapshot implementation. Skipping tests. This is ok - it just means projections will be less efficient'
+        done()
+
+      data = {v:5, type:ottypes.json0.uri, data:{x:5, y:6}, m:{ctime:1, mtime:2}}
+      @db.writeSnapshot @cName, @docName, data, (err) =>
+        throw Error err if err
+      
+        @db.getProjectedSnapshot @cName, @docName, {x:true, z:true}, (err, data) ->
+          throw Error err if err
+          delete data.docName
+          expected = {v:5, type:ottypes.json0.uri, data:{x:5}, m:{ctime:1, mtime:2}}
+          assert.deepEqual data, expected
+          done()
+
+

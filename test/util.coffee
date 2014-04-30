@@ -55,3 +55,10 @@ exports.teardown = ->
   @driver.destroy()
   @db.close()
 
+exports.stripTs = (ops) ->
+  if Array.isArray ops
+    for op in ops
+      delete op.m.ts if op.m
+  else
+    delete ops.m.ts if ops.m
+  ops

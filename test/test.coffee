@@ -6,15 +6,7 @@ livedb = require '../lib'
 assert = require 'assert'
 
 otTypes = require 'ottypes'
-{createClient, setup, teardown} = require './util'
-
-stripTs = (ops) ->
-  if Array.isArray ops
-    for op in ops
-      delete op.m.ts if op.m
-  else
-    delete ops.m.ts if ops.m
-  ops
+{createClient, setup, teardown, stripTs} = require './util'
 
 # Snapshots we get back from livedb will have a timestamp with a
 # m:{ctime:, mtime:} with the current time. We'll check the time is sometime
@@ -242,6 +234,8 @@ describe 'livedb', ->
 
         assert.deepEqual data, expected
         done()
+
+    it 'can bulk fetch a projected document and actual document at the same time'
 
     # creating anyway here just 'cos.
     it 'doesnt return anything for missing documents', (done) -> @create 'hi', =>
