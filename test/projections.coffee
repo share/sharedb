@@ -167,6 +167,7 @@ describe 'projections', ->
 
   beforeEach ->
     @proj = '_proj'
+
     @client.addProjection @proj, @cName, 'json0', {x:true, y:true, z:true}
 
     # Override to change the default value of data
@@ -182,8 +183,9 @@ describe 'projections', ->
         assert.deepEqual snapshot.data, {x:5, y:false}
         done()
 
-    it 'Uses the databases projection function if it exists', (done) ->
-      @db.getProjectedSnapshot = (cName, docName, fields, callback) =>
+    it 'Uses getSnapshotProjected if it exists', (done) ->
+      @db.getSnapshot = -> throw Error 'db.getSnapshot should not be called'
+      @db.getSnapshotProjected = (cName, docName, fields, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
         assert.deepEqual fields, {x:true, y:true, z:true}
@@ -313,11 +315,105 @@ describe 'projections', ->
 
 
   describe 'queries', ->
-    it 'projects data returned by queries' #, (done) ->
-      # These tests are run using the memory implementation, which returns all documents on query().
-    it 'uses the database projection function for queries'
+    it 'does not return any results in the projected collection if its empty', (done) ->
+      @client.queryFetch @proj, null, {}, (err, results) ->
+        throw Error err if err
+        assert.deepEqual results, []
+        done()
 
+    it 'projects data returned by queryFetch', (done) ->
+      @create2 'aaa', {a:5, x:3}, => @create2 'bbb', {x:3}, => @create2 'ccc', {}, =>
+        @client.queryFetch @proj, null, {}, (err, results) =>
+          throw Error err if err
+          results.sort (a, b) -> if b.docName > a.docName then -1 else 1
 
+          assert.deepEqual results, [
+            {v:1, type:json0, docName:'aaa', data:{x:3}}
+            {v:1, type:json0, docName:'bbb', data:{x:3}}
+            {v:1, type:json0, docName:'ccc', data:{}}
+          ]
+          done()
+
+    it 'projects data returned my queryFetch when extra data is emitted', (done) ->
+      @db.query = (liveDb, index, query, options, callback) =>
+        assert.deepEqual index, @cName
+        callback null,
+          results: [{docName:@docName, data:{a:6, x:5}, type:json0, v:1}]
+          extra: 'Extra stuff'
+
+      @client.queryFetch @proj, null, {}, (err, results) =>
+        throw Error err if err
+        assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
+        done()
+
+    it 'uses the database projection function for queries if it exists', (done) ->
+      @db.query = (a,b,c,d,e) -> throw Error 'db.query should not be called'
+      @db.queryProjected = (liveDb, index, fields, query, options, callback) =>
+        assert.equal liveDb, @client
+        assert.equal index, @cName
+        assert.deepEqual fields, {x:true, y:true, z:true}
+        assert.equal query, "cool cats"
+        assert.deepEqual options, {mode: 'fetch'}
+        callback null, [{docName:@docName, data:{x:5}, type:json0, v:1}]
+
+      @client.queryFetch @proj, 'cool cats', {}, (err, results) =>
+        throw Error err if err
+        assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
+        done()
+
+    # Do these tests with polling turned on and off.
+    # for poll in [false] then do (poll) -> describe "poll:#{poll}", ->
+    for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
+
+      opts = {poll:poll, pollDelay:0}
+      it 'projects data returned by queryPoll', (done) ->
+        @create2 'aaa', {a:5, x:3}, => @create2 'bbb', {x:3}, => @create2 'ccc', {}, =>
+          @client.queryPoll @proj, null, opts, (err, emitter) =>
+            throw Error err if err
+
+            results = emitter.data
+            results.sort (a, b) -> if b.docName > a.docName then -1 else 1
+            assert.deepEqual results, [
+              {v:1, type:json0, c:@proj, docName:'aaa', data:{x:3}}
+              {v:1, type:json0, c:@proj, docName:'bbb', data:{x:3}}
+              {v:1, type:json0, c:@proj, docName:'ccc', data:{}}
+            ]
+            done()
+
+      it 'projects data returned by queryPoll in a diff', (done) ->
+        @client.queryPoll @proj, 'unused', opts, (err, emitter) =>
+          throw Error err if err
+          assert.deepEqual emitter.data, []
+
+          emitter.on 'diff', (stuff) =>
+            delete stuff[0].values[0].m
+            assert.deepEqual stuff, [
+              type: 'insert'
+              index: 0
+              values: [
+                v:1, data:{x:5}, type:json0, docName:@docName, c:@proj
+              ]
+            ]
+            done()
+
+          @create {x:5, a:1}
+
+    it 'calls db.queryDocProjected if it exists', (done) ->
+      called = false
+      @db.queryDoc = -> throw Error 'db.queryDoc should not be called'
+      @db.queryDocProjected = (liveDb, index, cName, docName, fields, query, callback) =>
+        called = true
+        callback null, {v:1, data:{x:5}, type:json0, docName:@docName, c:@proj}
+
+      @client.queryPoll @proj, 'unused', {poll:false}, (err, emitter) =>
+        throw Error err if err
+        assert.deepEqual emitter.data, []
+
+        emitter.on 'diff', (stuff) =>
+          assert called
+          done()
+
+        @create {x:5, a:1}
 
 
 
