@@ -228,8 +228,7 @@ describe 'projections', ->
               stripTs data
               assert.deepEqual data, expected
               stream.destroy()
-              assert.equal @client.driver.numStreams, 0 if @client.driver.numStreams?
-              done()
+              @client.driver._checkForLeaks false, done
 
     it 'filters ops through bulk subscriptions', (done) ->
       @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
@@ -256,6 +255,21 @@ describe 'projections', ->
           expectOp result[@proj].two, {v:1, op:[], m:{}}
 
           @client.submit @cName, 'two', op:[{p:['a'], na:1}]
+
+    it 'does not leak memory when bulk subscribing', (done) ->
+      @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
+
+        req = {}
+        req[@cName] = {one:0, two:1}
+        req[@proj] = {one:0, two:1}
+
+        @client.bulkSubscribe req, (err, result) =>
+          throw Error err if err
+          stream.destroy() for _,stream of result[@cName]
+          stream.destroy() for _,stream of result[@proj]
+
+          @client.driver._checkForLeaks false, done
+
 
   describe 'submit', ->
     it 'rewrites submit on a projected query to apply to the original collection', (done) ->

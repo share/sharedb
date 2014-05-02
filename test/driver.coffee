@@ -42,8 +42,10 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
     @oplog = MemoryStore()
     @driver = createDriver @oplog
 
-  afterEach ->
-    destroyDriver @driver
+  afterEach (done) ->
+    @driver._checkForLeaks true, =>
+      destroyDriver @driver
+      done()
 
   describe 'atomicSubmit', ->
     it 'writes the op to the oplog', (done) ->
@@ -250,3 +252,25 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
                 # console.log "seen", observeCount
                 doneWork()
 
+    describe 'memory leaks', ->
+      it 'cleans up internal state after a subscription ends', (done) ->
+        # We'll subscribe a couple of times to the same document, just for exercise.
+        @driver.subscribe 'users', @docName, 0, {}, (err, stream1) =>
+          throw Error err if err
+          @driver.atomicSubmit 'users', @docName, createOp(0), {}, (err) =>
+            throw Error err if err
+            @driver.subscribe 'users', @docName, 1, {}, (err, stream2) =>
+              throw Error err if err
+
+              stream1.destroy()
+              stream2.destroy()
+              @driver._checkForLeaks false, done
+
+      it 'cleans up after a bulkSubscribe', (done) -> @create =>
+        req = {users:{}}
+        req.users[@docName] = 0
+        req.users['does not exist'] = 0
+        @driver.bulkSubscribe req, (err, result) =>
+          throw Error err if err
+          stream.destroy() for _, stream of result.users
+          @driver._checkForLeaks false, done
