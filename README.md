@@ -8,12 +8,12 @@ Subscribing gives you a stream of all operations applied to the given
 document. You can also make live bound queries, which give you the results of
 your query and a feed of changes to the result set over time.
 
-To use it, you need a database to actually store your data in. The obvious
+To use it, you need a database to actually store your data in.
 A database wrapper for mongo is available in
-[share/livedb-mongo](https://github.com/share/livedb-mongo).
+[share/livedb-mongo](https://github.com/share/livedb-mongo). I hope to add more
+over time.
 
-If you want to mess about, livedb also has an in-memory database you can use.
-Don't use this in production.
+If you want to mess about, livedb also has an in-memory database backend you can use, but don't use this in production.
 
 
 ## Data Model
@@ -39,11 +39,18 @@ default, livedb stores all operations forever - nothing is truly deleted.
 
 ## Using Livedb
 
-Livedb requires a backend database to store snapshots & operations. You can put snapshots & operations in different places if you want, though its easier to put all data in the same place.
+Livedb requires a backend database to store snapshots & operations. You can put
+snapshots & operations in different places if you want, though its easier to
+put all data in the same place.
 
-The backend database(s) needs to implement a [simple API which has documentation and a sample implementation here](https://github.com/share/livedb/blob/master/lib/memory.js). Currently the only database binding is [livedb-mongo](https://github.com/share/livedb-mongo).
+The backend database(s) needs to implement a [simple API which has
+documentation and a sample implementation
+here](https://github.com/share/livedb/blob/master/lib/memory.js). Currently the
+only database binding is [livedb-mongo](https://github.com/share/livedb-mongo).
 
-A livedb client is created using either an options object or a database backend. If you specify a database backend, its used as both oplog and snapshot.
+A livedb client is created using either an options object or a database
+backend. If you specify a database backend, its used as both oplog and
+snapshot.
 
 ```javascript
 db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
@@ -70,18 +77,6 @@ livedb = require('livedb').client({snapshotDb:snapshotdb, oplog:oplog});
 
 The options object can also be passed:
 
-- **redis:** *redis client*. This can be specified if there is any further
-    configuration of redis that you want to perform. The obvious examples of
-    this are when redis is running on a remote machine, redis requires
-    authentication or you want to use something other than redis db 0.
-- **redisObserver:** *redis client*. Livedb actually needs 2 redis connections,
-    because redis doesn't let you use a connection with pubsub subscriptions
-    to edit data. Livedb will automatically try to clone the first connection
-    to make the observer connection, but we can't copy some options. if you
-    want to do anything thats particularly fancy, you should make 2 redis
-    instances and provide livedb with both of them. Note that because redis
-    pubsub messages aren't constrained to the selected database, the
-    redisObserver doesn't need to select the db you have your data in.
 - **extraDbs:** *{name:query db}* This is used to register extra database backends which will be
     notified whenever operations are submitted. They can also be used in
     queries.
