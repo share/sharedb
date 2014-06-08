@@ -256,6 +256,20 @@ describe 'projections', ->
 
           @client.submit @cName, 'two', op:[{p:['a'], na:1}]
 
+    it 'does not modify the request in a bulkSubscribe when there are projections', (done) ->
+      # regression
+      @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
+
+        req = {}
+        req[@cName] = {one:0, two:1}
+        req[@proj] = {one:0, two:1}
+
+        reqAfter = JSON.parse JSON.stringify req
+
+        @client.bulkSubscribe req, (err, result) =>
+          assert.deepEqual req, reqAfter
+          done()
+
     it 'does not leak memory when bulk subscribing', (done) ->
       @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
 
