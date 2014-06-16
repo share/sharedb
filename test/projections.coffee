@@ -77,6 +77,10 @@ describe 'projection utility methods', ->
 
 
   describe 'projectOpData', ->
+    it 'passes src/seq into the projected op', ->
+      op = {src:'src', seq:123, op:[]}
+      assert.deepEqual op, projectOpData json0, {}, op
+
     describe 'op', ->
       beforeEach ->
         @op = (fields, input, expected = input) ->
@@ -288,9 +292,9 @@ describe 'projections', ->
   describe 'submit', ->
     it 'rewrites submit on a projected query to apply to the original collection', (done) ->
       realOps = [
-        {create:{type:json0, data:{x:1}}, v:0, m:{}}
-        {v:1, op:[{p:['x'], na:1}], v:1, m:{}}
-        {del:true, v:2, m:{}}
+        {create:{type:json0, data:{x:1}}, v:0, m:{}, src:'src', seq:1}
+        {v:1, op:[{p:['x'], na:1}], v:1, m:{}, src:'src', seq:2}
+        {del:true, v:2, m:{}, src:'src2', seq:1}
       ]
 
       @client.subscribe @proj, @docName, 0, (err, projStream) =>
