@@ -70,6 +70,7 @@ initial data. Then you can submit editing operations on the document (using
 OT). Finally you can delete the document with a delete operation. By
 default, livedb stores all operations forever - nothing is truly deleted.
 
+---
 
 ## Using Livedb
 
@@ -348,7 +349,16 @@ It calls your callback with `(err, snapshot, stream)`, giving you both the curre
 
 #### Bulk Subscribe
 
-If you want to subscribe to multiple documents at once, you should call `bulkSubscribe(request, callback)`. The bulk subscribe request is a map from cName -> map from docName -> version. For example, `{colors:{red:5, blue:6, green:0}}`. The response is a map from cName -> map from docName -> stream. For example, `{colors{red:<stream>, blue:<stream>, green:<stream>}}`. bulkSubscribe will either return a stream for all requested objects or (if there was an error), none of them.
+If you want to subscribe to multiple documents at once, you should call
+`bulkSubscribe(request, callback)`. The bulk subscribe request is a map from
+cName -> map from docName -> version. For example, `{colors: {red:5, blue:6,
+green:0}}`. The response is a map from cName -> map from docName -> stream.
+For example, `{colors: {red:<stream>, blue:<stream>, green:<stream>}}`.
+bulkSubscribe will either return a stream for all requested objects or (if
+there was an error), none of them.
+
+Again, remember to call `stream.destroy()` on all streams returned by bulk
+subscribe when you're done with them.
 
 
 ### Queries
