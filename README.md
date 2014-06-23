@@ -21,7 +21,7 @@ can use, but don't use this in production.
 
 ```javascript
 var livedb = require('livedb');
-var db = require('livedb-mongo')();
+var db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
 
 backend = livedb.client(db);
 
@@ -35,11 +35,14 @@ backend.fetchAndSubscribe('users', 'fred', function(err, data, stream) {
 });
 
 
-// This could happen from a different process / server if you use the redis driver.
+// This could happen from a different process / server but only if you use the
+// redis driver. (Otherwise they won't see each other's changes and everything
+// breaks)
 backend.submit('users', 'fred', {v:0, create:{type:'json0', data:{name:'Fred'}}}, function(err) {
   // Created with data {name:'Fred'}
 
   // Other concurrent edits can happen too, and they'll all be merged using OT.
+  // This operations says at doc['name'][4], insert characters ' Flintstone'.
   backend.submit('users', 'fred', {v:1, op:[{p:['name', 4], si:' Flintstone'}]}, function(err) {
     // users.fred now has data {name:'Fred Flintstone'}
   });
