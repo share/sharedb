@@ -19,9 +19,9 @@ can use. The in-memory database stores all documents and operations in memory
 forever (or at least, until you restart your server - at which point all
 documents and operations are lost.)
 
-Please report any bugs you find to the issue tracker.
-
 For questions, discussion and announcements, join the [ShareJS mailing list](https://groups.google.com/forum/?fromgroups#!forum/sharejs).
+
+Please report any bugs you find to the [issue tracker](https://github.com/share/livedb/issues).
 
 
 ## Quick tour
