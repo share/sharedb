@@ -278,7 +278,6 @@ livedb.getOps('users', 'fred', 0, null, function(err, ops) {
   // ops contains the two operations which were submitted above:
   // [{v:0, create:{...}, {v:1, op:[...]}]
 });
-
 ```
 
 ### Streaming changes to a document in realtime
@@ -297,7 +296,9 @@ exactly once. If you subscribe and request an old document version, all
 operations from that version to the current version will be buffered in the
 stream before the stream is returned to the callback.
 
-You usually want to call *subscribe* after fetching a document. Pass the document version that you got from calling *fetch* into your call to *subscribe*.
+You usually want to call *subscribe* after fetching a document. Pass the
+document version that you got from calling *fetch* into your call to
+*subscribe*.
 
 For example:
 
@@ -326,7 +327,10 @@ livedb.fetch('users', 'fred', function(err, data) {
 });
 ```
 
-There is a helper method which will both fetch and subscribe for you (cleverly called `fetchAndSubscribe(cName, docName, callback)`). It looks like this:
+**Important!** To avoid leaking memory, when you're done with a stream call `stream.destroy()` to clean it up.
+
+There is a helper method which will both fetch and subscribe for you (cleverly
+called `fetchAndSubscribe(cName, docName, callback)`). It is defined like this:
 
 ```javascript
 Livedb.prototype.fetchAndSubscribe = function(cName, docName, callback) {
@@ -342,8 +346,7 @@ Livedb.prototype.fetchAndSubscribe = function(cName, docName, callback) {
 
 It calls your callback with `(err, snapshot, stream)`, giving you both the current document snapshot and the stream of operations from the current version.
 
-> **Important** When you're done with a stream, you must clean it up. Call `stream.destroy()`.
-
+#### Bulk Subscribe
 
 If you want to subscribe to multiple documents at once, you should call `bulkSubscribe(request, callback)`. The bulk subscribe request is a map from cName -> map from docName -> version. For example, `{colors:{red:5, blue:6, green:0}}`. The response is a map from cName -> map from docName -> stream. For example, `{colors{red:<stream>, blue:<stream>, green:<stream>}}`. bulkSubscribe will either return a stream for all requested objects or (if there was an error), none of them.
 
