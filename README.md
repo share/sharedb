@@ -107,9 +107,10 @@ This is the equivalent to this:
 ```javascript
 db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
 backend = livedb.client({db:db});
+// Also equivalent to livedb.client({snapshotDb:db, oplog:db});
 ```
 
-You can use a different database for both snapshots and operations:
+You can use a different database for both snapshots and operations if you want:
 
 ```javascript
 snapshotdb = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
@@ -118,12 +119,15 @@ backend = livedb.client({snapshotDb:snapshotdb, oplog:oplog});
 ```
 
 All of the above examples will use the in-process driver by default. If you
-want to scale across multiple frontend servers, you can use the redis driver:
+want to scale across multiple frontend servers, you should use the redis driver:
 
 ```javascript
+var redis = require('redis');
 client1 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
 client2 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
-backend = livedb.client({snapshotDb:snapshotdb, driver:livedb.redisDriver(oplog, client1, client2));
+
+driver = livedb.redisDriver(oplog, client1, client2);
+backend = livedb.client({snapshotDb:snapshotdb, driver:driver});
 ```
 
 The redis driver needs 2 redis clients because redis can't use the same
