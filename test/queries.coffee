@@ -130,6 +130,22 @@ describe 'queries', ->
 
     it 'works if you remove then re-add a document from a query' # Regression.
 
+    it 'does not poll if opts.shouldPoll returns false', (done) -> @create {x:5}, =>
+      opts.shouldPoll = (cName, docName, data, index, query) =>
+        assert.equal cName, @cName
+        assert.equal docName, @docName
+        assert.deepEqual query, {x:5}
+        no
+
+      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
+        throw Error err if err
+
+        @db.query = -> throw Error 'query should not be called'
+        @db.queryDoc = -> throw Error 'queryDoc should not be called'
+
+        @collection.submit @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
+          done()
+
   describe 'queryFetch', ->
     it 'query fetch with no results works', (done) ->
       sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, []
