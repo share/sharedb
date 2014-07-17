@@ -149,6 +149,28 @@ describe 'queries', ->
         @db.queryDoc = -> throw Error 'queryDoc should not be called'
 
         @collection.submit @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
+          assert.equal called, 1
+          done()
+
+    it 'does not poll if db.shouldPoll returns false', (done) -> @create {x:5}, =>
+      called = 0
+      @db.queryShouldPoll = (livedb, cName, docName, data, index, query) =>
+        assert.equal cName, @cName
+        assert.equal docName, @docName
+        assert.deepEqual query, {x:5}
+        called++
+        console.log(cName, docName, data, index, query);
+        console.log(data.op)
+        no
+
+      @collection.queryPoll {x:5}, opts, (err, emitter) =>
+        throw Error err if err
+
+        @db.query = -> throw Error 'query should not be called'
+        @db.queryDoc = -> throw Error 'queryDoc should not be called'
+
+        @collection.submit @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
+          assert.equal called, 1
           done()
 
   describe 'queryFetch', ->
