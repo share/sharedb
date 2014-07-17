@@ -1,6 +1,7 @@
 assert = require 'assert'
 sinon = require 'sinon'
-otTypes = require 'ottypes'
+json0 = require('ot-json0').type
+text = require('ot-text').type
 
 {createClient, createDoc, setup, teardown} = require './util'
 
@@ -26,7 +27,9 @@ describe 'queries', ->
   # Do these tests with polling turned on and off.
   for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
   # for poll in [false] then do (poll) -> describe "poll:#{poll}", ->
-    opts = {poll:poll, pollDelay:0}
+    opts = null
+    beforeEach ->
+      opts = {poll:poll, pollDelay:0}
 
     it 'returns the error from the query', (done) ->
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
@@ -46,7 +49,7 @@ describe 'queries', ->
       expected = [
         docName: @docName,
         data: {x:5},
-        type: otTypes.json0.uri,
+        type: json0.uri,
         v:1,
         c:@cName
       ]
@@ -71,7 +74,7 @@ describe 'queries', ->
           done()
 
     it 'adds an element when it matches', (done) ->
-      result = c:@cName, docName:@docName, v:1, data:{x:5}, type:otTypes.json0.uri
+      result = c:@cName, docName:@docName, v:1, data:{x:5}, type:json0.uri
 
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
         emitter.on 'diff', (diff) =>
@@ -131,10 +134,12 @@ describe 'queries', ->
     it 'works if you remove then re-add a document from a query' # Regression.
 
     it 'does not poll if opts.shouldPoll returns false', (done) -> @create {x:5}, =>
+      called = 0
       opts.shouldPoll = (cName, docName, data, index, query) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
         assert.deepEqual query, {x:5}
+        called++
         no
 
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
@@ -156,7 +161,7 @@ describe 'queries', ->
         done()
 
     it 'query with some results returns those results', (done) ->
-      result = docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1
+      result = docName:@docName, data:'qwertyuiop', type:text.uri, v:1
       sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
 
       @collection.queryFetch {'_data':'qwertyuiop'}, (err, results) =>
@@ -165,7 +170,7 @@ describe 'queries', ->
 
     it 'does the right thing with a backend that returns extra data', (done) ->
       result =
-        results: [{docName:@docName, data:'qwertyuiop', type:otTypes.text.uri, v:1}]
+        results: [{docName:@docName, data:'qwertyuiop', type:text.uri, v:1}]
         extra: 'Extra stuff'
       sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, result
 
@@ -195,11 +200,11 @@ describe 'queries', ->
 
       @client.query 'internet', {x:5}, {sexy:true, backend:'test', pollDelay:0}, (err) =>
         throw Error err if err
-        @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) =>
+        @client.submit @cName, @docName, {v:0, create:{type:text.uri}}, (err) =>
           throw new Error err if err
-          @client.submit @cName2, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) =>
+          @client.submit @cName2, @docName, {v:0, create:{type:text.uri}}, (err) =>
             throw new Error err if err
-            @client.submit @cName3, @docName, {v:0, create:{type:otTypes.text.uri}}, (err) =>
+            @client.submit @cName3, @docName, {v:0, create:{type:text.uri}}, (err) =>
               throw new Error err if err
               assert.equal @testWrapper.query.callCount, 3
               assert.equal @db.query.callCount, 0
@@ -211,7 +216,7 @@ describe 'queries', ->
 
       sinon.spy @testWrapper, 'submit'
 
-      @client.submit @cName, @docName, {v:0, create:{type:otTypes.text.uri}}, {backend: 'test'}, (err) =>
+      @client.submit @cName, @docName, {v:0, create:{type:text.uri}}, {backend: 'test'}, (err) =>
         assert.equal @testWrapper.submit.callCount, 1
         done()
 

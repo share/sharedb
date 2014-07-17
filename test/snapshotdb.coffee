@@ -1,6 +1,7 @@
 # This is a test suite for snapshot database implementations
 assert = require 'assert'
-ottypes = require 'ottypes'
+textType = require('ot-text').type
+jsonType = require('ot-json0').type
 
 counter = 1
 
@@ -28,7 +29,7 @@ module.exports = (create, noBulkGetSnapshot) ->
         done()
 
     it 'will store data', (done) ->
-      data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
+      data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error(err) if err
         @db.getSnapshot @cName, @docName, (err, storedData) ->
@@ -37,7 +38,7 @@ module.exports = (create, noBulkGetSnapshot) ->
           done()
 
     it 'will remove data fields if the data has been deleted', (done) ->
-      data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
+      data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error(err) if err
         @db.writeSnapshot @cName, @docName, {v:6}, (err) =>
@@ -58,7 +59,7 @@ module.exports = (create, noBulkGetSnapshot) ->
           done()
 
       it 'returns results', (done) ->
-        data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
+        data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
           @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) =>
@@ -70,7 +71,7 @@ module.exports = (create, noBulkGetSnapshot) ->
             done()
 
       it "works when some results exist and some don't", (done) ->
-        data = {v:5, type:ottypes.text.uri, data:'hi there', m:{ctime:1, mtime:2}}
+        data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
         @db.writeSnapshot @cName, @docName, data, (err) =>
           throw Error(err) if err
           @db.bulkGetSnapshot {testcollection:['does not exist', @docName, 'also does not exist']}, (err, results) =>
@@ -90,14 +91,14 @@ module.exports = (create, noBulkGetSnapshot) ->
         console.warn 'No getSnapshotProjected implementation. Skipping tests. This is ok - it just means projections will be less efficient'
         return done()
 
-      data = {v:5, type:ottypes.json0.uri, data:{x:5, y:6}, m:{ctime:1, mtime:2}}
+      data = {v:5, type:jsonType.uri, data:{x:5, y:6}, m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error err if err
       
         @db.getSnapshotProjected @cName, @docName, {x:true, z:true}, (err, data) ->
           throw Error err if err
           delete data.docName
-          expected = {v:5, type:ottypes.json0.uri, data:{x:5}, m:{ctime:1, mtime:2}}
+          expected = {v:5, type:jsonType.uri, data:{x:5}, m:{ctime:1, mtime:2}}
           assert.deepEqual data, expected
           done()
 

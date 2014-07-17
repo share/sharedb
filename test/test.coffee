@@ -5,7 +5,7 @@
 livedb = require '../lib'
 assert = require 'assert'
 
-otTypes = require 'ottypes'
+textType = require('ot-text').type
 {createClient, setup, teardown, stripTs} = require './util'
 
 # Snapshots we get back from livedb will have a timestamp with a
@@ -147,9 +147,9 @@ describe 'livedb', ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
-        assert.deepEqual stripTs(opData), {v:0, create:{type:otTypes.text.uri, data:''}, m:{}}
+        assert.deepEqual stripTs(opData), {v:0, create:{type:textType.uri, data:''}, m:{}}
         checkAndStripMetadata snapshot
-        assert.deepEqual snapshot, {v:1, data:"", type:otTypes.text.uri, m:{}}
+        assert.deepEqual snapshot, {v:1, data:"", type:textType.uri, m:{}}
         done()
 
       @create()
@@ -187,7 +187,7 @@ describe 'livedb', ->
         validationRun = no
         validate = (opData, snapshot, callback) ->
           checkAndStripMetadata snapshot
-          assert.deepEqual snapshot, {v:1, data:'', type:otTypes.text.uri, m:{}}
+          assert.deepEqual snapshot, {v:1, data:'', type:textType.uri, m:{}}
           validationRun = yes
           return
 
@@ -226,7 +226,7 @@ describe 'livedb', ->
         throw new Error err if err
         expected = {} # Urgh javascript :(
         expected[@cName] = {}
-        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri, m:{}}
+        expected[@cName][@docName] = {data:'hi', v:1, type:textType.uri, m:{}}
 
         for cName, docs of data
           for docName, snapshot of docs
@@ -265,7 +265,7 @@ describe 'livedb', ->
           bbbbb: {a:{v:0}, b:{v:0}, c:{v:0}}
           zzzzz: {d:{v:0}, e:{v:0}, f:{v:0}}
         expected[@cName] = {}
-        expected[@cName][@docName] = {data:'hi', v:1, type:otTypes.text.uri, m:{}}
+        expected[@cName][@docName] = {data:'hi', v:1, type:textType.uri, m:{}}
 
         checkAndStripMetadata data[@cName][@docName]
 
@@ -284,7 +284,7 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, op:['hi'], (err, v) =>
         @collection.getOps @docName, 0, 1, (err, ops) =>
           throw new Error err if err
-          assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
+          assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}]
 
           @collection.getOps @docName, 1, 2, (err, ops) ->
             throw new Error err if err
@@ -323,12 +323,12 @@ describe 'livedb', ->
     it 'returns all ops if to is not defined', (done) -> @create =>
       @collection.getOps @docName, 0, (err, ops) =>
         throw new Error err if err
-        assert.deepEqual stripTs(ops), [create:{type:otTypes.text.uri, data:''}, v:0, m:{}]
+        assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}]
 
         @collection.submit @docName, v:1, op:['hi'], (err, v) =>
           @collection.getOps @docName, 0, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual stripTs(ops), [{create:{type:otTypes.text.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
+            assert.deepEqual stripTs(ops), [{create:{type:textType.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
             done()
 
 

@@ -3,7 +3,7 @@
 #
 # getOps collection, docName, start, end
 assert = require 'assert'
-ottypes = require 'ottypes'
+textType = require('ot-text').type
 
 # Wait for the returned function to be called a given number of times, then call the
 # callback.
@@ -43,21 +43,21 @@ module.exports = (create) ->
         done()
 
     it 'writing an operation bumps the version', (done) ->
-      @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+      @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
         throw new Error err if err
         @db.getVersion @cName, @docName, (err, v) =>
           throw new Error err if err
           assert.strictEqual v, 1
-          @db.writeOp @cName, @docName, {v:1, op:{position:2, text:'hi'}}, (err) =>
+          @db.writeOp @cName, @docName, {v:1, op:['hi']}, (err) =>
             @db.getVersion @cName, @docName, (err, v) ->
               throw new Error err if err
               assert.strictEqual v, 2
               done()
 
     it 'ignores subsequent attempts to write the same operation', (done) ->
-      @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+      @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
         throw new Error err if err
-        @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+        @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
           throw new Error err if err
 
           @db.getVersion @cName, @docName, (err, v) =>
@@ -68,11 +68,11 @@ module.exports = (create) ->
               done()
 
     it 'does not decrement the version when receiving old ops', (done) ->
-      @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+      @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
         throw new Error err if err
-        @db.writeOp @cName, @docName, {v:1, op:{position:2, text:'hi'}}, (err) =>
+        @db.writeOp @cName, @docName, {v:1, op:['hi']}, (err) =>
           throw new Error err if err
-          @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+          @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
             throw new Error err if err
             @db.getVersion @cName, @docName, (err, v) =>
               throw new Error err if err
@@ -80,9 +80,9 @@ module.exports = (create) ->
               done()
 
     it 'ignores concurrent attempts to write the same operation', (done) ->
-      @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+      @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
         throw new Error err if err
-      @db.writeOp @cName, @docName, {v:0, create:{type:ottypes.simple.uri}}, (err) =>
+      @db.writeOp @cName, @docName, {v:0, create:{type:textType.uri}}, (err) =>
         throw new Error err if err
 
         @db.getVersion @cName, @docName, (err, v) =>
