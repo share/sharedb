@@ -107,6 +107,7 @@ describe 'projection utility methods', ->
       it 'allows editing in-property fields', ->
         @op {}, [p:['x', 'y'], na:1], []
         @op {x:true}, [p:['x', 'y'], na:1]
+        @op {x:true}, [p:['x'], na:1]
         @op {y:true}, [p:['x', 'y'], na:1], []
 
     describe 'create', ->
