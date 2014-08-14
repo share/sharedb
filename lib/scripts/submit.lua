@@ -1,5 +1,11 @@
 local clientNonceKey, versionKey, opLogKey, docOpChannel = unpack(KEYS)
+-- The regular keys are followed by the dirty list names
+local DIRTY_KEYS_IDX = 5
+
 local seq, v, logEntry, docPubEntry, docVersion = unpack(ARGV) -- From redisSubmit, below.
+-- ... and the regular args are followed by the dirty list data.
+local DIRTY_ARGS_IDX = 6
+
 v = tonumber(v)
 seq = tonumber(seq)
 docVersion = tonumber(docVersion)
@@ -56,6 +62,11 @@ redis.call('persist', opLogKey)
 redis.call('persist', versionKey)
 
 redis.call('publish', docOpChannel, docPubEntry)
+
+for i=DIRTY_KEYS_IDX,#KEYS do
+  local data = ARGV[i - DIRTY_KEYS_IDX + DIRTY_ARGS_IDX]
+  redis.call('rpush', KEYS[i], data)
+end
 
 -- Finally, save the new nonce. We do this here so we only update the nonce if
 -- we're at the most recent version in the oplog.

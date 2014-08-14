@@ -210,6 +210,32 @@ describe 'livedb', ->
 
       it 'calls validate on each component in turn, and applies them incrementally'
 
+    describe 'dirty data', ->
+      it 'calls getDirtyData and puts the data in the queue', (done) -> @create =>
+        op = {v:1, op:['hi']}
+
+        @client.getDirtyData = (c, d, op_, snapshot) =>
+          assert.equal c, @cName
+          assert.equal d, @docName
+          assert.deepEqual op_, op
+          # Editing the snapshot here is a little naughty.
+          checkAndStripMetadata snapshot
+          assert.deepEqual snapshot, {v:2, data:'hi', type:textType.uri, m:{}}
+          return {x:5}
+
+        @collection.submit @docName, op, (err) =>
+          throw Error err if err
+
+          called = false
+          consumer = (data, callback) ->
+            called = true
+            assert.deepEqual data, [5]
+            callback()
+          @client.consumeDirtyData 'x', consumer, (err) ->
+            throw Error err if err
+            assert called
+            done()
+
   describe 'fetch', ->
     it 'can fetch created documents', (done) -> @create 'hi', =>
       @collection.fetch @docName, (err, {v, data}) ->

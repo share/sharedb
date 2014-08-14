@@ -12,8 +12,8 @@
     "ot-json0": "^1.0.0"
   },
   "optionalDependencies": {
-    "redis": "~0.10",
-    "hiredis": "~0.1",
+    "redis": "^0.12.1",
+    "hiredis": "^0.1",
     "statsd-client": "*"
   },
   "devDependencies": {
