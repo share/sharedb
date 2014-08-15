@@ -157,6 +157,16 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
             throw Error err if err
             done()
 
+    it 'only consumes the data sent to checkConsume', (done) ->
+      @append {x:1}, =>
+        consume = (data, callback) =>
+          @append {x:2}, callback
+
+        @driver.consumeDirtyData 'x', {}, consume, (err) =>
+          throw Error err if err
+          
+          @checkConsume 'x', [2], done
+
     it 'handles lists independently', (done) ->
       @append {x:'x1', y:'y1', z:'z1'}, =>
         @checkConsume 'x', ['x1'], =>
