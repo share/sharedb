@@ -322,7 +322,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
                 submitCount++
                 # console.log "op", submitCount
                 doneWork()
-            , 100 * Math.random()
+            , (100 * Math.random())|0
 
             d.subscribe 'users', 'seph', 1, {}, (err, stream) =>
               # console.log "subscribed", i
