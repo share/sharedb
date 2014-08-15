@@ -211,8 +211,33 @@ describe 'livedb', ->
       it 'calls validate on each component in turn, and applies them incrementally'
 
     describe 'dirty data', ->
-      it 'calls getDirtyData and puts the data in the queue', (done) -> @create =>
+      beforeEach ->
+        @checkConsume = (list, expected, options, callback) =>
+          # Stolen from driver tests.
+          [options, callback] = [{}, options] if typeof options is 'function'
+          called = false
+          consume = (data, callback) ->
+            assert !called
+            called = true
+            assert.deepEqual data, expected
+            callback()
+
+          @client.consumeDirtyData list, options, consume, (err) ->
+            throw Error err if err
+            assert.equal called, expected isnt null
+            callback()
+
+      it 'calls getDirtyDataPre and getDirtyData', (done) -> @create =>
         op = {v:1, op:['hi']}
+
+        @client.getDirtyDataPre = (c, d, op_, snapshot) =>
+          assert.equal c, @cName
+          assert.equal d, @docName
+          assert.deepEqual op_, op
+          # Editing the snapshot here is a little naughty.
+          checkAndStripMetadata snapshot
+          assert.deepEqual snapshot, {v:1, data:'', type:textType.uri, m:{}}
+          return {a:5}
 
         @client.getDirtyData = (c, d, op_, snapshot) =>
           assert.equal c, @cName
@@ -221,20 +246,13 @@ describe 'livedb', ->
           # Editing the snapshot here is a little naughty.
           checkAndStripMetadata snapshot
           assert.deepEqual snapshot, {v:2, data:'hi', type:textType.uri, m:{}}
-          return {x:5}
+          return {b:6}
 
         @collection.submit @docName, op, (err) =>
           throw Error err if err
 
-          called = false
-          consumer = (data, callback) ->
-            called = true
-            assert.deepEqual data, [5]
-            callback()
-          @client.consumeDirtyData 'x', consumer, (err) ->
-            throw Error err if err
-            assert called
-            done()
+          @checkConsume 'a', [5], =>
+            @checkConsume 'b', [6], done
 
   describe 'fetch', ->
     it 'can fetch created documents', (done) -> @create 'hi', =>
