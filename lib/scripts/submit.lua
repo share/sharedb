@@ -65,13 +65,17 @@ redis.call('publish', docOpChannel, docPubEntry)
 
 for i=DIRTY_KEYS_IDX,#KEYS do
   local data = ARGV[i - DIRTY_KEYS_IDX + DIRTY_ARGS_IDX]
-  redis.call('rpush', KEYS[i], data)
+  local dirtyKey = KEYS[i]
+  redis.call('rpush', dirtyKey, data)
+  -- It doesn't matter what data we publish here, it just needs to kick the
+  -- client.
+  redis.call('publish', dirtyKey, 1)
 end
 
 -- Finally, save the new nonce. We do this here so we only update the nonce if
 -- we're at the most recent version in the oplog.
 if seq ~= nil then
   --redis.log(redis.LOG_NOTICE, "set " .. clientNonceKey .. " to " .. seq)
-  redis.call('SET', clientNonceKey, seq)
-  redis.call('EXPIRE', clientNonceKey, 60*60*24*7) -- 1 week
+  redis.call('set', clientNonceKey, seq)
+  redis.call('expire', clientNonceKey, 60*60*24*7) -- 1 week
 end
