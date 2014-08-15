@@ -20,7 +20,8 @@ createClient = exports.createClient = (db = new Memory()) ->
   driver = createDriver db
 
   testWrapper = {name:'test'}
-  client = livedb.client {db, driver, extraDbs:{test:testWrapper}}
+  sdc = {guage: (->), increment:(->), timing:(->)}
+  client = livedb.client {db, driver, extraDbs:{test:testWrapper}, sdc}
   {client, db, testWrapper, driver}
 
 
