@@ -117,10 +117,10 @@ describe 'ot', ->
         assert.equal null, ot.apply doc, {v:6, del:true}
         assert.deepEqual doc, {v:7}
 
-      it 'removes any TS on the doc', ->
+      it 'keeps any metadata from op on the doc', ->
         doc = {v:6, type:text.uri, m:{ctime:1, mtime:2}, data:'hi'}
-        assert.equal null, ot.apply doc, {v:6, del:true}
-        assert.deepEqual doc, {v:7}
+        assert.equal null, ot.apply doc, {v:6, del:true, m: {foo: "bar"}}
+        assert.deepEqual doc, {v:7, m:{ctime:1, mtime:2, foo: "bar"}}
 
     describe 'op', ->
       it 'fails if the document does not exist', ->
