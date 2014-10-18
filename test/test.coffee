@@ -405,11 +405,22 @@ describe 'livedb', ->
             assert.deepEqual stripTs(ops), [{create:{type:textType.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
             done()
 
-
-
-    it 'errors if ops are missing from the snapshotdb and oplogs'
-
-
+    it 'errors if ops are missing from the snapshotdb and oplogs', (done) -> @create =>
+      @collection.submit @docName, {v:1, op:['test']}, (err, v) =>
+        throw new Error err if err
+        @collection.submit @docName, {v:1, op:['test2']}, (err, v) =>
+          throw new Error err if err
+        
+          getOps = @client.driver.getOps
+          @client.driver.getOps = (cName, docName, from, to, fn) =>
+            getOps.call @client.driver, cName, docName, from, to, (err, ops) ->
+              throw new Error err if err
+              fn null, ops.slice 1
+        
+          @collection.getOps @docName, 0, (err, ops) =>
+            assert.equal err, 'Missing operations'
+            @client.driver.getOps = getOps
+            done()
 
     it 'works with separate clients', (done) -> @create =>
       return done() unless @driver.distributed
