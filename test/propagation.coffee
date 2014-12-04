@@ -22,9 +22,9 @@ describe 'operation propagation granularity', ->
   # Do these tests with polling turned on and off.
   for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
     beforeEach ->
-      @client.publishOperationsToDriver = false
+      @client.publishOperationsToCollections = false
 
-    it 'throttles publishing operations when publishOperationsToDriver === false', (done) ->
+    it 'throttles publishing operations when publishOperationsToCollections === false', (done) ->
       result = c:@cName, docName:@docName, v:1, data:{x:5}, type:json0.uri
 
       @collection.queryPoll {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
@@ -39,9 +39,9 @@ describe 'operation propagation granularity', ->
   # Do these tests with polling turned on and off.
   for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
     beforeEach ->
-      @client.publishOperationsToDriver = true
+      @client.publishOperationsToCollections = true
 
-    it 'does not throttle publishing operations with publishOperationsToDriver === true', (done) ->
+    it 'does not throttle publishing operations with publishOperationsToCollections === true', (done) ->
       result = c:@cName, docName:@docName, v:1, data:{x:5}, type:json0.uri
 
       @collection.queryPoll {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
