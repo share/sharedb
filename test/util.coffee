@@ -14,10 +14,10 @@ Memory = require '../lib/memory'
 #   {client, redis, db, testWrapper, driver}
 
 
-createClient = exports.createClient = (db = new Memory()) ->
-  createDriver = require '../lib/inprocessdriver'
-  
+createClient = exports.createClient = (db = new Memory(), createDriver = require '../lib/inprocessdriver') ->
+  #console.log "create driver:" + createDriver
   driver = createDriver db
+  #console.log "driver itself: " + driver.rejectSubmit
 
   testWrapper = {name:'test'}
   sdc = {guage: (->), increment:(->), timing:(->)}

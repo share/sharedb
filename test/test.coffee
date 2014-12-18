@@ -147,7 +147,7 @@ describe 'livedb', ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
-        assert.deepEqual stripTs(opData), {v:0, create:{type:textType.uri, data:''}, m:{}}
+        assert.deepEqual stripTs(opData), {v:0, create:{type:textType.uri, data:''}, m:{}, src: ""}
         checkAndStripMetadata snapshot
         assert.deepEqual snapshot, {v:1, data:"", type:textType.uri, m:{}}
         done()
@@ -328,11 +328,11 @@ describe 'livedb', ->
       @collection.submit @docName, v:1, op:['hi'], (err, v) =>
         @collection.getOps @docName, 0, 1, (err, ops) =>
           throw new Error err if err
-          assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}]
+          assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}, src:'']
 
           @collection.getOps @docName, 1, 2, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual stripTs(ops), [op:['hi'], v:1, m:{}]
+            assert.deepEqual stripTs(ops), [op:['hi'], v:1, m:{}, src:'']
             done()
 
     it 'puts a decent timestamp in ops', (done) ->
@@ -367,12 +367,12 @@ describe 'livedb', ->
     it 'returns all ops if to is not defined', (done) -> @create =>
       @collection.getOps @docName, 0, (err, ops) =>
         throw new Error err if err
-        assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}]
+        assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}, src:'']
 
         @collection.submit @docName, v:1, op:['hi'], (err, v) =>
           @collection.getOps @docName, 0, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual stripTs(ops), [{create:{type:textType.uri, data:''}, v:0, m:{}}, {op:['hi'], v:1, m:{}}]
+            assert.deepEqual stripTs(ops), [{create:{type:textType.uri, data:''}, v:0, m:{}, src:''}, {op:['hi'], v:1, m:{}, src:''}]
             done()
 
 

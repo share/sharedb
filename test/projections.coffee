@@ -213,9 +213,9 @@ describe 'projections', ->
           stripTs ops
 
           assert.equal ops.length, 2
-          assert.deepEqual ops[0], {v:0, create:{type:json0, data:{x:{}, y:2}}, m:{}}
-          assert.deepEqual ops[1], {v:1, op:[{p:['y'], na:1}, {p:['z'], oi:4}, {p:['x', 'seph'], oi:'super'}], m:{}}
-          
+          assert.deepEqual ops[0], {v:0, create:{type:json0, data:{x:{}, y:2}}, m:{}, src:''}
+          assert.deepEqual ops[1], {v:1, op:[{p:['y'], na:1}, {p:['z'], oi:4}, {p:['x', 'seph'], oi:'super'}], m:{}, src:''}
+
           done()
 
     it 'filters ops through subscriptions', (done) -> @create {a:1, x:2, y:2}, =>
@@ -225,9 +225,9 @@ describe 'projections', ->
           throw Error err if err
           @client.submit @cName, @docName, v:2, op:[{p:['y'], na:1}, {p:['a'], na:1}], (err) =>
             expected = [
-              {v:0, m:{}, create:{type:json0, data:{x:2, y:2}}}
-              {v:1, m:{}, op:[{p:['x'], na:1}]}
-              {v:2, m:{}, op:[{p:['y'], na:1}]}
+              {v:0, m:{}, create:{type:json0, data:{x:2, y:2}}, src:''}
+              {v:1, m:{}, op:[{p:['x'], na:1}], src:''}
+              {v:2, m:{}, op:[{p:['y'], na:1}], src:''}
             ]
             readN stream, 3, (err, data) =>
               stripTs data
@@ -244,7 +244,7 @@ describe 'projections', ->
 
         @client.bulkSubscribe req, (err, result) =>
           throw Error err if err
-          
+
           n = 4
           passPart = -> done() if --n is 0
 
@@ -254,10 +254,10 @@ describe 'projections', ->
               assert.deepEqual op, expected
               passPart()
 
-          expectOp result[@cName].one, {v:0, create:{type:json0, data:{a:1, x:2, y:3}}, m:{}}
-          expectOp result[@proj].one, {v:0, create:{type:json0, data:{x:2, y:3}}, m:{}}
-          expectOp result[@cName].two, {v:1, op:[{p:['a'], na:1}], m:{}}
-          expectOp result[@proj].two, {v:1, op:[], m:{}}
+          expectOp result[@cName].one, {v:0, create:{type:json0, data:{a:1, x:2, y:3}}, m:{}, src:''}
+          expectOp result[@proj].one, {v:0, create:{type:json0, data:{x:2, y:3}}, m:{}, src:''}
+          expectOp result[@cName].two, {v:1, op:[{p:['a'], na:1}], m:{}, src:''}
+          expectOp result[@proj].two, {v:1, op:[], m:{}, src:''}
 
           @client.submit @cName, 'two', op:[{p:['a'], na:1}]
 
@@ -329,7 +329,7 @@ describe 'projections', ->
 
         @client.submit @proj, @docName, op, (err) =>
           assert.ok err
-        
+
           @client.getOps @proj, @docName, v, null, (err, ops) =>
             throw Error err if err
             assert.equal ops.length, 0
