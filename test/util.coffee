@@ -63,3 +63,15 @@ exports.stripTs = (ops) ->
   else
     delete ops.m.ts if ops.m
   ops
+
+`
+exports.calls = function(num, fn) {
+  return function(done) {
+    if (num === 0) done();
+    var n = 0;
+    fn.call(this, function() {
+      if (++n >= num) done();
+    });
+  };
+};
+`
