@@ -14,7 +14,7 @@ describe 'queue', ->
 
   afterEach teardown
 
-  it 'queues consecutive operations when they are not commited', calls 4, (done) -> @create =>
+  it 'queues consecutive operations when they are not commited', calls 3, (done) -> @create =>
     @createDoc @docName2
     client = @testClient.client
 
@@ -24,16 +24,14 @@ describe 'queue', ->
     # client is informed that 'Op already submitted'.
     @testClient.client.submit @cName, @docName, {v:1, op:['s1A'], seq:1, src: 'A', redisSubmitDelay: 50}, (err) ->
       throw new Error err if err
-      setTimeout ->
-        # Assert that lock is cleaned once all operations are successfully submitted.
-        assert.deepEqual client.submitMap, {}
-        done()
-      , 50
       done()
 
     @testClient.client.submit @cName, @docName2, {v:1, op:['s2A'], seq:2, src: 'A', redisSubmitDelay: 10}, (err) ->
       throw new Error err if err
-      done()
+      # Assert that lock is cleaned once all operations are successfully submitted.
+      process.nextTick ->
+        assert.deepEqual client.submitMap, {}
+        done()
 
     @testClient.client.submit @cName, @docName, {v:1, op:['s1B'], seq:1, src: 'B'}, (err) ->
       throw new Error err if err
