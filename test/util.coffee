@@ -1,28 +1,14 @@
-redisLib = require 'redis'
 livedb = require '../lib'
 Memory = require '../lib/memory'
-inprocessDriver = require '../lib/inprocessdriver'
+inProcessDriver = require '../lib/inprocessdriver'
 
-# createRedisClient = exports.createClient = (db = new Memory()) ->
-#   createDriver = require '../lib/redisdriver'
-#   redis = redisLib.createClient()
-#   redis.select redis.selected_db = 15
-
-#   driver = createDriver db, redis
-
-#   testWrapper = {name:'test'}
-#   client = livedb.client {db, driver, extraDbs:{test:testWrapper}}
-#   {client, redis, db, testWrapper, driver}
-
-
-createClient = exports.createClient = (db = new Memory(), createDriver = inprocessDriver) ->
+exports.createClient = createClient = (db = new Memory(), createDriver = inProcessDriver) ->
   driver = createDriver db
 
   testWrapper = {name:'test'}
   sdc = {guage: (->), increment:(->), timing:(->)}
   client = livedb.client {db, driver, extraDbs:{test:testWrapper}, sdc}
   {client, db, testWrapper, driver}
-
 
 nextId = 0
 
@@ -31,15 +17,12 @@ nextId = 0
 exports.setup = ->
   @cName ?= '_test'
 
-  {@client, @redis, @db, @testWrapper, @driver} = createClient()
-
-  # & clear redis.
-  # @redis.flushdb()
+  {@client, @db, @testWrapper, @driver} = createClient()
 
   @collection = @client.collection @cName
   @docName = "id#{nextId++}"
 
-  @create2 = (docName, data = '', cb) ->
+  @createDoc = (docName, data = '', cb) ->
     [data, cb] = ['', data] if typeof data is 'function'
 
     type = if typeof data is 'string' then 'text' else 'json0'
@@ -48,7 +31,7 @@ exports.setup = ->
       cb?()
 
   # callback and data are both optional.
-  @create = (data, cb) -> @create2 @docName, data, cb
+  @create = (data, cb) -> @createDoc @docName, data, cb
 
 exports.teardown = ->
   @client.destroy()

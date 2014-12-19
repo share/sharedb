@@ -147,9 +147,9 @@ describe 'livedb', ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
-        assert.deepEqual stripTs(opData), {v:0, create:{type:textType.uri, data:''}, m:{}, src: ""}
+        assert.deepEqual stripTs(opData), {v:0, create:{type:textType.uri, data:''}, m:{}, src:''}
         checkAndStripMetadata snapshot
-        assert.deepEqual snapshot, {v:1, data:"", type:textType.uri, m:{}}
+        assert.deepEqual snapshot, {v:1, data:'', type:textType.uri, m:{}}
         done()
 
       @create()

@@ -178,7 +178,7 @@ describe 'projections', ->
     # Override to change the default value of data
     @create = (data, cb) ->
       [data, cb] = [{}, data] if typeof data is 'function'
-      @create2 @docName, data, cb
+      @createDoc @docName, data, cb
 
   afterEach teardown
 
@@ -236,7 +236,7 @@ describe 'projections', ->
               @client.driver._checkForLeaks false, done
 
     it 'filters ops through bulk subscriptions', (done) ->
-      @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
+      @createDoc 'one', {a:1, x:2, y:3}, => @createDoc 'two', {a:1, x:2, y:3}, =>
 
         req = {}
         req[@cName] = {one:0, two:1}
@@ -263,7 +263,7 @@ describe 'projections', ->
 
     it 'does not modify the request in a bulkSubscribe when there are projections', (done) ->
       # regression
-      @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
+      @createDoc 'one', {a:1, x:2, y:3}, => @createDoc 'two', {a:1, x:2, y:3}, =>
 
         req = {}
         req[@cName] = {one:0, two:1}
@@ -276,7 +276,7 @@ describe 'projections', ->
           done()
 
     it 'does not leak memory when bulk subscribing', (done) ->
-      @create2 'one', {a:1, x:2, y:3}, => @create2 'two', {a:1, x:2, y:3}, =>
+      @createDoc 'one', {a:1, x:2, y:3}, => @createDoc 'two', {a:1, x:2, y:3}, =>
 
         req = {}
         req[@cName] = {one:0, two:1}
@@ -355,7 +355,7 @@ describe 'projections', ->
         done()
 
     it 'projects data returned by queryFetch', (done) ->
-      @create2 'aaa', {a:5, x:3}, => @create2 'bbb', {x:3}, => @create2 'ccc', {}, =>
+      @createDoc 'aaa', {a:5, x:3}, => @createDoc 'bbb', {x:3}, => @createDoc 'ccc', {}, =>
         @client.queryFetch @proj, null, {}, (err, results) =>
           throw Error err if err
           results.sort (a, b) -> if b.docName > a.docName then -1 else 1
@@ -400,7 +400,7 @@ describe 'projections', ->
 
       opts = {poll:poll, pollDelay:0}
       it 'projects data returned by queryPoll', (done) ->
-        @create2 'aaa', {a:5, x:3}, => @create2 'bbb', {x:3}, => @create2 'ccc', {}, =>
+        @createDoc 'aaa', {a:5, x:3}, => @createDoc 'bbb', {x:3}, => @createDoc 'ccc', {}, =>
           @client.queryPoll @proj, null, opts, (err, emitter) =>
             throw Error err if err
 
