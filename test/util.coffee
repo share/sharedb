@@ -1,6 +1,7 @@
 redisLib = require 'redis'
 livedb = require '../lib'
 Memory = require '../lib/memory'
+inprocessDriver = require '../lib/inprocessdriver'
 
 # createRedisClient = exports.createClient = (db = new Memory()) ->
 #   createDriver = require '../lib/redisdriver'
@@ -14,10 +15,8 @@ Memory = require '../lib/memory'
 #   {client, redis, db, testWrapper, driver}
 
 
-createClient = exports.createClient = (db = new Memory(), createDriver = require '../lib/inprocessdriver') ->
-  #console.log "create driver:" + createDriver
+createClient = exports.createClient = (db = new Memory(), createDriver = inprocessDriver) ->
   driver = createDriver db
-  #console.log "driver itself: " + driver.rejectSubmit
 
   testWrapper = {name:'test'}
   sdc = {guage: (->), increment:(->), timing:(->)}
@@ -64,14 +63,12 @@ exports.stripTs = (ops) ->
     delete ops.m.ts if ops.m
   ops
 
-`
-exports.calls = function(num, fn) {
-  return function(done) {
-    if (num === 0) done();
-    var n = 0;
-    fn.call(this, function() {
-      if (++n >= num) done();
-    });
-  };
-};
-`
+exports.calls = (num, fn) ->
+  (done) ->
+    done()  if num is 0
+    n = 0
+    fn.call this, ->
+      done()  if ++n >= num
+      return
+
+    return
