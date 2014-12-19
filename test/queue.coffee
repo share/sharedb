@@ -14,8 +14,9 @@ describe 'queue', ->
 
   afterEach teardown
 
-  it 'queues consecutive operations when they are not commited', calls 3, (done) -> @create =>
+  it 'queues consecutive operations when they are not commited', calls 4, (done) -> @create =>
     @createDoc @docName2
+    client = @testClient.client
 
     # A submits 's1A' then 's2A', delay happens and it doesn't get sent to redis.
     # B submits 's1B' and is sent to redis immediately. 's2A' is sent to redis and
@@ -23,6 +24,11 @@ describe 'queue', ->
     # client is informed that 'Op already submitted'.
     @testClient.client.submit @cName, @docName, {v:1, op:['s1A'], seq:1, src: 'A', redisSubmitDelay: 50}, (err) ->
       throw new Error err if err
+      setTimeout ->
+        # Assert that lock is cleaned once all operations are successfully submitted.
+        assert.deepEqual client.submitMap, {}
+        done()
+      , 50
       done()
 
     @testClient.client.submit @cName, @docName2, {v:1, op:['s2A'], seq:2, src: 'A', redisSubmitDelay: 10}, (err) ->
