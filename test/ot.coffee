@@ -73,7 +73,7 @@ describe 'ot', ->
       opData = create:type:'text'
       ot.normalize opData
       @checkOpTs opData
-      assert.deepEqual opData, {create:{type:text.uri}, m:{}}
+      assert.deepEqual opData, {create:{type:text.uri}, m:{}, src:''}
 
   describe 'apply', ->
     it 'fails if the versions dont match', ->
@@ -105,7 +105,7 @@ describe 'ot', ->
         assert.deepEqual doc, {v:6, type:text.uri, m:{}, data:'Hi there'}
 
       it.skip 'runs pre and post validation functions'
-    
+
     describe 'del', ->
       it 'deletes the document data', ->
         doc = {v:6, type:text.uri, data:'Hi there'}
@@ -254,7 +254,7 @@ describe 'ot', ->
 
       assert.equal null, ot.applyPresence p, {p:['id'], val:{z:7}}
       assert.deepEqual p, data:{id:{z:7}}
-      
+
       assert.equal null, ot.applyPresence p, {p:['id','z'], val:8}
       assert.deepEqual p, data:{id:{z:8}}
 
@@ -262,7 +262,7 @@ describe 'ot', ->
       p = {data:{id:{name:'sam'}}}
       assert.equal null, ot.applyPresence p, {val:null}
       assert.deepEqual p, data:{}
-      
+
     it "doesn't allow special keys other than _cursor", ->
       p = {}
       # assert.equal 'Cannot set reserved value', ot.applyPresence p, {val:{id:{_x:'hi'}}}
