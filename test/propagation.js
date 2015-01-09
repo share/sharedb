@@ -4,8 +4,6 @@ var json0 = require('ot-json0').type;
 var util = require('./util');
 
 describe('operation propagation granularity', function() {
-  var poll, _fn, _i, _j, _len, _len1, _ref1, _ref2, _results;
-
   beforeEach(util.setup);
 
   beforeEach(function() {

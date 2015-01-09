@@ -1,3 +1,9 @@
+// This file contains generic tests for livedb driver implementations. All driver implementations
+// should pass these tests.
+
+// These tests are exported, and should be fired from a driver-specific test runner. See the other
+// driver tests for examples.
+
 var assert = require('assert');
 var async = require('async');
 var MemoryStore = require('../lib/memory');
@@ -98,12 +104,16 @@ module.exports = function(createDriver, destroyDriver, distributed) {
     });
 
     it('allows exactly one write at a given version to succeed', function(done) {
+      // In this test we try and write an operation 100 times. It should succeed once, and the rest
+      // should fail.
       var num = 100;
       var written = false;
       var count = 0;
       var _this = this;
 
       function cb(err) {
+        // err should be null (the write succeeded) or 'Transform needed' if there was already data.
+        // Any other value indicates a real error.
         count++;
         assert(count <= num);
         if (err == null) {
@@ -491,6 +501,7 @@ module.exports = function(createDriver, destroyDriver, distributed) {
         it('sees ops when you observe an old version', function(done) {
           var _this = this;
           this.create(function() {
+            // The document has version 1
             _this.subscribe('users', _this.docName, 0, {}, function(err, stream) {
               stream.once('data', function(data) {
                 assert.deepEqual(data, createOp());
@@ -585,6 +596,8 @@ module.exports = function(createDriver, destroyDriver, distributed) {
   describe('distributed load', function() {
     if (distributed) {
       it('allows exactly one write across many clients to succeed', function(done) {
+        // There is a variant of this test done at the livedb level. If this test passes but the other
+        // distributed test does not, there's a bug in livedb core.
         this.timeout(5000);
         var numClients = 50;
         var _this = this;
@@ -593,6 +606,8 @@ module.exports = function(createDriver, destroyDriver, distributed) {
             throw Error(err);
           }
 
+          // We have to share the database here because these tests are written
+          // against the memory API, which doesn't share data between instances.
           drivers = (function drivers() {
             var _i, _results;
             _results = [];
@@ -629,6 +644,7 @@ module.exports = function(createDriver, destroyDriver, distributed) {
             };
 
             (function(d, i) {
+              // Delayed so that some subscribes are complete before the op is submitted successfully
               setTimeout(function() {
                 d.atomicSubmit('users', 'seph', {
                   v: 1,
@@ -671,6 +687,7 @@ module.exports = function(createDriver, destroyDriver, distributed) {
     describe('memory leaks', function() {
       it('cleans up internal state after a subscription ends', function(done) {
         var _this = this;
+        // We'll subscribe a couple of times to the same document, just for exercise.
         this.driver.subscribe('users', this.docName, 0, {}, function(err, stream1) {
           if (err) {
             throw Error(err);

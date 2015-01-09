@@ -90,12 +90,10 @@ exports.teardown = function() {
 };
 
 exports.stripTs = function(ops) {
-  var op, _i, _len;
   if (Array.isArray(ops)) {
-    for (_i = 0, _len = ops.length; _i < _len; _i++) {
-      op = ops[_i];
-      if (op.m) {
-        delete op.m.ts;
+    for (var i = 0; i < ops.length; ++i) {
+      if (ops[i].m) {
+        delete ops[i].m.ts;
       }
     }
   } else {

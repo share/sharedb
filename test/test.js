@@ -1,3 +1,7 @@
+// This used to be the whole set of tests - now some of the ancillary parts of
+// livedb have been pulled out. These tests should probably be split out into
+// multiple files.
+
 var livedb = require('../lib');
 var assert = require('assert');
 var textType = require('ot-text').type;
@@ -8,6 +12,10 @@ var stripTs = util.stripTs;
 var before = Date.now();
 var after = before + 10 * 1000;
 
+// Snapshots we get back from livedb will have a timestamp with a
+// m:{ctime:, mtime:} with the current time. We'll check the time is sometime
+// between when the module is loaded and 10 seconds later. This is a bit
+// brittle. It also copies functionality in ot.coffee.
 var checkAndStripMetadata = function(snapshot) {
   assert.ok(snapshot.m);
   if (snapshot.m.ctime) {
@@ -655,6 +663,7 @@ describe('livedb', function() {
     });
 
     it('works with multiple collections', function(done) {
+      // This test fetches a bunch of documents that don't exist, but whatever.
       var _this = this;
       this.create('hi', function() {
         var request = {
@@ -662,6 +671,7 @@ describe('livedb', function() {
           bbbbb: ['a', 'b', 'c']
         };
         request[_this.cName] = [_this.docName];
+        // Adding this afterwards to make sure @cName doesn't come last in native iteration order
         request.zzzzz = ['d', 'e', 'f'];
 
         _this.client.bulkFetch(request, function(err, data) {
@@ -894,6 +904,8 @@ describe('livedb', function() {
         var numClients = 10;
         var clients = [];
 
+        // We have to share the database here because these tests are written
+        // against the memory API, which doesn't share data between instances.
         for (var i = 0; 0 <= numClients ? i < numClients : i > numClients; 0 <= numClients ? i++ : i--) {
           clients.push(util.createClient(this.db));
         }
@@ -911,6 +923,7 @@ describe('livedb', function() {
         }
 
         _this.collection.subscribe(_this.docName, 1, function(err, stream) {
+          // We should get numClients ops on the stream, in order.
           var seq, tryRead;
           if (err) {
             throw new Error(err);

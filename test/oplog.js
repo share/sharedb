@@ -3,6 +3,8 @@ var textType = require('ot-text').type;
 
 var counter = 1;
 
+// Wait for the returned function to be called a given number of times, then call the
+// callback.
 function makePassPart(n, callback) {
   var remaining = n;
 
@@ -21,6 +23,8 @@ module.exports = function(create) {
     beforeEach(function(done) {
       this.cName = 'testcollection';
       this.docName = "optest " + (counter++);
+
+      // Work with syncronous and asyncronous create() methods using their arity.
       if (create.length === 0) {
         this.db = create();
         done();
@@ -227,14 +231,12 @@ module.exports = function(create) {
 
         function check(expected) {
           return function(error, ops) {
-            var op, _i, _len;
             if (error) {
               throw new Error(error);
             }
             if (ops) {
-              for (_i = 0, _len = ops.length; _i < _len; _i++) {
-                op = ops[_i];
-                delete op.v;
+              for (var i = 0; i < ops.length; ++i) {
+                delete ops[i].v;
               }
             }
             assert.deepEqual(ops, expected);

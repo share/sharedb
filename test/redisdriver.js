@@ -58,6 +58,11 @@ describe('redis driver', function() {
           assert.equal(_this.driver.numStreams, 2);
           response.users.a.destroy();
           response.users.b.destroy();
+
+          // I want to count the number of subscribed channels. Redis 2.8 adds
+          // the 'pubsub' command, which does this. However, I can't rely on
+          // pubsub existing so I'll use a dodgy method.
+          //redis.send_command 'pubsub', ['CHANNELS'], (err, channels) ->
           _this.redis.publish("15 " + _this.cName + "." + _this.docName, '{}', function(err, numSubscribers) {
             assert.equal(numSubscribers, 0);
             assert.equal(_this.driver.numStreams, 0);
@@ -94,6 +99,7 @@ describe('redis driver', function() {
             throw Error(err);
           }
 
+          // And now the actual test - does the persistant oplog have our data?
           _this.oplog.getVersion('users', _this.docName, function(err, v) {
             if (err) {
               throw Error(err);
@@ -150,6 +156,8 @@ describe('redis driver', function() {
 
       this.create(function() {
         _this.redis.del("users." + _this.docName + " v", function(err, result) {
+          // If the key format ever changes, this test should fail instead of becoming silently
+          // ineffective
           if (err) {
             throw Error(err);
           }
@@ -185,6 +193,8 @@ describe('redis driver', function() {
     });
 
     it('works if data in the oplog is missing', function(done) {
+      // This test depends on the actual format in redis. Avoid adding
+      // too many tests like this - its brittle.
       var _this = this;
 
       this.redis.set("" + this.cName + "." + this.docName + " v", 2);
@@ -260,6 +270,7 @@ describe('redis driver', function() {
       });
 
       it('from previous version', function(done) {
+        // This one operation is in redis. It should be fetched.
         var _this = this;
         this.driver.getOps('users', this.docName, 0, null, function(err, ops) {
           if (err) {
@@ -272,6 +283,7 @@ describe('redis driver', function() {
       });
 
       it('from current version', function(done) {
+        // Redis knows that the document is at version 1, so we should return [] here.
         this.driver.getOps('users', this.docName, 1, null, function(err, ops) {
           if (err) {
             throw new Error(err);

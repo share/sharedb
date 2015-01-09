@@ -23,6 +23,11 @@ describe('queue', function() {
       _this.createDoc(_this.docName2);
       var client = _this.testClient.client;
 
+      // A submits 's1A' then 's2A', delay happens and it doesn't get sent to redis.
+      // B submits 's1B' and is sent to redis immediately. 's2A' is sent to redis and
+      // transformation is needed for 's1A' but per-useragent seq for A is wrong and
+      // client is informed that 'Op already submitted'.
+
       _this.testClient.client.submit(_this.cName, _this.docName, {
         v: 1,
         op: ['s1A'],
@@ -47,6 +52,7 @@ describe('queue', function() {
           throw new Error(err);
         }
 
+        // Assert that lock is cleaned once all operations are successfully submitted.
         process.nextTick(function() {
           assert.deepEqual(client.submitMap, {});
           return done();

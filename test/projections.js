@@ -297,6 +297,7 @@ describe('projection utility methods', function() {
           }
         ]);
 
+        // If you make the document something other than an object, it just looks like null.
         this.op({
           x: true
         }, [
@@ -531,6 +532,7 @@ describe('projection utility methods', function() {
       });
 
       it('works with del ops', function() {
+        // Del should always be allowed
         assert.equal(true, isOpDataAllowed(null, {}, {
           del: true
         }));
@@ -675,6 +677,8 @@ describe('projections', function() {
 
   describe('ops', function() {
     it('filters ops from getOps', function(done) {
+      // This op should be a nice interesting mix of things, but this is not exhaustive. There are
+      // other tests to make sure that projected ops work correctly.
       var _this = this;
       this.create({
         a: 1,

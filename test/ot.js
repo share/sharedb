@@ -1,9 +1,20 @@
+// Unit tests for lib/ot.js
+//
+// This tests to make sure it does some of the right things WRT OT.
+//
+// Note that there's also OT code in other livedb files. This file does not
+// contain any integration tests.
+
 var assert = require('assert');
 var text = require('ot-text').type;
 var ot = require('../lib/ot');
 
 describe('ot', function() {
   before(function() {
+    // apply and normalize put a creation / modification timestamp on snapshots
+    // & ops. We'll verify its correct by checking that its in the range of time
+    // from when the tests start running to 10 seconds after the tests start
+    // running. Hopefully the tests aren't slower than that.
     var before = Date.now();
     var after = before + 10 * 1000;
 
@@ -192,6 +203,7 @@ describe('ot', function() {
           data: 'hi'
         }, doc));
 
+        // This doc should be unmodified
         assert.deepEqual(doc, {
           v: 6,
           create: {
@@ -398,6 +410,7 @@ describe('ot', function() {
           v: 6
         }));
 
+        // same, but with v+1
         assert.deepEqual(doc, {
           v: 7,
           type: text.uri,

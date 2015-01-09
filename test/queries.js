@@ -4,6 +4,7 @@ var json0 = require('ot-json0').type;
 var text = require('ot-text').type;
 var util = require('./util');
 
+// Query-based tests currently disabled because memory backend has such a primitive query system.
 describe('queries', function() {
   beforeEach(util.setup);
 
@@ -182,6 +183,8 @@ describe('queries', function() {
                   howMany: 1
                 }
               ]);
+              // The doc is left in the result set until after the callback runs so
+              // we can read doc stuff off here.
               process.nextTick(function() {
                 assert.deepEqual(emitter.data, []);
                 emitter.destroy();
