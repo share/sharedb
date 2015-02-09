@@ -159,8 +159,6 @@ describe 'queries', ->
         assert.equal docName, @docName
         assert.deepEqual query, {x:5}
         called++
-        console.log(cName, docName, data, index, query);
-        console.log(data.op)
         no
 
       @collection.queryPoll {x:5}, opts, (err, emitter) =>
