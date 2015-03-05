@@ -25,7 +25,7 @@ checkAndStripMetadata = do ->
 
 
 describe 'livedb', ->
-  beforeEach setup
+  beforeEach -> setup.call(this)
 
   beforeEach ->
     @cName = '_test'

@@ -168,7 +168,7 @@ describe 'projection utility methods', ->
 
 
 describe 'projections', ->
-  beforeEach setup
+  beforeEach -> setup.call(this)
 
   beforeEach ->
     @proj = '_proj'

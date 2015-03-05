@@ -3,7 +3,7 @@ TestDriver = require './testdriver'
 {createClient, setup, teardown, calls} = require './util'
 
 describe 'queue', ->
-  beforeEach setup
+  beforeEach -> setup.call(this)
 
   beforeEach ->
     @cName = '_test'

@@ -5,7 +5,6 @@ assert = require 'assert'
 runTests = require './driver'
 
 describe 'redis driver', ->
-  # redisLib.createClient().eval """redis.log(redis.LOG_WARNING, '--------------')""", 0, ->
   create = (oplog) ->
     createDriver = require '../lib/redisdriver'
     redis = redisLib.createClient()
@@ -19,16 +18,13 @@ describe 'redis driver', ->
   beforeEach (done) ->
     c = redisLib.createClient()
     c.select 15
-    # console.log '********   f ->'
     c.flushdb (err) ->
       throw Error err if err
-      # console.log '********   f <-'
       c.quit()
       done()
 
 
   runTests create, destroy, yes
-
 
   describe 'redis specific tests', ->
     beforeEach ->
@@ -118,7 +114,7 @@ describe 'redis driver', ->
 
           @driver.getOps @cName, @docName, 0, null, (err, ops) ->
             throw Error err if err
-            assert.equal ops.length, 2          
+            assert.equal ops.length, 2
             done()
 
     it 'removes junk in the redis oplog on submit', (done) -> @create =>

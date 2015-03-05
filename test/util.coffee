@@ -6,7 +6,7 @@ exports.createClient = createClient = (db = new Memory(), createDriver = inProce
   driver = createDriver db
 
   testWrapper = {name:'test'}
-  sdc = {guage: (->), increment:(->), timing:(->)}
+  sdc = {gauge: (->), increment:(->), timing:(->)}
   client = livedb.client {db, driver, extraDbs:{test:testWrapper}, sdc}
   {client, db, testWrapper, driver}
 
@@ -14,10 +14,10 @@ nextId = 0
 
 # This is a bit of a mouthful - I'm not entirely happy leaving all this stuff
 # in here because its not obvious whats available to tests.
-exports.setup = ->
-  @cName ?= '_test'
+exports.setup = (db = new Memory(), createDriver = inProcessDriver, cName = '_test') ->
+  @cName = cName
 
-  {@client, @db, @testWrapper, @driver} = createClient()
+  {@client, @db, @testWrapper, @driver} = createClient db, createDriver
 
   @collection = @client.collection @cName
   @docName = "id#{nextId++}"
