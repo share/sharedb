@@ -28,7 +28,7 @@ describe 'operation propagation granularity', ->
       result = c:@cName, docName:@docName, v:1, data:{x:5}, type:json0.uri
 
       @collection.queryPoll {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
-        emitter.on 'diff', (diff) =>
+        emitter.onDiff = (diff) =>
           throw new Error 'should not propagate operation to query'
 
         sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
@@ -45,7 +45,7 @@ describe 'operation propagation granularity', ->
       result = c:@cName, docName:@docName, v:1, data:{x:5}, type:json0.uri
 
       @collection.queryPoll {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
-        emitter.on 'diff', (diff) =>
+        emitter.onDiff = (diff) =>
           assert.deepEqual diff, [index: 0, values: [result], type: 'insert']
           emitter.destroy()
           done()

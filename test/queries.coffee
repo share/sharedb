@@ -57,7 +57,7 @@ describe 'queries', ->
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb null, expected
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
-        assert.deepEqual emitter.data, expected
+        assert.deepEqual emitter.results, expected
         emitter.destroy()
         done()
 
@@ -66,8 +66,8 @@ describe 'queries', ->
         cb null, []
 
       @collection.queryPoll {'xyz':123}, opts, (err, emitter) ->
-        assert.deepEqual emitter.data, []
-        emitter.on 'diff', -> throw new Error 'should not have added results'
+        assert.deepEqual emitter.results, []
+        emitter.onDiff = -> throw new Error 'should not have added results'
 
         process.nextTick ->
           emitter.destroy()
@@ -77,7 +77,7 @@ describe 'queries', ->
       result = c:@cName, docName:@docName, v:1, data:{x:5}, type:json0.uri
 
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
-        emitter.on 'diff', (diff) =>
+        emitter.onDiff = (diff) =>
           assert.deepEqual diff, [index: 0, values: [result], type: 'insert']
           emitter.destroy()
           done()
@@ -89,13 +89,13 @@ describe 'queries', ->
 
     it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
-        emitter.on 'diff', (diff) =>
+        emitter.onDiff = (diff) =>
           assert.deepEqual diff, [type:'remove', index:0, howMany:1]
 
           # The doc is left in the result set until after the callback runs so
           # we can read doc stuff off here.
           process.nextTick ->
-            assert.deepEqual emitter.data, []
+            assert.deepEqual emitter.results, []
 
             emitter.destroy()
             done()
@@ -109,12 +109,12 @@ describe 'queries', ->
 
     it 'removes deleted elements', (done) -> @create {x:5}, =>
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
-        assert.strictEqual emitter.data.length, 1
+        assert.strictEqual emitter.results.length, 1
 
-        emitter.on 'diff', (diff) =>
+        emitter.onDiff = (diff) =>
           assert.deepEqual diff, [type:'remove', index:0, howMany:1]
           process.nextTick ->
-            assert.deepEqual emitter.data, []
+            assert.deepEqual emitter.results, []
             emitter.destroy()
             done()
 
@@ -123,7 +123,7 @@ describe 'queries', ->
 
     it 'does not emit receive events to a destroyed query', (done) ->
       @collection.queryPoll {'x':5}, opts, (err, emitter) =>
-        emitter.on 'diff', -> throw new Error 'add called after destroy'
+        emitter.onDiff = -> throw new Error 'add called after destroy'
 
         emitter.destroy()
 
@@ -247,8 +247,8 @@ describe 'queries', ->
       sinon.stub @db, 'query', (client, cName, query, options, callback) ->
         callback null, {results:[], extra:{x:5}}
 
-      @client.queryPoll 'internet', {x:5}, (err, stream) =>
-        assert.deepEqual stream.extra, {x:5}
+      @client.queryPoll 'internet', {x:5}, (err, emitter) =>
+        assert.deepEqual emitter.extra, {x:5}
         done()
 
     it 'gets updated extra data when the result set changes', (done) ->
@@ -256,27 +256,11 @@ describe 'queries', ->
       sinon.stub @db, 'query', (client, cName, query, options, callback) ->
         callback null, {results:[], extra:{x:x++}}
 
-      @collection.queryPoll {x:5}, {poll:true}, (err, stream) =>
-        assert.deepEqual stream.extra, {x:1}
+      @collection.queryPoll {x:5}, {poll:true}, (err, emitter) =>
+        assert.deepEqual emitter.extra, {x:1}
 
-        stream.on 'extra', (extra) ->
+        emitter.onExtra = (extra) ->
           assert.deepEqual extra, {x:2}
           done()
 
         @create()
-
-
-  it 'turns poll mode off automatically if opts.poll is undefined', (done) ->
-    @db.subscribedChannels = (index, query, opts) ->
-      assert.deepEqual opts, {poll: false}
-      [index]
-
-    @collection.queryPoll {x:5}, {}, (err, stream) => done()
-
-  it 'turns poll mode on automatically if opts.poll is undefined', (done) ->
-    @db.queryNeedsPollMode = -> true
-    @db.subscribedChannels = (index, query, opts) ->
-      assert.deepEqual opts, {poll: true}
-      [index]
-
-    @collection.queryPoll {x:5}, {}, (err, stream) => done()

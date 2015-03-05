@@ -404,7 +404,7 @@ describe 'projections', ->
           @client.queryPoll @proj, null, opts, (err, emitter) =>
             throw Error err if err
 
-            results = emitter.data
+            results = emitter.results
             results.sort (a, b) -> if b.docName > a.docName then -1 else 1
             assert.deepEqual results, [
               {v:1, type:json0, c:@proj, docName:'aaa', data:{x:3}}
@@ -416,9 +416,9 @@ describe 'projections', ->
       it 'projects data returned by queryPoll in a diff', (done) ->
         @client.queryPoll @proj, 'unused', opts, (err, emitter) =>
           throw Error err if err
-          assert.deepEqual emitter.data, []
+          assert.deepEqual emitter.results, []
 
-          emitter.on 'diff', (stuff) =>
+          emitter.onDiff = (stuff) =>
             delete stuff[0].values[0].m
             assert.deepEqual stuff, [
               type: 'insert'
@@ -440,9 +440,9 @@ describe 'projections', ->
 
       @client.queryPoll @proj, 'unused', {poll:false}, (err, emitter) =>
         throw Error err if err
-        assert.deepEqual emitter.data, []
+        assert.deepEqual emitter.results, []
 
-        emitter.on 'diff', (stuff) =>
+        emitter.onDiff = (stuff) =>
           assert called
           done()
 
