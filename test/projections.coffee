@@ -28,7 +28,6 @@ readN = (stream, n, callback) ->
   more = (err, data) ->
     return callback err if err
 
-    # console.log 'read', data
     buffer.push data
     if buffer.length is n
       return callback null, buffer
@@ -394,37 +393,34 @@ describe 'projections', ->
         assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
         done()
 
-    # Do these tests with polling turned on and off.
-    # for poll in [false] then do (poll) -> describe "poll:#{poll}", ->
-    for poll in [false, true] then do (poll) -> describe "poll:#{poll}", ->
+    # Do these tests with polling turned on and off
+    [false, true].forEach (poll) -> describe "poll:#{poll}", ->
 
       opts = {poll:poll, pollDelay:0}
       it 'projects data returned by queryPoll', (done) ->
         @createDoc 'aaa', {a:5, x:3}, => @createDoc 'bbb', {x:3}, => @createDoc 'ccc', {}, =>
-          @client.queryPoll @proj, null, opts, (err, emitter) =>
+          @client.queryPoll @proj, null, opts, (err, emitter, results) =>
             throw Error err if err
 
-            results = emitter.results
             results.sort (a, b) -> if b.docName > a.docName then -1 else 1
             assert.deepEqual results, [
-              {v:1, type:json0, c:@proj, docName:'aaa', data:{x:3}}
-              {v:1, type:json0, c:@proj, docName:'bbb', data:{x:3}}
-              {v:1, type:json0, c:@proj, docName:'ccc', data:{}}
+              {v:1, type:json0, docName:'aaa', data:{x:3}}
+              {v:1, type:json0, docName:'bbb', data:{x:3}}
+              {v:1, type:json0, docName:'ccc', data:{}}
             ]
             done()
 
       it 'projects data returned by queryPoll in a diff', (done) ->
-        @client.queryPoll @proj, 'unused', opts, (err, emitter) =>
+        @client.queryPoll @proj, 'unused', opts, (err, emitter, results) =>
           throw Error err if err
-          assert.deepEqual emitter.results, []
+          assert.deepEqual results, []
 
           emitter.onDiff = (stuff) =>
             delete stuff[0].values[0].m
             assert.deepEqual stuff, [
-              type: 'insert'
               index: 0
               values: [
-                v:1, data:{x:5}, type:json0, docName:@docName, c:@proj
+                v:1, data:{x:5}, type:json0, docName:@docName
               ]
             ]
             done()
@@ -436,19 +432,14 @@ describe 'projections', ->
       @db.queryDoc = -> throw Error 'db.queryDoc should not be called'
       @db.queryDocProjected = (liveDb, index, cName, docName, fields, query, callback) =>
         called = true
-        callback null, {v:1, data:{x:5}, type:json0, docName:@docName, c:@proj}
+        callback null, {v:1, data:{x:5}, type:json0, docName:@docName}
 
-      @client.queryPoll @proj, 'unused', {poll:false}, (err, emitter) =>
+      @client.queryPoll @proj, 'unused', {poll:false}, (err, emitter, results) =>
         throw Error err if err
-        assert.deepEqual emitter.results, []
+        assert.deepEqual results, []
 
         emitter.onDiff = (stuff) =>
           assert called
           done()
 
         @create {x:5, a:1}
-
-
-
-
-
