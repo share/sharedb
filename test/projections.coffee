@@ -358,6 +358,7 @@ describe 'projections', ->
         @client.queryFetch @proj, null, {}, (err, results) =>
           throw Error err if err
           results.sort (a, b) -> if b.docName > a.docName then -1 else 1
+          delete result.m for result in results
 
           assert.deepEqual results, [
             {v:1, type:json0, docName:'aaa', data:{x:3}}
@@ -375,6 +376,7 @@ describe 'projections', ->
 
       @client.queryFetch @proj, null, {}, (err, results) =>
         throw Error err if err
+        delete result.m for result in results
         assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
         done()
 
@@ -390,6 +392,7 @@ describe 'projections', ->
 
       @client.queryFetch @proj, 'cool cats', {}, (err, results) =>
         throw Error err if err
+        delete result.m for result in results
         assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
         done()
 
@@ -403,6 +406,7 @@ describe 'projections', ->
             throw Error err if err
 
             results.sort (a, b) -> if b.docName > a.docName then -1 else 1
+            delete result.m for result in results
             assert.deepEqual results, [
               {v:1, type:json0, docName:'aaa', data:{x:3}}
               {v:1, type:json0, docName:'bbb', data:{x:3}}
