@@ -4,12 +4,13 @@
   "description": "Realtime database wrapper",
   "main": "lib/index.js",
   "dependencies": {
-    "deep-is": "~0.1",
     "arraydiff": "~0.1",
     "async": "~0.7",
-    "ot-text-tp2": "^1.0.0",
+    "deep-is": "~0.1",
+    "ot-json0": "^1.0.0",
     "ot-text": "^1.0.0",
-    "ot-json0": "^1.0.0"
+    "ot-text-tp2": "^1.0.0",
+    "rich-text": "^1.0.3"
   },
   "optionalDependencies": {
     "redis": "^0.12.1",
