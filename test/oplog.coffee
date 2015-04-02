@@ -98,15 +98,10 @@ module.exports = (create) ->
         check = (error, ops) ->
           throw new Error error if error
           assert.deepEqual ops, []
-          done() if ++num is 7
+          done() if ++num is 2
 
         @db.getOps @cName, @docName, 0, 0, check
-        @db.getOps @cName, @docName, 0, 1, check
-        @db.getOps @cName, @docName, 0, 10, check
         @db.getOps @cName, @docName, 0, null, check
-        @db.getOps @cName, @docName, 10, 10, check
-        @db.getOps @cName, @docName, 10, 11, check
-        @db.getOps @cName, @docName, 10, null, check
 
       it 'returns ops', (done) ->
         num = 0
