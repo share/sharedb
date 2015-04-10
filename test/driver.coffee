@@ -253,7 +253,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
 
       it 'can observe a document that doesnt exist yet', (done) ->
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
-          stream.on 'readable', ->
+          stream.once 'readable', ->
             assert.deepEqual stream.read(), createOp()
             stream.destroy()
             done()
