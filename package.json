@@ -1,6 +1,6 @@
 {
   "name": "livedb",
-  "version": "0.5.10",
+  "version": "0.5.11",
   "description": "Realtime database wrapper",
   "main": "lib/index.js",
   "dependencies": {
