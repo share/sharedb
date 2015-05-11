@@ -250,6 +250,7 @@ describe 'projections', ->
           expectOp = (stream, expected) ->
             read stream, (err, op) ->
               op = stripTs op
+              delete op.docName
               assert.deepEqual op, expected
               passPart()
 
@@ -312,11 +313,13 @@ describe 'projections', ->
                 readN projStream, 3, (err, ops) =>
                   throw Error err if err
                   stripTs ops
+                  stripTs realOps
                   assert.deepEqual ops, realOps
 
                   readN origStream, 3, (err, ops) =>
                     throw Error err if err
                     stripTs ops
+                    stripTs realOps
                     assert.deepEqual ops, realOps
 
                     done()

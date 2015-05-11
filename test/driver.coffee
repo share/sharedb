@@ -17,7 +17,7 @@ createOp = (v = 0) ->
 nextDocId = 0
 
 module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
-  beforeEach ->  
+  beforeEach ->
     # Each test gets its own doc id, if it wants it.
     @docName = "id#{nextDocId++}"
 
@@ -164,7 +164,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
 
         @driver.consumeDirtyData 'x', {}, consume, (err) =>
           throw Error err if err
-          
+
           @checkConsume 'x', [2], done
 
     it 'handles lists independently', (done) ->
@@ -229,24 +229,28 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
           throw new Error err if err
 
           stream.once 'data', (op) ->
+            delete op.docName
             assert.deepEqual op, createOp(1)
             stream.destroy()
             done()
 
-          @driver.atomicSubmit 'users', @docName, createOp(1), {}, ->
+          op = createOp(1)
+          @driver.postSubmit 'users', @docName, op
 
       it 'sees ops when you observe an old version', (done) -> @create =>
         # The document has version 1
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
           stream.once 'data', (data) =>
+            delete data.docName
             assert.deepEqual data, createOp()
             done()
 
       it 'still works when you observe an old version', (done) -> @create =>
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
-          @driver.atomicSubmit 'users', @docName, createOp(1), {}, ->
+          @driver.postSubmit 'users', @docName, createOp(1), {}, ->
           stream.on 'data', (data) ->
             return if data.v is 0
+            delete data.docName
             assert.deepEqual data, createOp(1)
             stream.destroy()
             done()
@@ -254,11 +258,14 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
       it 'can observe a document that doesnt exist yet', (done) ->
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
           stream.on 'readable', ->
-            assert.deepEqual stream.read(), createOp()
+            data = stream.read()
+            delete data.docName
+            assert.deepEqual data, createOp()
             stream.destroy()
             done()
 
-          @create()
+          @create =>
+            @driver.postSubmit 'users', @docName, createOp()
 
       it 'does not throw when you double stream.destroy', (done) ->
         @subscribe 'users', @docName, 1, {}, (err, stream) =>
