@@ -1,10 +1,10 @@
 local versionKey, opLogKey = unpack(KEYS)
 -- The regular keys are followed by the dirty list names
-local DIRTY_KEYS_IDX = 4
+local DIRTY_KEYS_IDX = 3
 
 local v, logEntry, docVersion = unpack(ARGV) -- From redisSubmit, below.
 -- ... and the regular args are followed by the dirty list data.
-local DIRTY_ARGS_IDX = 5
+local DIRTY_ARGS_IDX = 4
 
 v = tonumber(v)
 docVersion = tonumber(docVersion)
