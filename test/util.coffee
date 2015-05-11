@@ -42,9 +42,11 @@ exports.stripTs = (ops) ->
   if Array.isArray ops
     for op in ops
       delete op.m.ts if op.m
+      delete op.collection
       delete op.docName
   else
     delete ops.m.ts if ops.m
+    delete ops.collection
     delete ops.docName
   ops
 

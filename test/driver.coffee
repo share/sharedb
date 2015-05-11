@@ -7,6 +7,7 @@
 assert = require 'assert'
 async = require 'async'
 MemoryStore = require '../lib/memory'
+{stripTs} = require './util'
 
 createOp = (v = 0) ->
   if v == 0
@@ -229,7 +230,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
           throw new Error err if err
 
           stream.once 'data', (op) ->
-            delete op.docName
+            stripTs op
             assert.deepEqual op, createOp(1)
             stream.destroy()
             done()
@@ -241,7 +242,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
         # The document has version 1
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
           stream.once 'data', (data) =>
-            delete data.docName
+            stripTs data
             assert.deepEqual data, createOp()
             done()
 
@@ -250,7 +251,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
           @driver.postSubmit 'users', @docName, createOp(1), {}, ->
           stream.on 'data', (data) ->
             return if data.v is 0
-            delete data.docName
+            stripTs data
             assert.deepEqual data, createOp(1)
             stream.destroy()
             done()
@@ -259,7 +260,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
           stream.on 'readable', ->
             data = stream.read()
-            delete data.docName
+            stripTs data
             assert.deepEqual data, createOp()
             stream.destroy()
             done()
