@@ -1,8 +1,8 @@
-local versionKey, opLogKey, docOpChannel = unpack(KEYS)
+local versionKey, opLogKey = unpack(KEYS)
 -- The regular keys are followed by the dirty list names
 local DIRTY_KEYS_IDX = 4
 
-local v, logEntry, docPubEntry, docVersion = unpack(ARGV) -- From redisSubmit, below.
+local v, logEntry, docVersion = unpack(ARGV) -- From redisSubmit, below.
 -- ... and the regular args are followed by the dirty list data.
 local DIRTY_ARGS_IDX = 5
 
@@ -51,8 +51,6 @@ redis.call('set', versionKey, v + 1)
 
 redis.call('persist', opLogKey)
 redis.call('persist', versionKey)
-
-redis.call('publish', docOpChannel, docPubEntry)
 
 for i=DIRTY_KEYS_IDX,#KEYS do
   local data = ARGV[i - DIRTY_KEYS_IDX + DIRTY_ARGS_IDX]
