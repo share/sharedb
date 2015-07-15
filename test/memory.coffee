@@ -1,5 +1,7 @@
-memory = require('../lib/memory')
+Memory = require('../lib/memory')
 
 describe 'memory db', ->
-  require('./snapshotdb') memory
-  require('./oplog') memory
+  create = (callback) ->
+    callback new Memory()
+  require('./snapshotdb') create
+  require('./oplog') create

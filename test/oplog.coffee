@@ -23,18 +23,11 @@ module.exports = (create) ->
     beforeEach (done) ->
       @cName = 'testcollection'
       @docName = "optest #{counter++}"
-
-      # Work with syncronous and asyncronous create() methods using their arity.
-      if create.length is 0
-        @db = create()
+      create (@db) =>
         done()
-      else
-        create (@db) =>
-          done()
 
-
-    afterEach ->
-      @db.close()
+    afterEach (done) ->
+      @db.close done
 
     it 'returns 0 when getVersion is called on a new document', (done) ->
       @db.getVersion @cName, @docName, (err, v) ->
@@ -124,4 +117,3 @@ module.exports = (create) ->
           @db.getOps @cName, @docName, 0, null, check [opData]
           @db.getOps @cName, @docName, 1, 1, check []
           @db.getOps @cName, @docName, 1, null, check []
-

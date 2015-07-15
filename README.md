@@ -149,10 +149,6 @@ The options object can also be passed:
 - **extraDbs:** *{name:query db}* This is used to register extra database
   backends which will be notified whenever operations are submitted. They can
   also be used in queries.
-- **sdc:** A pre-configured
-  [node-statsd-client](https://github.com/msiebuhr/node-statsd-client) client
-  to send monitoring information. Note that the events livedb logs to statsd
-  are not considered part of the public API, and may change at any time.
 
 ### Creating documents
 

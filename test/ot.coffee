@@ -107,23 +107,15 @@ describe 'ot', ->
       it.skip 'runs pre and post validation functions'
 
     describe 'del', ->
-      it 'deletes the document data', ->
+      it 'deletes the document data and type', ->
         doc = {v:6, type:text.uri, data:'Hi there'}
-        assert.equal null, ot.apply doc, {v:6, del:true}
-        delete doc.m.mtime
-        assert.deepEqual doc, {v:7, m:{}}
+        assert.equal null, ot.apply(doc, {v:6, del:true})
+        assert.deepEqual doc, {v:7}
 
       it 'still works if the document doesnt exist anyway', ->
         doc = {v:6}
         assert.equal null, ot.apply doc, {v:6, del:true}
-        delete doc.m.mtime
-        assert.deepEqual doc, {v:7, m:{}}
-
-      it 'keeps any metadata from op on the doc', ->
-        doc = {v:6, type:text.uri, m:{ctime:1, mtime:2}, data:'hi'}
-        assert.equal null, ot.apply doc, {v:6, del:true}
-        delete doc.m.mtime
-        assert.deepEqual doc, {v:7, m:{ctime:1}}
+        assert.deepEqual doc, {v:7}
 
     describe 'op', ->
       it 'fails if the document does not exist', ->

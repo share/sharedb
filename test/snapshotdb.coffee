@@ -2,28 +2,25 @@
 assert = require 'assert'
 textType = require('ot-text').type
 jsonType = require('ot-json0').type
+monkeypatch = require '../lib/monkeypatch'
 
 counter = 1
 
-module.exports = (create, noBulkGetSnapshot) ->
-  if create.length is 0
-    innerCreate = create
-    create = (callback) ->
-      callback(innerCreate())
+module.exports = (create) ->
 
   describe 'snapshot db', ->
     beforeEach (done) ->
       @cName = 'testcollection'
       @docName = "snapshottest #{counter++}"
       create (@db) =>
+        monkeypatch.snapshotDb @db
         done()
 
-    afterEach ->
-      @db.close()
+    afterEach (done) ->
+      @db.close done
 
-    
     it 'returns null when you getSnapshot on a nonexistant doc name', (done) ->
-      @db.getSnapshot @cName, @docName, (err, data) ->
+      @db.getSnapshot @cName, @docName, null, (err, data) ->
         throw Error(err) if err
         assert.equal data, null
         done()
@@ -32,74 +29,65 @@ module.exports = (create, noBulkGetSnapshot) ->
       data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error(err) if err
-        @db.getSnapshot @cName, @docName, (err, storedData) ->
-          delete storedData.docName # The result is allowed to contain this but its ignored.
+        @db.getSnapshot @cName, @docName, null, (err, storedData) =>
+          data.docName = @docName
+          # Metadata should be saved but not returned
+          delete data.m
           assert.deepEqual data, storedData
           done()
 
-    it 'will remove data fields if the data has been deleted', (done) ->
+    it 'calling writeSnapshot without a type deletes the document', (done) ->
       data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error(err) if err
         @db.writeSnapshot @cName, @docName, {v:6}, (err) =>
           throw Error(err) if err
-          @db.getSnapshot @cName, @docName, (err, storedData) ->
+          @db.getSnapshot @cName, @docName, null, (err, storedData) =>
             throw Error(err) if err
-            assert.equal storedData.data, null
-            assert.equal storedData.type, null
-            assert.equal storedData.m, null
-            assert.equal storedData.v, 6
+            assert.equal storedData, null
             done()
 
-    if !noBulkGetSnapshot then describe 'bulk get snapshot', ->
-      it 'does not return missing documents', (done) ->
-        @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) ->
-          throw Error(err) if err
-          assert.deepEqual results, {testcollection:[]}
-          done()
-
-      it 'returns results', (done) ->
-        data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
-        @db.writeSnapshot @cName, @docName, data, (err) =>
-          throw Error(err) if err
-          @db.bulkGetSnapshot {testcollection:[@docName]}, (err, results) =>
-            throw Error(err) if err
-            expected = {testcollection:{}}
-            expected.testcollection[@docName] = data
-            delete results[@cName][@docName].docName
-            assert.deepEqual results, expected
-            done()
-
-      it "works when some results exist and some don't", (done) ->
-        data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
-        @db.writeSnapshot @cName, @docName, data, (err) =>
-          throw Error(err) if err
-          @db.bulkGetSnapshot {testcollection:['does not exist', @docName, 'also does not exist']}, (err, results) =>
-            throw Error(err) if err
-            expected = {testcollection:{}}
-            expected.testcollection[@docName] = data
-            delete results[@cName][@docName].docName
-            assert.deepEqual results, expected
-            done()
-
-    else
-      console.warn 'Warning: db.bulkGetSnapshot not defined in snapshot db. Bulk subscribes will be slower.'
-
-
-    it 'projects fields using getSnapshotProjected', (done) ->
-      if !@db.getSnapshotProjected
-        console.warn 'No getSnapshotProjected implementation. Skipping tests. This is ok - it just means projections will be less efficient'
-        return done()
-
+    it 'projection', (done) ->
       data = {v:5, type:jsonType.uri, data:{x:5, y:6}, m:{ctime:1, mtime:2}}
       @db.writeSnapshot @cName, @docName, data, (err) =>
         throw Error err if err
-      
-        @db.getSnapshotProjected @cName, @docName, {x:true, z:true}, (err, data) ->
+        @db.getSnapshot @cName, @docName, {x:true, z:true}, (err, data) =>
           throw Error err if err
-          delete data.docName
-          expected = {v:5, type:jsonType.uri, data:{x:5}, m:{ctime:1, mtime:2}}
+          expected = {v:5, type:jsonType.uri, data:{x:5}, docName: @docName}
           assert.deepEqual data, expected
           done()
 
+    it 'getSnapshots does not return missing documents', (done) ->
+      @db.getSnapshots @cName, [@docName], null, (err, results) =>
+        throw Error(err) if err
+        assert.deepEqual results, []
+        done()
 
+    it 'getSnapshots returns results', (done) ->
+      data = {v:5, type:textType.uri, data:'hi there', m:{ctime:1, mtime:2}}
+      @db.writeSnapshot @cName, @docName, data, (err) =>
+        throw Error(err) if err
+        @db.getSnapshots @cName, [@docName], null, (err, results) =>
+          throw Error(err) if err
+          data.docName = @docName
+          delete data.m
+          assert.deepEqual results, [data]
+          done()
+
+    it 'getSnapshots works when some results exist and some do not', (done) ->
+      @docName2 = @docName + ' ' + 2
+      data = {v:5, type:textType.uri, data:'hi there'}
+      data2 = {v:7, type:textType.uri, data:'yo'}
+      @db.writeSnapshot @cName, @docName, data, (err) =>
+        throw Error(err) if err
+        @db.writeSnapshot @cName, @docName2, data2, (err) =>
+          throw Error(err) if err
+          docNames = ['does not exist', @docName, 'also does not exist', @docName2]
+          @db.getSnapshots @cName, docNames, null, (err, results) =>
+            throw Error(err) if err
+            data.docName = @docName
+            data2.docName = @docName2
+            # Result order is not strictly specified
+            expected = if results[0].docName == @docName then [data, data2] else [data2, data]
+            assert.deepEqual results, expected
+            done()

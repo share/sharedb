@@ -4,7 +4,7 @@ assert = require 'assert'
 {normalizeType} = require '../lib/ot'
 json0 = normalizeType 'json0'
 
-{setup, teardown, stripTs} = require './util'
+{setup, teardown, stripOps} = require './util'
 
 {projectSnapshot, projectOpData, isSnapshotAllowed, isOpDataAllowed} = require '../lib/projections'
 
@@ -63,27 +63,30 @@ describe 'stream utility methods', ->
 describe 'projection utility methods', ->
   describe 'projectSnapshot', ->
     it 'filters properties', ->
-      assert.deepEqual {}, projectSnapshot json0, {}, {}
-      assert.deepEqual {}, projectSnapshot json0, {x:true}, {}
-      assert.deepEqual {}, projectSnapshot json0, {x:true}, {a:2}
-      assert.deepEqual {x:2}, projectSnapshot json0, {x:true}, {x:2}
-      assert.deepEqual {x:[1,2,3]}, projectSnapshot json0, {x:true}, {x:[1,2,3]}
-      assert.deepEqual {x:5}, projectSnapshot json0, {x:true}, {a:2, x:5}
+      test = (fields, snapshot, expected) ->
+        projectSnapshot fields, snapshot
+        assert.deepEqual snapshot, expected
 
-      assert.deepEqual null, projectSnapshot json0, {x:true}, []
-      assert.deepEqual null, projectSnapshot json0, {x:true}, 4
-      assert.deepEqual null, projectSnapshot json0, {x:true}, "hi"
+      test {}, {type:json0}, {type: json0}
+      test {}, {type:json0, data:{}}, {type:json0, data:{}}
+      test {}, {type:json0, data:{a:2}}, {type:json0, data:{}}
+      test {x:true}, {type:json0, data:{x:2}}, {type:json0, data:{x:2}}
+      test {x:true}, {type:json0, data:{x:[1,2,3]}}, {type:json0, data:{x:[1,2,3]}}
+      test {x:true}, {type:json0, data:{a:2, x:5}}, {type:json0, data:{x:5}}
 
+      test {x:true}, {type:json0, data:[]}, {type:json0, data:null}
+      test {x:true}, {type:json0, data:4}, {type:json0, data:null}
+      test {x:true}, {type:json0, data:'hi'}, {type:json0, data:null}
 
   describe 'projectOpData', ->
     it 'passes src/seq into the projected op', ->
       op = {src:'src', seq:123, op:[]}
-      assert.deepEqual op, projectOpData json0, {}, op
+      assert.deepEqual op, projectOpData({}, op)
 
     describe 'op', ->
       beforeEach ->
         @op = (fields, input, expected = input) ->
-          assert.deepEqual {op:expected}, projectOpData json0, fields, {op:input}
+          assert.deepEqual {op:expected}, projectOpData(fields, {op:input})
 
       it 'filters components on the same level', ->
         @op {}, []
@@ -111,34 +114,37 @@ describe 'projection utility methods', ->
 
     describe 'create', ->
       it 'does not tell projections about operations that create the doc with the wrong type', ->
-        assert.deepEqual {}, projectOpData json0, {x:true}, {create:{type:'other'}}
-        assert.deepEqual {}, projectOpData json0, {x:true}, {create:{type:'other', data:123}}
+        assert.deepEqual {}, projectOpData {x:true}, {create:{type:'other'}}
+        assert.deepEqual {}, projectOpData {x:true}, {create:{type:'other', data:123}}
 
       it 'strips data in creates', ->
         assert.deepEqual {create:{type:json0, data:{x:10}}},
-            projectOpData json0, {x:true}, {create:{type:json0, data:{x:10}}}
+            projectOpData {x:true}, {create:{type:json0, data:{x:10}}}
         assert.deepEqual {create:{type:json0, data:{}}},
-            projectOpData json0, {x:true}, {create:{type:json0, data:{y:10}}}
+            projectOpData {x:true}, {create:{type:json0, data:{y:10}}}
 
     describe 'isSnapshotAllowed', ->
       it 'returns true iff projectSnapshot returns the original object', ->
-        t = (fields, data) ->
-          if isSnapshotAllowed json0, fields, data
-            assert.deepEqual data, projectSnapshot json0, fields, data
+        test = (fields, snapshot) ->
+          previous = snapshot.data
+          if isSnapshotAllowed fields, snapshot
+            projectSnapshot fields, snapshot
+            assert.deepEqual snapshot.data, previous
           else
-            assert.notDeepEqual data, projectSnapshot json0, fields, data
+            projectSnapshot fields, snapshot
+            assert.notDeepEqual snapshot.data, previous
 
-        t {x:true}, {x:5}
-        t {}, {x:5}
-        t {x:true}, {x:{y:true}}
-        t {y:true}, {x:{y:true}}
-        t {x:true}, {x:4, y:6}
+        test {x:true}, {type:json0, data:{x:5}}
+        test {}, {type:json0, data:{x:5}}
+        test {x:true}, {type:json0, data:{x:{y:true}}}
+        test {y:true}, {type:json0, data:{x:{y:true}}}
+        test {x:true}, {type:json0, data:{x:4, y:6}}
 
       it 'returns false for any non-object thing', ->
-        assert.strictEqual false, isSnapshotAllowed json0, {}, null
-        assert.strictEqual false, isSnapshotAllowed json0, {}, 3
-        assert.strictEqual false, isSnapshotAllowed json0, {}, []
-        assert.strictEqual false, isSnapshotAllowed json0, {}, "hi"
+        assert.strictEqual false, isSnapshotAllowed {}, {type:json0, data:null}
+        assert.strictEqual false, isSnapshotAllowed {}, {type:json0, data:3}
+        assert.strictEqual false, isSnapshotAllowed {}, {type:json0, data:[]}
+        assert.strictEqual false, isSnapshotAllowed {}, {type:json0, data:'hi'}
 
     describe 'isOpDataAllowed', ->
       it 'works with create ops', ->
@@ -155,15 +161,15 @@ describe 'projection utility methods', ->
         assert.equal true, isOpDataAllowed null, {}, {del:true}
 
       it 'works with ops', ->
-        t = (expected, fields, op, type = json0) ->
+        test = (expected, fields, op, type = json0) ->
           assert.equal expected, isOpDataAllowed type, fields, {op:op}
 
-        t true, {x:true}, [p:['x'], na:1]
-        t false, {y:true}, [p:['x'], na:1]
-        t false, {}, [p:['x'], na:1]
-        t false, {x:true}, [{p:['x'], na:1}, {p:['y'], na:1}]
+        test true, {x:true}, [p:['x'], na:1]
+        test false, {y:true}, [p:['x'], na:1]
+        test false, {}, [p:['x'], na:1]
+        test false, {x:true}, [{p:['x'], na:1}, {p:['y'], na:1}]
 
-        t false, {x:true}, [p:[], oi:{}]
+        test false, {x:true}, [p:[], oi:{}]
 
 
 describe 'projections', ->
@@ -171,13 +177,7 @@ describe 'projections', ->
 
   beforeEach ->
     @proj = '_proj'
-
     @client.addProjection @proj, @cName, 'json0', {x:true, y:true, z:true}
-
-    # Override to change the default value of data
-    @create = (data, cb) ->
-      [data, cb] = [{}, data] if typeof data is 'function'
-      @createDoc @docName, data, cb
 
   afterEach teardown
 
@@ -185,18 +185,6 @@ describe 'projections', ->
     it 'returns projected data through fetch()', (done) -> @create {a:1, b:false, x:5, y:false}, =>
       @client.fetch @proj, @docName, (err, snapshot) ->
         assert.deepEqual snapshot.data, {x:5, y:false}
-        done()
-
-    it 'Uses getSnapshotProjected if it exists', (done) ->
-      @db.getSnapshot = -> throw Error 'db.getSnapshot should not be called'
-      @db.getSnapshotProjected = (cName, docName, fields, callback) =>
-        assert.equal cName, @cName
-        assert.equal docName, @docName
-        assert.deepEqual fields, {x:true, y:true, z:true}
-        callback null, {v:1, type:normalizeType('json0'), data:{x:5}}
-
-      @client.fetch @proj, @docName, (err, snapshot) ->
-        assert.deepEqual snapshot.data, {x:5}
         done()
 
   describe 'ops', ->
@@ -209,11 +197,11 @@ describe 'projections', ->
         throw Error err if err
         @client.getOps @proj, @docName, 0, 2, (err, ops) =>
           throw Error err if err
-          stripTs ops
+          stripOps ops
 
           assert.equal ops.length, 2
-          assert.deepEqual ops[0], {v:0, create:{type:json0, data:{x:{}, y:2}}, m:{}, src:''}
-          assert.deepEqual ops[1], {v:1, op:[{p:['y'], na:1}, {p:['z'], oi:4}, {p:['x', 'seph'], oi:'super'}], m:{}, src:''}
+          assert.deepEqual ops[0], {v:0, create:{type:json0, data:{x:{}, y:2}}, src:''}
+          assert.deepEqual ops[1], {v:1, op:[{p:['y'], na:1}, {p:['z'], oi:4}, {p:['x', 'seph'], oi:'super'}], src:''}
 
           done()
 
@@ -224,12 +212,12 @@ describe 'projections', ->
           throw Error err if err
           @client.submit @cName, @docName, v:2, op:[{p:['y'], na:1}, {p:['a'], na:1}], (err) =>
             expected = [
-              {v:0, m:{}, create:{type:json0, data:{x:2, y:2}}, src:''}
-              {v:1, m:{}, op:[{p:['x'], na:1}], src:''}
-              {v:2, m:{}, op:[{p:['y'], na:1}], src:''}
+              {v:0, create:{type:json0, data:{x:2, y:2}}, src:''}
+              {v:1, op:[{p:['x'], na:1}], src:''}
+              {v:2, op:[{p:['y'], na:1}], src:''}
             ]
             readN stream, 3, (err, data) =>
-              stripTs data
+              stripOps data
               assert.deepEqual data, expected
               stream.destroy()
               @client.driver._checkForLeaks false, done
@@ -249,15 +237,15 @@ describe 'projections', ->
 
           expectOp = (stream, expected) ->
             read stream, (err, op) ->
-              op = stripTs op
+              op = stripOps op
               delete op.docName
               assert.deepEqual op, expected
               passPart()
 
-          expectOp result[@cName].one, {v:0, create:{type:json0, data:{a:1, x:2, y:3}}, m:{}, src:''}
-          expectOp result[@proj].one, {v:0, create:{type:json0, data:{x:2, y:3}}, m:{}, src:''}
-          expectOp result[@cName].two, {v:1, op:[{p:['a'], na:1}], m:{}, src:''}
-          expectOp result[@proj].two, {v:1, op:[], m:{}, src:''}
+          expectOp result[@cName].one, {v:0, create:{type:json0, data:{a:1, x:2, y:3}}, src:''}
+          expectOp result[@proj].one, {v:0, create:{type:json0, data:{x:2, y:3}}, src:''}
+          expectOp result[@cName].two, {v:1, op:[{p:['a'], na:1}], src:''}
+          expectOp result[@proj].two, {v:1, op:[], src:''}
 
           @client.submit @cName, 'two', op:[{p:['a'], na:1}]
 
@@ -293,9 +281,9 @@ describe 'projections', ->
   describe 'submit', ->
     it 'rewrites submit on a projected query to apply to the original collection', (done) ->
       realOps = [
-        {create:{type:json0, data:{x:1}}, v:0, m:{}, src:'src', seq:1}
-        {v:1, op:[{p:['x'], na:1}], v:1, m:{}, src:'src', seq:2}
-        {del:true, v:2, m:{}, src:'src2', seq:1}
+        {create:{type:json0, data:{x:1}}, v:0, src:'src', seq:1}
+        {v:1, op:[{p:['x'], na:1}], v:1, src:'src', seq:2}
+        {del:true, v:2, src:'src2', seq:1}
       ]
 
       @client.subscribe @proj, @docName, 0, (err, projStream) =>
@@ -312,14 +300,14 @@ describe 'projections', ->
 
                 readN projStream, 3, (err, ops) =>
                   throw Error err if err
-                  stripTs ops
-                  stripTs realOps
+                  stripOps ops
+                  stripOps realOps
                   assert.deepEqual ops, realOps
 
                   readN origStream, 3, (err, ops) =>
                     throw Error err if err
-                    stripTs ops
-                    stripTs realOps
+                    stripOps ops
+                    stripOps realOps
                     assert.deepEqual ops, realOps
 
                     done()
@@ -342,10 +330,10 @@ describe 'projections', ->
 
               cb()
 
-      checkSubmitFails {create:{type:json0, data:{a:1}}, v:0, m:{}}, =>
+      checkSubmitFails {create:{type:json0, data:{a:1}}, v:0}, =>
         # Now try again with a normal op. We have to first @create.
         @create {a:1}, =>
-          checkSubmitFails {v:1, op:[{p:['a'], na:1}], v:1, m:{}}, =>
+          checkSubmitFails {v:1, op:[{p:['a'], na:1}], v:1}, =>
             done()
 
 
@@ -370,42 +358,13 @@ describe 'projections', ->
           ]
           done()
 
-    it 'projects data returned my queryFetch when extra data is emitted', (done) ->
-      @db.query = (liveDb, index, query, options, callback) =>
-        assert.deepEqual index, @cName
-        callback null,
-          results: [{docName:@docName, data:{a:6, x:5}, type:json0, v:1}]
-          extra: 'Extra stuff'
-
-      @client.queryFetch @proj, null, {}, (err, results) =>
-        throw Error err if err
-        delete result.m for result in results
-        assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
-        done()
-
-    it 'uses the database projection function for queries if it exists', (done) ->
-      @db.query = (a,b,c,d,e) -> throw Error 'db.query should not be called'
-      @db.queryProjected = (liveDb, index, fields, query, options, callback) =>
-        assert.equal liveDb, @client
-        assert.equal index, @cName
-        assert.deepEqual fields, {x:true, y:true, z:true}
-        assert.equal query, "cool cats"
-        assert.deepEqual options, {mode: 'fetch'}
-        callback null, [{docName:@docName, data:{x:5}, type:json0, v:1}]
-
-      @client.queryFetch @proj, 'cool cats', {}, (err, results) =>
-        throw Error err if err
-        delete result.m for result in results
-        assert.deepEqual results, [{docName:@docName, data:{x:5}, type:json0, v:1}]
-        done()
-
     # Do these tests with polling turned on and off
     [false, true].forEach (poll) -> describe "poll:#{poll}", ->
 
-      opts = {poll:poll, pollDelay:0}
-      it 'projects data returned by queryPoll', (done) ->
+      opts = {poll:poll}
+      it 'projects data returned by querySubscribe', (done) ->
         @createDoc 'aaa', {a:5, x:3}, => @createDoc 'bbb', {x:3}, => @createDoc 'ccc', {}, =>
-          @client.queryPoll @proj, null, opts, (err, emitter, results) =>
+          @client.querySubscribe @proj, null, opts, (err, emitter, results) =>
             throw Error err if err
 
             results.sort (a, b) -> if b.docName > a.docName then -1 else 1
@@ -417,8 +376,8 @@ describe 'projections', ->
             ]
             done()
 
-      it 'projects data returned by queryPoll in a diff', (done) ->
-        @client.queryPoll @proj, 'unused', opts, (err, emitter, results) =>
+      it 'projects data returned by querySubscribe in a diff', (done) ->
+        @client.querySubscribe @proj, 'unused', opts, (err, emitter, results) =>
           throw Error err if err
           assert.deepEqual results, []
 
@@ -433,20 +392,3 @@ describe 'projections', ->
             done()
 
           @create {x:5, a:1}
-
-    it 'calls db.queryDocProjected if it exists', (done) ->
-      called = false
-      @db.queryDoc = -> throw Error 'db.queryDoc should not be called'
-      @db.queryDocProjected = (liveDb, index, cName, docName, fields, query, callback) =>
-        called = true
-        callback null, {v:1, data:{x:5}, type:json0, docName:@docName}
-
-      @client.queryPoll @proj, 'unused', {poll:false}, (err, emitter, results) =>
-        throw Error err if err
-        assert.deepEqual results, []
-
-        emitter.onDiff = (stuff) =>
-          assert called
-          done()
-
-        @create {x:5, a:1}

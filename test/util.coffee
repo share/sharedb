@@ -4,10 +4,8 @@ inProcessDriver = require '../lib/inprocessdriver'
 
 exports.createClient = createClient = (db = new Memory(), createDriver = inProcessDriver) ->
   driver = createDriver db
-
   testWrapper = {name:'test'}
-  sdc = {guage: (->), increment:(->), timing:(->)}
-  client = livedb.client {db, driver, extraDbs:{test:testWrapper}, sdc}
+  client = livedb.client {db, driver, extraDbs:{test:testWrapper}}
   {client, db, testWrapper, driver}
 
 nextId = 0
@@ -18,15 +16,13 @@ exports.setup = ->
   @cName ?= '_test'
 
   {@client, @db, @testWrapper, @driver} = createClient()
-
-  @collection = @client.collection @cName
   @docName = "id#{nextId++}"
 
-  @createDoc = (docName, data = '', cb) ->
+  @createDoc = (docName, data = '', cb) =>
     [data, cb] = ['', data] if typeof data is 'function'
 
     type = if typeof data is 'string' then 'text' else 'json0'
-    @collection.submit docName, {v:0, create:{type, data}}, null, (err) ->
+    @client.submit @cName, docName, {v:0, create:{type, data}}, null, (err) =>
       throw new Error err if err
       cb?()
 
@@ -38,14 +34,14 @@ exports.teardown = ->
   @driver.destroy()
   @db.close()
 
-exports.stripTs = (ops) ->
+exports.stripOps = (ops) ->
   if Array.isArray ops
     for op in ops
-      delete op.m.ts if op.m
+      delete op.m
       delete op.collection
       delete op.docName
   else
-    delete ops.m.ts if ops.m
+    delete ops.m
     delete ops.collection
     delete ops.docName
   ops
@@ -57,5 +53,4 @@ exports.calls = (num, fn) ->
     fn.call this, ->
       done()  if ++n >= num
       return
-
     return

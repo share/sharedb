@@ -15,13 +15,12 @@ describe 'queries', ->
 
   beforeEach ->
     sinon.stub @db, 'queryNeedsPollMode', -> no
-    #sinon.stub @db, 'query', (db, index, query, cb) -> cb()
-    #sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb()
 
   afterEach teardown
   afterEach ->
     @db.query.restore() if @db.query.restore
-    @db.queryDoc.restore() if @db.queryDoc.restore
+    @db.queryPoll.restore() if @db.queryPoll.restore
+    @db.queryPollDoc.restore() if @db.queryPollDoc.restore
     @db.queryNeedsPollMode.restore() if @db.queryNeedsPollMode.restore
 
   # Do these tests with polling turned on and off.
@@ -35,14 +34,8 @@ describe 'queries', ->
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb 'Something went wrong'
 
-      @collection.queryPoll {}, opts, (err, emitter) =>
+      @client.querySubscribe @cName, {}, opts, (err, emitter) =>
         assert.equal err, 'Something went wrong'
-        done()
-
-    it 'passes the right arguments to db.query', (done) ->
-      sinon.spy @db, 'query'
-      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
-        assert @db.query.calledWith @client, @cName, {'x':5}
         done()
 
     it 'returns a result it already applies to', (done) ->
@@ -55,7 +48,7 @@ describe 'queries', ->
 
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb null, expected
-      @collection.queryPoll {'x':5}, opts, (err, emitter, results) =>
+      @client.querySubscribe @cName, {'x':5}, opts, (err, emitter, results) =>
         assert.deepEqual results, expected
         emitter.destroy()
         done()
@@ -64,7 +57,7 @@ describe 'queries', ->
       sinon.stub @db, 'query', (db, index, query, options, cb) ->
         cb null, []
 
-      @collection.queryPoll {'xyz':123}, opts, (err, emitter, results) ->
+      @client.querySubscribe @cName, {'xyz':123}, opts, (err, emitter, results) ->
         assert.deepEqual results, []
         emitter.onDiff = -> throw new Error 'should not have added results'
 
@@ -75,33 +68,32 @@ describe 'queries', ->
     it 'adds an element when it matches', (done) ->
       result = docName:@docName, v:1, data:{x:5}, type:json0.uri
 
-      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
+      @client.querySubscribe @cName, {'x':5}, opts, (err, emitter) =>
         emitter.onDiff = (diff) =>
           assert.deepEqual diff, [index: 0, values: [result]]
           emitter.destroy()
           done()
 
-        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
-        sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb null, result
+        sinon.stub @db, 'queryPoll', (cName, query, options, cb) => cb null, [@docName]
+        sinon.stub @db, 'queryPollDoc', (cName, docName, query, options, cb) => cb null, true
 
         @create {x:5}
 
     it 'remove an element that no longer matches', (done) -> @create {x:5}, =>
-      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
+      @client.querySubscribe @cName, {'x':5}, opts, (err, emitter) =>
         emitter.onDiff = (diff) =>
           assert.deepEqual diff, [index:0, howMany:1]
           emitter.destroy()
           done()
 
         op = op:'rm', p:[]
-        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, []
-        sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) ->
-          cb null, false
+        sinon.stub @db, 'queryPoll', (cName, query, options, cb) => cb null, []
+        sinon.stub @db, 'queryPollDoc', (cName, docName, query, options, cb) => cb null, false
 
-        @collection.submit @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
+        @client.submit @cName, @docName, v:1, op:[{p:['x'], od:5, oi:6}], (err, v) =>
 
     it 'removes deleted elements', (done) -> @create {x:5}, =>
-      @collection.queryPoll {'x':5}, opts, (err, emitter, results) =>
+      @client.querySubscribe @cName, {'x':5}, opts, (err, emitter, results) =>
         assert.strictEqual results.length, 1
 
         emitter.onDiff = (diff) =>
@@ -109,11 +101,11 @@ describe 'queries', ->
           emitter.destroy()
           done()
 
-        @collection.submit @docName, v:1, del:true, (err, v) =>
+        @client.submit @cName, @docName, v:1, del:true, (err, v) =>
           throw new Error err if err
 
     it 'does not emit receive events to a destroyed query', (done) ->
-      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
+      @client.querySubscribe @cName, {'x':5}, opts, (err, emitter) =>
         emitter.onDiff = -> throw new Error 'add called after destroy'
 
         emitter.destroy()
@@ -133,61 +125,60 @@ describe 'queries', ->
         called++
         no
 
-      @collection.queryPoll {'x':5}, opts, (err, emitter) =>
+      @client.querySubscribe @cName, {'x':5}, opts, (err, emitter) =>
         throw Error err if err
 
-        @db.query = -> throw Error 'query should not be called'
-        @db.queryDoc = -> throw Error 'queryDoc should not be called'
+        @db.queryPoll = -> throw Error 'query should not be called'
+        @db.queryPollDoc = -> throw Error 'queryDoc should not be called'
 
-        @collection.submit @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
+        @client.submit @cName, @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
           assert.equal called, 1
           done()
 
-    it 'does not poll if db.shouldPoll returns false', (done) -> @create {x:5}, =>
+    it 'does not poll if db.queryShouldPoll returns false', (done) -> @create {x:5}, =>
       called = 0
-      @db.queryShouldPoll = (livedb, cName, docName, data, index, query) =>
+      @db.queryShouldPoll = (cName, docName, data, index, query) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
         assert.deepEqual query, {x:5}
         called++
         no
 
-      @collection.queryPoll {x:5}, opts, (err, emitter) =>
+      @client.querySubscribe @cName, {x:5}, opts, (err, emitter) =>
         throw Error err if err
 
-        @db.query = -> throw Error 'query should not be called'
-        @db.queryDoc = -> throw Error 'queryDoc should not be called'
+        @db.queryPoll = -> throw Error 'query should not be called'
+        @db.queryPollDoc = -> throw Error 'queryDoc should not be called'
 
-        @collection.submit @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
+        @client.submit @cName, @docName, v:1, op:[{p:['x'], na:1}], (err, v) =>
           assert.equal called, 1
           done()
 
   describe 'queryFetch', ->
     it 'query fetch with no results works', (done) ->
-      sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, []
+      sinon.stub @db, 'query', (cName, query, fields, options, cb) -> cb null, []
 
-      @collection.queryFetch {'somekeythatdoesnotexist':1}, (err, results) ->
+      @client.queryFetch @cName, {'somekeythatdoesnotexist':1}, (err, results) ->
         throw new Error err if err
         assert.deepEqual results, []
         done()
 
     it 'query with some results returns those results', (done) ->
       result = docName:@docName, data:'qwertyuiop', type:text.uri, v:1
-      sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
+      sinon.stub @db, 'query', (cName, query, fields, options, cb) -> cb null, [result]
 
-      @collection.queryFetch {'_data':'qwertyuiop'}, (err, results) =>
+      @client.queryFetch @cName, {'_data':'qwertyuiop'}, (err, results) =>
         assert.deepEqual results, [result]
         done()
 
-    it 'does the right thing with a backend that returns extra data', (done) ->
-      result =
-        results: [{docName:@docName, data:'qwertyuiop', type:text.uri, v:1}]
-        extra: 'Extra stuff'
-      sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, result
+    it 'passes through extra data from backend', (done) ->
+      expectedResults = [{docName:@docName, data:'qwertyuiop', type:text.uri, v:1}]
+      expectedExtra = 'Extra stuff'
+      sinon.stub @db, 'query', (cName, query, fields, options, cb) -> cb null, expectedResults, expectedExtra
 
-      @collection.queryFetch {'_data':'qwertyuiop'}, (err, results, extra) =>
-        assert.deepEqual results, result.results
-        assert.deepEqual extra, result.extra
+      @client.queryFetch @cName, {'_data':'qwertyuiop'}, (err, results, extra) =>
+        assert.deepEqual results, expectedResults
+        assert.deepEqual extra, expectedExtra
         done()
 
 
@@ -196,7 +187,7 @@ describe 'queries', ->
 
     # This test is flaky. Don't know why.
     it.skip 'gets operations submitted to any specified collection', (done) ->
-      @testWrapper.query = (livedb, cName, query, options, callback) ->
+      @testWrapper.query = (cName, query, fields, options, callback) ->
         assert.deepEqual query, {x:5}
         callback null, []
 
@@ -228,19 +219,20 @@ describe 'queries', ->
 
   describe 'extra data', ->
     it 'gets extra data in the initial result set', (done) ->
-      sinon.stub @db, 'query', (client, cName, query, options, callback) ->
-        callback null, {results:[], extra:{x:5}}
+      sinon.stub @db, 'query', (cName, query, fields, options, callback) ->
+        callback null, [], {x:5}
 
-      @client.queryPoll 'internet', {x:5}, (err, emitter, results, extra) =>
+      @client.querySubscribe 'internet', {x:5}, (err, emitter, results, extra) =>
         assert.deepEqual extra, {x:5}
         done()
 
     it 'gets updated extra data when the result set changes', (done) ->
-      x = 1
-      sinon.stub @db, 'query', (client, cName, query, options, callback) ->
-        callback null, {results:[], extra:{x:x++}}
+      sinon.stub @db, 'query', (cName, query, fields, options, callback) ->
+        callback null, [], {x:1}
+      sinon.stub @db, 'queryPoll', (cName, query, options, callback) ->
+        callback null, [], {x:2}
 
-      @collection.queryPoll {x:5}, {poll:true}, (err, emitter, results, extra) =>
+      @client.querySubscribe @cName, {x:5}, {poll:true}, (err, emitter, results, extra) =>
         assert.deepEqual extra, {x:1}
 
         emitter.onExtra = (extra) ->
