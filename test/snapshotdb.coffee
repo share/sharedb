@@ -13,7 +13,7 @@ module.exports = (create) ->
       @cName = 'testcollection'
       @docName = "snapshottest #{counter++}"
       create (@db) =>
-        monkeypatch.snapshotDb @db
+        monkeypatch.db @db
         done()
 
     afterEach (done) ->

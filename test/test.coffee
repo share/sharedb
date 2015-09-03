@@ -337,7 +337,7 @@ describe 'livedb', ->
             assert.deepEqual stripOps(ops), [{create:{type:textType.uri, data:''}, v:0, src:''}, {op:['hi'], v:1, src:''}]
             done()
 
-    it 'errors if ops are missing from the snapshotdb and oplogs'
+    it 'errors if ops are missing from the db and oplogs'
 
     it 'works with separate clients', (done) -> @create =>
       return done() unless @driver.distributed

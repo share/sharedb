@@ -115,15 +115,15 @@ This is the equivalent to this:
 ```javascript
 db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
 backend = livedb.client({db:db});
-// Also equivalent to livedb.client({snapshotDb:db, oplog:db});
+// Also equivalent to livedb.client({db:db, oplog:db});
 ```
 
 You can use a different database for both snapshots and operations if you want:
 
 ```javascript
-snapshotdb = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
 oplog = {writeOp:..., getVersion:..., getOps:...};
-backend = livedb.client({snapshotDb:snapshotdb, oplog:oplog});
+backend = livedb.client({db:db, oplog:oplog});
 ```
 
 All of the above examples will use the in-process driver by default. If you
@@ -135,7 +135,7 @@ client1 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
 client2 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
 
 driver = livedb.redisDriver(oplog, client1, client2);
-backend = livedb.client({snapshotDb:snapshotdb, driver:driver});
+backend = livedb.client({db:db, driver:driver});
 ```
 
 The redis driver needs 2 redis clients because redis can't use the same
@@ -409,4 +409,26 @@ Limitations:
 - You can only whitelist fields (not blacklist them).
 - The third parameter must be 'json0'.
 - Projections can only limit / allow fields at the top level of the document
+
+## Error codes
+
+ShareDB returns errors as plain JavaScript objects with the format:
+```
+{
+  code: 5000,
+  message: 'ShareDB internal error'
+}
+```
+
+Additional fields may be added to the error object for debugging context depending on the error. Common additional fields include `collection`, `id`, and `op`.
+
+### 4000 -- Bad request
+
+* 4001 --
+
+### 5000 -- Internal error
+
+The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the `42xx` and `52xx` codes are reserved for use by ShareDB PubSub adapters.
+
+* 5001 -- No new ops returned when retrying unsuccessful submit
 
