@@ -1,4 +1,6 @@
+var async = require('async');
 var expect = require('expect.js');
+var ot = require('../lib/ot');
 
 module.exports = function(create) {
   describe('db', function() {
@@ -16,133 +18,160 @@ module.exports = function(create) {
     });
 
     describe('commit', function() {
-      function testSimultaneousSucceeds(db, done, setup, test) {
-        var wait = 2;
+      function commitConcurrent(db, ops, test, done) {
         var numSucceeded = 0;
-        var finish = function() {
-          if (--wait) return;
-          expect(numSucceeded).equal(1);
-          done();
-        };
-        var commit = function(op, snapshot) {
-          db.commit('testcollection', 'foo', op, snapshot, function(err, succeeded) {
-            if (err) throw err;
-            if (!succeeded) return finish();
-            numSucceeded++;
-            db.getOps('testcollection', 'foo', 0, null, function(err, opsOut) {
-              if (err) throw err;
-              db.getSnapshot('testcollection', 'foo', null, function(err, snapshotOut) {
-                if (err) throw err;
-                test(op, snapshot, opsOut, snapshotOut);
-                finish();
-              });
+        async.each(ops, function(op, eachCb) {
+          // Simplified mock of how submit request applies operations. The
+          // noteworthy dependency is that it always calls getSnapshot with
+          // the 'submit' projection and applies the op to the returned
+          // snapshot before committing. Thus, commit may rely on the behavior
+          // of getSnapshot with this special projection
+          db.getSnapshot('testcollection', 'foo', 'submit', function(err, snapshot) {
+            if (err) return eachCb(err);
+            var err = ot.apply(snapshot, op);
+            if (err) return eachCb(err);
+            db.commit('testcollection', 'foo', op, snapshot, function(err, succeeded) {
+              if (err) return eachCb(err);
+              if (succeeded) numSucceeded++;
+              eachCb();
             });
           });
-        };
-        setup(commit);
+        }, function(err) {
+          if (err) return done(err);
+          expect(numSucceeded).equal(1);
+          if (!test) return done();
+          db.getOps('testcollection', 'foo', 0, null, function(err, opsOut) {
+            if (err) return done(err);
+            db.getSnapshot('testcollection', 'foo', null, function(err, snapshotOut) {
+              if (err) return done(err);
+              test(opsOut, snapshotOut);
+              done();
+            });
+          });
+        });
       }
 
-      it('one commit succeeds from two simultaneous creates', function(done) {
+      function testCreateCommit(ops, snapshot) {
+        expect(snapshot.v).eql(1);
+        expect(ops.length).equal(1);
+        expect(ops[0].create).ok();
+      }
+
+      it('one commit succeeds from 2 simultaneous creates', function(done) {
+        var ops = [
+          {v: 0, create: {type: 'json0', data: {x: 3}}},
+          {v: 0, create: {type: 'json0', data: {x: 5}}}
+        ];
+        commitConcurrent(this.db, ops, testCreateCommit, done);
+      });
+
+      it('one commit succeeds from 5 simultaneous creates', function(done) {
+        var ops = [
+          {v: 0, create: {type: 'json0', data: {x: 3}}},
+          {v: 0, create: {type: 'json0', data: {x: 5}}},
+          {v: 0, create: {type: 'json0', data: {x: 7}}},
+          {v: 0, create: {type: 'json0', data: {x: 9}}},
+          {v: 0, create: {type: 'json0', data: {x: 11}}}
+        ];
+        commitConcurrent(this.db, ops, testCreateCommit, done);
+      });
+
+      function createDoc(db, callback) {
+        var ops = [{v: 0, create: {type: 'json0', data: {x: 3}}}];
+        commitConcurrent(db, ops, null, callback);
+      }
+
+      function testOpCommit(ops, snapshot) {
+        expect(snapshot.v).equal(2);
+        expect(ops.length).equal(2);
+        expect(ops[0].create).ok();
+        expect(ops[1].op).ok();
+      }
+
+      it('one commit succeeds from 2 simultaneous ops', function(done) {
+        var ops = [
+          {v: 1, op: []},
+          {v: 1, op: []}
+        ];
         var db = this.db;
-        var opA = {v: 0, create: {type: 'json0', data: {x: 3}}};
-        var snapshotA = {v: 1, type: 'json0', data: {x: 3}};
-        var opB = {v: 0, create: {type: 'json0', data: {x: 5}}};
-        var snapshotB = {v: 1, type: 'json0', data: {x: 5}};
-        testSimultaneousSucceeds(db, done, function(commit) {
-          commit(opA, snapshotA);
-          commit(opB, snapshotB);
-        }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).eql(snapshot.data);
-          expect(opsOut.length).equal(1);
-          expect(opsOut[0].create).eql(op.create);
+        createDoc(db, function(err) {
+          if (err) throw err;
+          commitConcurrent(db, ops, testOpCommit, done);
         });
       });
 
-      it('one commit succeeds from two simultaneous ops', function(done) {
+      it('one commit succeeds from 5 simultaneous ops', function(done) {
+        var ops = [
+          {v: 1, op: []},
+          {v: 1, op: []},
+          {v: 1, op: []},
+          {v: 1, op: []},
+          {v: 1, op: []}
+        ];
         var db = this.db;
-        var op0 = {v: 0, create: {type: 'json0', data: {x: 0}}};
-        var snapshot0 = {v: 1, type: 'json0', data: {x: 0}};
-        testSimultaneousSucceeds(db, done, function(commit) {
-          db.commit('testcollection', 'foo', op0, snapshot0, function(err) {
-            if (err) throw err;
-            var opA = {v: 1, op: [{p: ['x'], na: 3}]};
-            var snapshotA = {v: 2, type: 'json0', data: {x: 3}, _opLink: op0._id};
-            var opB = {v: 1, op: [{p: ['x'], na: 5}]};
-            var snapshotB = {v: 2, type: 'json0', data: {x: 5}, _opLink: op0._id};
-            commit(opA, snapshotA);
-            commit(opB, snapshotB);
-          });
-        }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).eql(snapshot.data);
-          expect(opsOut.length).equal(2);
-          expect(opsOut[0].create).eql(op0.create);
-          expect(opsOut[1].op).eql(op.op);
+        createDoc(db, function(err) {
+          if (err) throw err;
+          commitConcurrent(db, ops, testOpCommit, done);
         });
       });
 
-      it('one commit succeeds from two simultaneous deletes', function(done) {
+      function testDelCommit(ops, snapshot) {
+        expect(snapshot.v).equal(2);
+        expect(ops.length).equal(2);
+        expect(snapshot.data).equal(null);
+        expect(snapshot.type).equal(null);
+        expect(ops[0].create).ok();
+        expect(ops[1].del).equal(true);
+      }
+
+      it('one commit succeeds from 2 simultaneous deletes', function(done) {
+        var ops = [
+          {v: 1, del: true},
+          {v: 1, del: true}
+        ];
         var db = this.db;
-        var op0 = {v: 0, create: {type: 'json0', data: {x: 0}}};
-        var snapshot0 = {v: 1, type: 'json0', data: {x: 0}};
-        testSimultaneousSucceeds(db, done, function(commit) {
-          db.commit('testcollection', 'foo', op0, snapshot0, function(err) {
-            if (err) throw err;
-            var opA = {v: 1, del: true};
-            var snapshotA = {v: 2, type: null, _opLink: op0._id};
-            var opB = {v: 1, del: true};
-            var snapshotB = {v: 2, type: null, _opLink: op0._id};
-            commit(opA, snapshotA);
-            commit(opB, snapshotB);
-          });
-        }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).equal(null);
-          expect(opsOut.length).equal(2);
-          expect(opsOut[0].create).eql(op0.create);
-          expect(opsOut[1].del).eql(true);
+        createDoc(db, function(err) {
+          if (err) throw err;
+          commitConcurrent(db, ops, testDelCommit, done);
+        });
+      });
+
+      it('one commit succeeds from 5 simultaneous deletes', function(done) {
+        var ops = [
+          {v: 1, del: true},
+          {v: 1, del: true},
+          {v: 1, del: true},
+          {v: 1, del: true},
+          {v: 1, del: true}
+        ];
+        var db = this.db;
+        createDoc(db, function(err) {
+          if (err) throw err;
+          commitConcurrent(db, ops, testDelCommit, done);
         });
       });
 
       it('one commit succeeds from delete simultaneous with op', function(done) {
+        var ops = [
+          {v: 1, del: true},
+          {v: 1, op: []}
+        ];
         var db = this.db;
-        var op0 = {v: 0, create: {type: 'json0', data: {x: 0}}};
-        var snapshot0 = {v: 1, type: 'json0', data: {x: 0}};
-        testSimultaneousSucceeds(db, done, function(commit) {
-          db.commit('testcollection', 'foo', op0, snapshot0, function(err) {
-            if (err) throw err;
-            var opA = {v: 1, del: true};
-            var snapshotA = {v: 2, type: null, _opLink: op0._id};
-            var opB = {v: 1, op: [{p: ['x'], na: 5}]};
-            var snapshotB = {v: 2, type: 'json0', data: {x: 5}, _opLink: op0._id};
-            commit(opA, snapshotA);
-            commit(opB, snapshotB);
-          });
-        }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).equal(null);
-          expect(opsOut.length).equal(2);
-          expect(opsOut[0].create).eql(op0.create);
-          expect(opsOut[1].del).eql(true);
+        createDoc(db, function(err) {
+          if (err) throw err;
+          commitConcurrent(db, ops, testDelCommit, done);
         });
       });
 
       it('one commit succeeds from op simultaneous with delete', function(done) {
+        var ops = [
+          {v: 1, op: []},
+          {v: 1, del: true}
+        ];
         var db = this.db;
-        var op0 = {v: 0, create: {type: 'json0', data: {x: 0}}};
-        var snapshot0 = {v: 1, type: 'json0', data: {x: 0}};
-        testSimultaneousSucceeds(db, done, function(commit) {
-          db.commit('testcollection', 'foo', op0, snapshot0, function(err) {
-            if (err) throw err;
-            var opA = {v: 1, op: [{p: ['x'], na: 3}]};
-            var snapshotA = {v: 2, type: 'json0', data: {x: 3}, _opLink: op0._id};
-            var opB = {v: 1, del: true};
-            var snapshotB = {v: 2, type: null, _opLink: op0._id};
-            commit(opA, snapshotA);
-            commit(opB, snapshotB);
-          });
-        }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).eql(snapshot.data);
-          expect(opsOut.length).equal(2);
-          expect(opsOut[0].create).eql(op0.create);
-          expect(opsOut[1].op).eql(op.op);
+        createDoc(db, function(err) {
+          if (err) throw err;
+          commitConcurrent(db, ops, testOpCommit, done);
         });
       });
     });
