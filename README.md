@@ -1,8 +1,6 @@
 # ShareDB
 
-ShareDB is a database wrapper which exposes the API that realtime databases should
-have. All database access from ShareJS (and hence racer and derby apps) goes
-through a sharedb client.
+ShareDB is a realtime database backend based on Operational Transformation (OT) of JSON documents. It is the default realtime backend for the DerbyJS web application framework.
 
 ShareDB lets submit operations (edit documents) and subscribe to documents.
 Subscribing gives you a stream of all operations applied to the given
