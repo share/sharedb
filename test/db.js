@@ -95,7 +95,7 @@ module.exports = function(create) {
             commit(opB, snapshotB);
           });
         }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).equal(undefined);
+          expect(snapshotOut.data).equal(null);
           expect(opsOut.length).equal(2);
           expect(opsOut[0].create).eql(op0.create);
           expect(opsOut[1].del).eql(true);
@@ -117,7 +117,7 @@ module.exports = function(create) {
             commit(opB, snapshotB);
           });
         }, function(op, snapshot, opsOut, snapshotOut) {
-          expect(snapshotOut.data).equal(undefined);
+          expect(snapshotOut.data).equal(null);
           expect(opsOut.length).equal(2);
           expect(opsOut[0].create).eql(op0.create);
           expect(opsOut[1].del).eql(true);
