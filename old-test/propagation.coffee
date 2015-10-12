@@ -15,8 +15,8 @@ describe 'operation propagation granularity', ->
 
   afterEach teardown
   afterEach ->
-    @db.query.restore() if @db.query.restore
-    @db.queryDoc.restore() if @db.queryDoc.restore
+    @db.queryPoll.restore() if @db.queryPoll.restore
+    @db.queryPollDoc.restore() if @db.queryPollDoc.restore
     @db.queryNeedsPollMode.restore() if @db.queryNeedsPollMode.restore
 
   # Do these tests with polling turned on and off.
@@ -27,12 +27,12 @@ describe 'operation propagation granularity', ->
     it 'throttles publishing operations when suppressCollectionPublish === true', (done) ->
       result = docName:@docName, v:1, data:{x:5}, type:json0.uri
 
-      @collection.queryPoll {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
+      @client.querySubscribe @cName, {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
         emitter.onDiff = (diff) =>
           throw new Error 'should not propagate operation to query'
 
-        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
-        sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb null, result
+        sinon.stub @db, 'queryPoll', (cName, query, options, cb) => cb null, [@docName]
+        sinon.stub @db, 'queryPollDoc', (cName, docName, query, options, cb) => cb null, true
 
         @create {x:5}, () -> done()
 
@@ -44,13 +44,13 @@ describe 'operation propagation granularity', ->
     it 'does not throttle publishing operations with suppressCollectionPublish === false', (done) ->
       result = docName:@docName, v:1, data:{x:5}, type:json0.uri
 
-      @collection.queryPoll {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
+      @client.querySubscribe @cName, {'x':5}, {poll:poll, pollDelay:0}, (err, emitter) =>
         emitter.onDiff = (diff) =>
           assert.deepEqual diff, [index: 0, values: [result]]
           emitter.destroy()
           done()
 
-        sinon.stub @db, 'query', (db, index, query, options, cb) -> cb null, [result]
-        sinon.stub @db, 'queryDoc', (db, index, cName, docName, query, cb) -> cb null, result
+        sinon.stub @db, 'queryPoll', (cName, query, options, cb) => cb null, [@docName]
+        sinon.stub @db, 'queryPollDoc', (cName, docName, query, options, cb) => cb null, true
 
         @create {x:5}

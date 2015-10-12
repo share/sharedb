@@ -7,13 +7,13 @@
 assert = require 'assert'
 async = require 'async'
 MemoryStore = require '../lib/memory'
-{stripTs} = require './util'
+{stripOps} = require './util'
 
 createOp = (v = 0) ->
   if v == 0
-    {v, create:{type:'text', data:'hi'}, m:{}}
+    {v, create:{type:'text', data:'hi'}}
   else
-    {v, op:['x'], m:{}}
+    {v, op:['x']}
 
 nextDocId = 0
 
@@ -230,7 +230,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
           throw new Error err if err
 
           stream.once 'data', (op) ->
-            stripTs op
+            stripOps op
             assert.deepEqual op, createOp(1)
             stream.destroy()
             done()
@@ -242,7 +242,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
         # The document has version 1
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
           stream.once 'data', (data) =>
-            stripTs data
+            stripOps data
             assert.deepEqual data, createOp()
             done()
 
@@ -251,7 +251,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
           @driver.postSubmit 'users', @docName, createOp(1), {}, ->
           stream.on 'data', (data) ->
             return if data.v is 0
-            stripTs data
+            stripOps data
             assert.deepEqual data, createOp(1)
             stream.destroy()
             done()
@@ -260,7 +260,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
         @subscribe 'users', @docName, 0, {}, (err, stream) =>
           stream.on 'readable', ->
             data = stream.read()
-            stripTs data
+            stripOps data
             assert.deepEqual data, createOp()
             stream.destroy()
             done()
@@ -301,7 +301,7 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
       # There is a variant of this test done at the livedb level. If this test passes but the other
       # distributed test does not, there's a bug in livedb core.
 
-      numClients = 50 # You can go way higher, but it slows down.
+      numClients = 50
 
       @oplog.writeOp 'users', 'seph', createOp(0), (err) =>
         throw Error err if err
@@ -313,18 +313,16 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
         written = false
         for d, i in drivers
           submitCount = 0
-          observeCount = 0
-          doneWork = (isSubmit) =>
-            if submitCount == numClients and !written
+          doneWork = =>
+            return if submitCount < numClients
+            if !written
               throw Error 'Op not accepted anywhere'
-
-            if submitCount == numClients and observeCount == numClients
-              destroyDriver d for d in drivers
-              @getOps 'users', 'seph', 1, null, (err, ops) ->
-                throw Error err if err
-                assert.equal ops.length, 1
-                # console.log '-----------done-----------'
-                done()
+            destroyDriver d for d in drivers
+            @getOps 'users', 'seph', 1, null, (err, ops) ->
+              throw Error err if err
+              assert.equal ops.length, 1
+              # console.log '-----------done-----------'
+              done()
 
           do (d, i) =>
             # Delayed so that some subscribes are complete before the op is submitted successfully
@@ -336,25 +334,12 @@ module.exports = runTests = (createDriver, destroyDriver, distributed = no) ->
                   # console.log "****** WRITTEN *******"
                 else if err isnt 'Transform needed'
                   throw Error err
+                # console.log 'err', err
 
                 submitCount++
-                # console.log "op", submitCount
+                # console.log 'submitCount', submitCount
                 doneWork()
             , (100 * Math.random())|0
-
-            d.subscribe 'users', 'seph', 1, {}, (err, stream) =>
-              # console.log "subscribed", i
-              read = null
-              stream.on 'data', (data) =>
-                if read
-                  console.error data, read
-                  throw Error "Duplicate reads"
-                read = data
-                assert.strictEqual data.v, 1
-                assert.ok data.op
-                observeCount++
-                # console.log "seen", observeCount
-                doneWork()
 
     describe 'memory leaks', ->
       it 'cleans up internal state after a subscription ends', (done) ->

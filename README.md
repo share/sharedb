@@ -1,36 +1,34 @@
-# LIVE DB!
+# ShareDB
 
-Livedb is a database wrapper which exposes the API that realtime databases should
-have. All database access from ShareJS (and hence racer and derby apps) goes
-through a livedb client.
+ShareDB is a realtime database backend based on Operational Transformation (OT) of JSON documents. It is the default realtime backend for the DerbyJS web application framework.
 
-Livedb lets submit operations (edit documents) and subscribe to documents.
+ShareDB lets submit operations (edit documents) and subscribe to documents.
 Subscribing gives you a stream of all operations applied to the given
 document, as they happen. You can also make live bound queries, which give you
 the results of your query and a feed of changes to the result set over time.
 
 To use it, you need a database to actually store your data in.
 A database wrapper for mongo is available in
-[share/livedb-mongo](https://github.com/share/livedb-mongo). I hope to add more
+[share/sharedb-mongo](https://github.com/share/sharedb-mongo). I hope to add more
 over time.
 
-If you want to mess about, livedb also has an in-memory database backend you
+If you want to mess about, sharedb also has an in-memory database backend you
 can use. The in-memory database stores all documents and operations in memory
 forever (or at least, until you restart your server - at which point all
 documents and operations are lost.)
 
 For questions, discussion and announcements, join the [ShareJS mailing list](https://groups.google.com/forum/?fromgroups#!forum/sharejs).
 
-Please report any bugs you find to the [issue tracker](https://github.com/share/livedb/issues).
+Please report any bugs you find to the [issue tracker](https://github.com/share/sharedb/issues).
 
 
 ## Quick tour
 
 ```javascript
-var livedb = require('livedb');
-var db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+var sharedb = require('sharedb');
+var db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
 
-backend = livedb.client(db);
+backend = sharedb.client(db);
 
 backend.fetchAndSubscribe('users', 'fred', function(err, data, stream) {
   // Data is simply {v:0} because the fred document doesn't exist yet.
@@ -75,19 +73,19 @@ have version 0, a null type and no data. To use a document, you must first
 submit a *create operation*, which will set the document's type and give it
 initial data. Then you can submit editing operations on the document (using
 OT). Finally you can delete the document with a delete operation. By
-default, livedb stores all operations forever - nothing is truly deleted.
+default, sharedb stores all operations forever - nothing is truly deleted.
 
 ---
 
-## Using Livedb
+## Using ShareDB
 
-Livedb requires 3 puzzle pieces to operate:
+ShareDB requires 3 puzzle pieces to operate:
 
 - A snapshot database, to store actual documents.
 - An oplog to store historical operations. We currently require that operations
   are stored forever, but I want to change this before 1.0. (It might work
   today, but we're missing tests).
-- A livedb driver. If you have multiple servers, the driver manages
+- A sharedb driver. If you have multiple servers, the driver manages
   communication between them all. The driver also makes commits atomic (so
   servers won't clobber each other's changes) and publishes operations.  If you
   only have one frontend server, you can use the inprocess driver. (This is the
@@ -98,32 +96,32 @@ its easier to put all of your data in the same database.
 
 The backend database(s) needs to implement a [simple API which has
 documentation and a sample implementation
-here](https://github.com/share/livedb/blob/master/lib/memory.js). Currently the
-only database binding is [livedb-mongo](https://github.com/share/livedb-mongo).
+here](https://github.com/share/sharedb/blob/master/lib/memory.js). Currently the
+only database binding is [sharedb-mongo](https://github.com/share/sharedb-mongo).
 
-A livedb client is created using either an options object or a database
+A sharedb client is created using either an options object or a database
 backend. If you specify a database backend, its used as both oplog and
 snapshot.
 
 ```javascript
-db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
-backend = livedb.client(db);
+db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+backend = sharedb.client(db);
 ```
 
 This is the equivalent to this:
 
 ```javascript
-db = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
-backend = livedb.client({db:db});
-// Also equivalent to livedb.client({snapshotDb:db, oplog:db});
+db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+backend = sharedb.client({db:db});
+// Also equivalent to sharedb.client({db:db, oplog:db});
 ```
 
 You can use a different database for both snapshots and operations if you want:
 
 ```javascript
-snapshotdb = require('livedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
 oplog = {writeOp:..., getVersion:..., getOps:...};
-backend = livedb.client({snapshotDb:snapshotdb, oplog:oplog});
+backend = sharedb.client({db:db, oplog:oplog});
 ```
 
 All of the above examples will use the in-process driver by default. If you
@@ -134,8 +132,8 @@ var redis = require('redis');
 client1 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
 client2 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
 
-driver = livedb.redisDriver(oplog, client1, client2);
-backend = livedb.client({snapshotDb:snapshotdb, driver:driver});
+driver = sharedb.redisDriver(oplog, client1, client2);
+backend = sharedb.client({db:db, driver:driver});
 ```
 
 The redis driver needs 2 redis clients because redis can't use the same
@@ -149,25 +147,21 @@ The options object can also be passed:
 - **extraDbs:** *{name:query db}* This is used to register extra database
   backends which will be notified whenever operations are submitted. They can
   also be used in queries.
-- **sdc:** A pre-configured
-  [node-statsd-client](https://github.com/msiebuhr/node-statsd-client) client
-  to send monitoring information. Note that the events livedb logs to statsd
-  are not considered part of the public API, and may change at any time.
 
 ### Creating documents
 
 To create a document, you need to submit a create operation to the
-document to set its type. In livedb's world, a document doesn't exist until it
+document to set its type. In sharedb's world, a document doesn't exist until it
 has a type set.
 
 A create operation looks like this: `{create:{type:TYPE, [data:INITIAL DATA]}, [v:VERSION]}`. The type should be something accessible in the map returned by require('ottypes'), for example `json0` or `http://sharejs.org/types/textv1`. Specifying initial data is optional. If provided, it is passed to the type's `create()` method. This does what you expect - for JSON documents, pass your initial object here. For text documents, pass a string containing the document's contents. As with all operations, the version is optional. You probably don't want to specify the version for a create message.
 
-To submit any changes to documents, you use `livedb.submit(cName, docName, opData, callback)`.
+To submit any changes to documents, you use `sharedb.submit(cName, docName, opData, callback)`.
 
 For example:
 
 ```javascript
-livedb.submit('users', 'fred', {create:{type:'json0', data:[1,2,3]}}, function(err, version, transformedByOps, snapshot) {
+sharedb.submit('users', 'fred', {create:{type:'json0', data:[1,2,3]}}, function(err, version, transformedByOps, snapshot) {
   // I made a document, ma!
 });
 ```
@@ -187,7 +181,7 @@ bump the document's version). A delete operation looks like this:
 You use the same submit function as above to delete documents:
 
 ```javascript
-livedb.submit('users', 'fred', {del:true}, function(err) {
+sharedb.submit('users', 'fred', {del:true}, function(err) {
   //goneskies! Kapow!
 });
 ```
@@ -202,7 +196,7 @@ had a text document stored in LiveDB and wanted to edit it, it might look like
 this:
 
 ```javascript
-livedb.submit('love letters', 'dear fred', {op:[6, "You never return my calls!"], v:1002}, function(err) {
+sharedb.submit('love letters', 'dear fred', {op:[6, "You never return my calls!"], v:1002}, function(err) {
   // ...
 });
 ```
@@ -216,8 +210,8 @@ you should always specify the expected current version of the document.
 
 ### Getting a document
 
-You can fetch the most recent version of a document using `livedb.fetch(cName, docName, callback)` or
-`livedb.bulkFetch(request, callback)`. This will fetch the document(s) from the snapshot database
+You can fetch the most recent version of a document using `sharedb.fetch(cName, docName, callback)` or
+`sharedb.bulkFetch(request, callback)`. This will fetch the document(s) from the snapshot database
 and fetch all operations which may or may not have been committed.
 
 Fetch returns a snapshot data object via its callback. The snapshot data object
@@ -229,7 +223,7 @@ has the following fields:
   For text documents this is a string. This field is missing if the document does not exist.
 
 ```javascript
-livedb.fetch('users', 'fred', function(err, snapshot) {
+sharedb.fetch('users', 'fred', function(err, snapshot) {
   // snapshot has {v:123, type:'...', data:{name:'Fred Flintstone'}}
   // If the document doesn't exist, only the v:version field will exist in the data.
 });
@@ -249,7 +243,7 @@ example above, the response could be `{colors:{red:{v:0}, green:{v:10, type:...,
 For example:
 
 ```javascript
-livedb.bulkFetch({users:['fred', 'wilma', 'homer'], admins:['zerocool']}, function(err, results) {
+sharedb.bulkFetch({users:['fred', 'wilma', 'homer'], admins:['zerocool']}, function(err, results) {
   // results will be {users:{fred:..., wilma:..., homer:...}, admins:{zerocool:...}}.
   // Each document has v and optional type and data fields like fetch (above).
 });
@@ -259,7 +253,7 @@ livedb.bulkFetch({users:['fred', 'wilma', 'homer'], admins:['zerocool']}, functi
 ### Getting historic changes to a document
 
 You can get old versions of a document (for playback or catching up a client)
-using `livedb.getOps(cName, docName, from, to, callback)`. This will return
+using `sharedb.getOps(cName, docName, from, to, callback)`. This will return
 all operations which have been applied to the named document in the requested range.
 The range is *open*, so `getOps('users', 'fred', 0, 3, ..)` will return all
 operations up to (but not including) 3. (Ie, operations 0, 1 and 2).
@@ -267,22 +261,22 @@ operations up to (but not including) 3. (Ie, operations 0, 1 and 2).
 If you set the *to* field to null, getOps will get all operations up to the
 current version.
 
-Livedb documents always start at version 0, so you can get a document's entire history using `getOps('users', fred', 0, null, callback);`.
+ShareDB documents always start at version 0, so you can get a document's entire history using `getOps('users', fred', 0, null, callback);`.
 
 If you set *to* to a version in the future, behaviour is not defined.
 
 Example usage:
 
 ```javascript
-livedb.submit('users', 'fred', {create:{type:'json0', data:{name:'Fred'}}}, function(err) {
-  livedb.submit('users', 'fred', {v:1, op:[{p:['name', 4], si:' Flintstone'}]}, function(err) {
+sharedb.submit('users', 'fred', {create:{type:'json0', data:{name:'Fred'}}}, function(err) {
+  sharedb.submit('users', 'fred', {v:1, op:[{p:['name', 4], si:' Flintstone'}]}, function(err) {
     // ...
   });
 });
 
 // ---- Sometime later...
 
-livedb.getOps('users', 'fred', 0, null, function(err, ops) {
+sharedb.getOps('users', 'fred', 0, null, function(err, ops) {
   // ops contains the two operations which were submitted above:
   // [{v:0, create:{...}, {v:1, op:[...]}]
 });
@@ -291,8 +285,8 @@ livedb.getOps('users', 'fred', 0, null, function(err, ops) {
 ### Streaming changes to a document in realtime
 
 You can subscribe to changes from a document using
-`livedb.subscribe(cName, docName, v, callback)` or
-`livedb.bulkSubscribe(request, callback)`. When you subscribe, you get an
+`sharedb.subscribe(cName, docName, v, callback)` or
+`sharedb.bulkSubscribe(request, callback)`. When you subscribe, you get an
 operation stream which gets packed with operations as they happen.
 
 When you subscribe to a document, you need to specify which version you're
@@ -311,12 +305,12 @@ document version that you got from calling *fetch* into your call to
 For example:
 
 ```javascript
-livedb.fetch('users', 'fred', function(err, data) {
+sharedb.fetch('users', 'fred', function(err, data) {
   if (err) { ... }
   var version = data.v;
 
   // ... Any amount of time later (literally).
-  livedb.subscribe('users', 'fred', version, function(err, stream) {
+  sharedb.subscribe('users', 'fred', version, function(err, stream) {
     if (err) { ... }
 
     // stream is a nodejs ReadableStream with all operations that happen to
@@ -326,7 +320,7 @@ livedb.fetch('users', 'fred', function(err, data) {
       // The opData is a JSON object, the same object you can pass to submit().
       // It always has a v: field.
 
-      // Livedb exports a helper function to apply the operation to some
+      // ShareDB exports a helper function to apply the operation to some
       // snapshot data:
       var err = ldb.ot.apply(data, opData);
       if (err) { ... }
@@ -341,7 +335,7 @@ There is a helper method which will both fetch and subscribe for you (cleverly
 called `fetchAndSubscribe(cName, docName, callback)`). It is defined like this:
 
 ```javascript
-Livedb.prototype.fetchAndSubscribe = function(cName, docName, callback) {
+ShareDB.prototype.fetchAndSubscribe = function(cName, docName, callback) {
   var self = this;
   this.fetch(cName, docName, function(err, data) {
     if (err) return callback(err);
@@ -370,14 +364,14 @@ subscribe when you're done with them.
 
 ### Queries
 
-Livedb supports running live queries against the database. It can re-run queries when it suspects that a query's results might have changed - and notify the caller with any changes to the result set.
+ShareDB supports running live queries against the database. It can re-run queries when it suspects that a query's results might have changed - and notify the caller with any changes to the result set.
 
 This is incredibly inefficient and I want to completely rewrite / rework them. For now, I recommend against using live bound queries in a production app with a decent load. I'll document them when I'm happier with them.
 
 
 ### Projections
 
-Livedb supports exposing a *projection* of a real collection, with a specified
+ShareDB supports exposing a *projection* of a real collection, with a specified
 (limited) set of allowed fields. Once configured, the projected collection
 looks just like a real collection - except documents only have the fields
 you've requested.
@@ -393,7 +387,7 @@ each other's names and profile pictures, but not password hashes. You would
 configure this by calling:
 
 ```javascript
-livedb.addProjection('users_limited', 'users', 'json0', {name:true, profileUrl:true});
+sharedb.addProjection('users_limited', 'users', 'json0', {name:true, profileUrl:true});
 ```
 
 However, be aware that on its own **this is not sufficient for access control**. If
@@ -413,4 +407,26 @@ Limitations:
 - You can only whitelist fields (not blacklist them).
 - The third parameter must be 'json0'.
 - Projections can only limit / allow fields at the top level of the document
+
+## Error codes
+
+ShareDB returns errors as plain JavaScript objects with the format:
+```
+{
+  code: 5000,
+  message: 'ShareDB internal error'
+}
+```
+
+Additional fields may be added to the error object for debugging context depending on the error. Common additional fields include `collection`, `id`, and `op`.
+
+### 4000 -- Bad request
+
+* 4001 --
+
+### 5000 -- Internal error
+
+The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the `42xx` and `52xx` codes are reserved for use by ShareDB PubSub adapters.
+
+* 5001 -- No new ops returned when retrying unsuccessful submit
 

@@ -33,37 +33,37 @@ describe 'ot', ->
       @checkDocModified doc
       doc
 
-  describe 'checkOpData', ->
-    it 'fails if opdata is not an object', ->
-      assert.ok ot.checkOpData 'hi'
-      assert.ok ot.checkOpData()
-      assert.ok ot.checkOpData 123
-      assert.ok ot.checkOpData []
+  describe 'checkOp', ->
+    it 'fails if op is not an object', ->
+      assert.ok ot.checkOp 'hi'
+      assert.ok ot.checkOp()
+      assert.ok ot.checkOp 123
+      assert.ok ot.checkOp []
 
     it 'fails if op data is missing op, create and del', ->
-      assert.ok ot.checkOpData {v:5}
+      assert.ok ot.checkOp {v:5}
 
     it 'fails if src/seq data is invalid', ->
-      assert.ok ot.checkOpData {del:true, v:5, src:'hi'}
-      assert.ok ot.checkOpData {del:true, v:5, seq:123}
-      assert.ok ot.checkOpData {del:true, v:5, src:'hi', seq:'there'}
+      assert.ok ot.checkOp {del:true, v:5, src:'hi'}
+      assert.ok ot.checkOp {del:true, v:5, seq:123}
+      assert.ok ot.checkOp {del:true, v:5, src:'hi', seq:'there'}
 
     it 'fails if a create operation is missing its type', ->
-      assert.ok ot.checkOpData {create:{}}
-      assert.ok ot.checkOpData {create:123}
+      assert.ok ot.checkOp {create:{}}
+      assert.ok ot.checkOp {create:123}
 
     it 'fails if the type is missing', ->
-      assert.ok ot.checkOpData {create:{type:"something that does not exist"}}
+      assert.ok ot.checkOp {create:{type:"something that does not exist"}}
 
     it 'accepts valid create operations', ->
-      assert.equal null, ot.checkOpData {create:{type:text.uri}}
-      assert.equal null, ot.checkOpData {create:{type:text.uri, data:'hi there'}}
+      assert.equal null, ot.checkOp {create:{type:text.uri}}
+      assert.equal null, ot.checkOp {create:{type:text.uri, data:'hi there'}}
 
     it 'accepts valid delete operations', ->
-      assert.equal null, ot.checkOpData {del:true}
+      assert.equal null, ot.checkOp {del:true}
 
     it 'accepts valid ops', ->
-      assert.equal null, ot.checkOpData {op:[1,2,3]}
+      assert.equal null, ot.checkOp {op:[1,2,3]}
 
   describe 'normalize', ->
     it 'expands type names in normalizeType', ->
@@ -107,23 +107,15 @@ describe 'ot', ->
       it.skip 'runs pre and post validation functions'
 
     describe 'del', ->
-      it 'deletes the document data', ->
+      it 'deletes the document data and type', ->
         doc = {v:6, type:text.uri, data:'Hi there'}
-        assert.equal null, ot.apply doc, {v:6, del:true}
-        delete doc.m.mtime
-        assert.deepEqual doc, {v:7, m:{}}
+        assert.equal null, ot.apply(doc, {v:6, del:true})
+        assert.deepEqual doc, {v:7}
 
       it 'still works if the document doesnt exist anyway', ->
         doc = {v:6}
         assert.equal null, ot.apply doc, {v:6, del:true}
-        delete doc.m.mtime
-        assert.deepEqual doc, {v:7, m:{}}
-
-      it 'keeps any metadata from op on the doc', ->
-        doc = {v:6, type:text.uri, m:{ctime:1, mtime:2}, data:'hi'}
-        assert.equal null, ot.apply doc, {v:6, del:true}
-        delete doc.m.mtime
-        assert.deepEqual doc, {v:7, m:{ctime:1}}
+        assert.deepEqual doc, {v:7}
 
     describe 'op', ->
       it 'fails if the document does not exist', ->
@@ -246,7 +238,7 @@ describe 'ot', ->
 
     # And op by op is tested in the first couple of tests.
 
-  describe 'applyPresence', ->
+  describe.skip 'applyPresence', ->
     it 'sets', ->
       p = {data:{}}
       assert.equal null, ot.applyPresence p, {val:{id:{y:6}}}
@@ -272,7 +264,7 @@ describe 'ot', ->
       assert.equal 'Cannot set reserved value', ot.applyPresence p, {p:['id','_x'], val:'hi'}
       assert.deepEqual p, {}
 
-  describe 'transformPresence', ->
+  describe.skip 'transformPresence', ->
     it 'updates cursor positions', ->
 
 

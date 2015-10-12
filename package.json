@@ -1,34 +1,26 @@
 {
-  "name": "livedb",
-  "version": "0.5.13",
-  "description": "Realtime database wrapper",
+  "name": "sharedb",
+  "version": "0.8.1",
+  "description": "JSON OT database backend",
   "main": "lib/index.js",
   "dependencies": {
-    "deep-is": "~0.1",
-    "arraydiff": "~0.1",
-    "async": "^0.9.0",
-    "ot-text-tp2": "^1.0.0",
-    "ot-text": "^1.0.0",
-    "ot-json0": "^1.0.0"
-  },
-  "optionalDependencies": {
-    "redis": "^0.12.1",
-    "hiredis": "^0.2.0",
-    "statsd-client": "*"
+    "arraydiff": "^0.1.1",
+    "async": "^1.4.2",
+    "deep-is": "^0.1.3",
+    "hat": "0.0.3",
+    "ot-json0": "^1.0.1"
   },
   "devDependencies": {
-    "mocha": "~1",
-    "sinon": "~1",
-    "coffee-script": "~1.7"
+    "expect.js": "^0.3.1",
+    "mocha": "^2.3.3"
   },
   "scripts": {
     "test": "node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/share/livedb.git"
+    "url": "git://github.com/share/sharedb.git"
   },
-  "author": "Joseph Gentle <josephg@gmail.com>",
-  "license": "MIT",
-  "gitHead": "a95ee727e5cb43a40476f58554774b776fb08f68"
+  "author": "Nate Smith and Joseph Gentle",
+  "license": "MIT"
 }

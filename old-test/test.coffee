@@ -6,22 +6,7 @@ livedb = require '../lib'
 assert = require 'assert'
 
 textType = require('ot-text').type
-{createClient, setup, teardown, stripTs} = require './util'
-
-# Snapshots we get back from livedb will have a timestamp with a
-# m:{ctime:, mtime:} with the current time. We'll check the time is sometime
-# between when the module is loaded and 10 seconds later. This is a bit
-# brittle. It also copies functionality in ot.coffee.
-checkAndStripMetadata = do ->
-  before = Date.now()
-  after = before + 10 * 1000
-  (snapshot) ->
-    assert.ok snapshot.m
-    assert.ok before <= snapshot.m.ctime < after if snapshot.m.ctime
-    assert.ok before <= snapshot.m.mtime < after
-    delete snapshot.m.ctime
-    delete snapshot.m.mtime
-    snapshot
+{createClient, setup, teardown, stripOps} = require './util'
 
 
 describe 'livedb', ->
@@ -36,86 +21,89 @@ describe 'livedb', ->
 
   describe 'submit', ->
     it 'creates a doc', (done) ->
-      @collection.submit @docName, {v:0, create:{type:'text'}}, (err) ->
+      @client.submit @cName, @docName, {v:0, create:{type:'text'}}, (err) ->
         throw new Error err if err
         done()
 
     it 'allows create ops with a null version', (done) ->
-      @collection.submit @docName, {v:null, create:{type:'text'}}, (err) ->
+      @client.submit @cName, @docName, {v:null, create:{type:'text'}}, (err) ->
         throw new Error err if err
         done()
 
     it 'errors if you dont specify a type', (done) ->
-      @collection.submit @docName, {v:0, create:{}}, (err) ->
+      @client.submit @cName, @docName, {v:0, create:{}}, (err) ->
         assert.ok err
         done()
 
-    it 'can create a document with metadata', (done) ->
-      @collection.submit @docName, {v:0, create:{type:'text', m:{language:'en'}}}, (err, v) =>
+    it 'can create a document', (done) ->
+      @client.submit @cName, @docName, {v:0, create:{type:'text', m:{language:'en'}}}, (err, v) =>
         throw new Error err if err
-        @collection.fetch @docName, (err, {v, m}) =>
+        @client.fetch @cName, @docName, (err, {v}) =>
           throw new Error err if err
-          assert.equal m.language, 'en'
+          assert.equal v, 1
           done()
 
-    it 'removes metadata when documents are recreated', (done) ->
-      @collection.submit @docName, {create:{type:'text', m:{language:'en'}}}, (err, v) =>
+    it 'recreates documents at a new version after being deleted', (done) ->
+      @client.submit @cName, @docName, {create:{type:'text'}}, (err, v) =>
         throw new Error err if err
-        @collection.submit @docName, {del:true}, (err, v) =>
+        assert.equal v, 0
+        @client.submit @cName, @docName, {del:true}, (err, v) =>
           throw new Error err if err
-          @collection.submit @docName, {create:{type:'text'}}, (err, v) =>
+          assert.equal v, 1
+          @client.submit @cName, @docName, {create:{type:'text'}}, (err, v) =>
             throw new Error err if err
-            @collection.fetch @docName, (err, {v, m}) =>
+            assert.equal v, 2
+            @client.fetch @cName, @docName, (err, {v}) =>
               throw new Error err if err
-              assert.equal m.language, null
+              assert.equal v, 3
               done()
 
     it 'can modify a document', (done) -> @create =>
-      @collection.submit @docName, v:1, op:['hi'], (err, v) =>
+      @client.submit @cName, @docName, v:1, op:['hi'], (err, v) =>
         throw new Error err if err
-        @collection.fetch @docName, (err, {v, data}) =>
+        @client.fetch @cName, @docName, (err, {v, data}) =>
           throw new Error err if err
           assert.deepEqual data, 'hi'
           done()
 
     it 'transforms operations', (done) -> @create =>
-      @collection.submit @docName, v:1, op:['a'], src:'abc', seq:123, (err, v, ops) =>
+      @client.submit @cName, @docName, v:1, op:['a'], src:'abc', seq:123, (err, v, ops) =>
         throw new Error err if err
         assert.deepEqual ops, []
-        @collection.submit @docName, v:1, op:['b'], (err, v, ops) =>
+        @client.submit @cName, @docName, v:1, op:['b'], (err, v, ops) =>
           throw new Error err if err
-          assert.deepEqual stripTs(ops), [{v:1, op:['a'], src:'abc', seq:123, m:{}}]
+          assert.deepEqual stripOps(ops), [{v:1, op:['a'], src:'abc', seq:123}]
           done()
 
     it 'allows ops with a null version', (done) -> @create =>
-      @collection.submit @docName, v:null, op:['hi'], (err, v) =>
+      @client.submit @cName, @docName, v:null, op:['hi'], (err, v) =>
         throw new Error err if err
-        @collection.fetch @docName, (err, {v, data}) =>
+        @client.fetch @cName, @docName, (err, {v, data}) =>
           throw new Error err if err
           assert.deepEqual data, 'hi'
           done()
 
     it 'removes a doc', (done) -> @create =>
-      @collection.submit @docName, v:1, del:true, (err, v) =>
+      @client.submit @cName, @docName, v:1, del:true, (err, v) =>
         throw new Error err if err
-        @collection.fetch @docName, (err, data) =>
+        @client.fetch @cName, @docName, (err, data) =>
           throw new Error err if err
           assert.equal data.data, null
           assert.equal data.type, null
           done()
 
     it 'removes a doc and allows creation of a new one', (done) ->
-      @collection.submit @docName, {create: {type: 'text', data: 'world'}}, (err) =>
+      @client.submit @cName, @docName, {create: {type: 'text', data: 'world'}}, (err) =>
         throw new Error err if err
-        @collection.submit @docName, v:1, del:true, (err, v) =>
+        @client.submit @cName, @docName, v:1, del:true, (err, v) =>
           throw new Error err if err
-          @collection.fetch @docName, (err, data) =>
+          @client.fetch @cName, @docName, (err, data) =>
             throw new Error err if err
             assert.equal data.data, null
             assert.equal data.type, null
-            @collection.submit @docName, {create: {type: 'text', data: 'hello'}}, (err) =>
+            @client.submit @cName, @docName, {create: {type: 'text', data: 'hello'}}, (err) =>
               throw new Error err if err
-              @collection.fetch @docName, (err, data) =>
+              @client.fetch @cName, @docName, (err, data) =>
                 throw new Error err if err
                 assert.equal data.data, 'hello'
                 assert.equal data.type, 'http://sharejs.org/types/textv1'
@@ -131,8 +119,8 @@ describe 'livedb', ->
         count++
         done() if count is 2
 
-      @collection.submit @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
-      @collection.submit @docName, v:1, src:'def', seq:1, op:['client 2'], callback
+      @client.submit @cName, @docName, v:1, src:'abc', seq:1, op:['client 1'], callback
+      @client.submit @cName, @docName, v:1, src:'def', seq:1, op:['client 2'], callback
 
     it 'sends operations to the persistant oplog', (done) -> @create =>
       @db.getVersion @cName, @docName, (err, v) =>
@@ -147,9 +135,8 @@ describe 'livedb', ->
       @testWrapper.submit = (cName, docName, opData, options, snapshot, callback) =>
         assert.equal cName, @cName
         assert.equal docName, @docName
-        assert.deepEqual stripTs(opData), {v:0, create:{type:textType.uri, data:''}, m:{}, src:''}
-        checkAndStripMetadata snapshot
-        assert.deepEqual snapshot, {v:1, data:'', type:textType.uri, m:{}}
+        assert.deepEqual stripOps(opData), {v:0, create:{type:textType.uri, data:''}, src:''}
+        assert.deepEqual stripOps(snapshot), {v:1, data:'', type:textType.uri}
         done()
 
       @create()
@@ -162,7 +149,7 @@ describe 'livedb', ->
           validationRun = yes
           return
 
-        @collection.submit @docName, {v:0, create:{type:'text'}, preValidate}, (err) ->
+        @client.submit @cName, @docName, {v:0, create:{type:'text'}, preValidate}, (err) ->
           assert.ok validationRun
           done()
 
@@ -171,10 +158,10 @@ describe 'livedb', ->
           assert.deepEqual opData.op, ['hi']
           return 'no you!'
 
-        @collection.submit @docName, {v:1, op:['hi'], preValidate}, (err) =>
+        @client.submit @cName, @docName, {v:1, op:['hi'], preValidate}, (err) =>
           assert.equal err, 'no you!'
 
-          @collection.fetch @docName, (err, {v, data}) =>
+          @client.fetch @cName, @docName, (err, {v, data}) =>
             throw new Error err if err
             assert.deepEqual data, ''
             done()
@@ -186,12 +173,11 @@ describe 'livedb', ->
       it 'runs a supplied validation function on the data', (done) ->
         validationRun = no
         validate = (opData, snapshot, callback) ->
-          checkAndStripMetadata snapshot
-          assert.deepEqual snapshot, {v:1, data:'', type:textType.uri, m:{}}
+          assert.deepEqual stripOps(snapshot), {v:1, data:'', type:textType.uri}
           validationRun = yes
           return
 
-        @collection.submit @docName, {v:0, create:{type:'text'}, validate}, (err) ->
+        @client.submit @cName, @docName, {v:0, create:{type:'text'}, validate}, (err) ->
           assert.ok validationRun
           done()
 
@@ -200,10 +186,10 @@ describe 'livedb', ->
           assert.deepEqual opData.op, ['hi']
           return 'no you!'
 
-        @collection.submit @docName, {v:1, op:['hi'], validate}, (err) =>
+        @client.submit @cName, @docName, {v:1, op:['hi'], validate}, (err) =>
           assert.equal err, 'no you!'
 
-          @collection.fetch @docName, (err, {v, data}) =>
+          @client.fetch @cName, @docName, (err, {v, data}) =>
             throw new Error err if err
             assert.deepEqual data, ''
             done()
@@ -234,21 +220,17 @@ describe 'livedb', ->
           assert.equal c, @cName
           assert.equal d, @docName
           assert.deepEqual op_, op
-          # Editing the snapshot here is a little naughty.
-          checkAndStripMetadata snapshot
-          assert.deepEqual snapshot, {v:1, data:'', type:textType.uri, m:{}}
+          assert.deepEqual stripOps(snapshot), {v:1, data:'', type:textType.uri}
           return {a:5}
 
         @client.getDirtyData = (c, d, op_, snapshot) =>
           assert.equal c, @cName
           assert.equal d, @docName
           assert.deepEqual op_, op
-          # Editing the snapshot here is a little naughty.
-          checkAndStripMetadata snapshot
-          assert.deepEqual snapshot, {v:2, data:'hi', type:textType.uri, m:{}}
+          assert.deepEqual stripOps(snapshot), {v:2, data:'hi', type:textType.uri}
           return {b:6}
 
-        @collection.submit @docName, op, (err) =>
+        @client.submit @cName, @docName, op, (err) =>
           throw Error err if err
 
           @checkConsume 'a', [5], =>
@@ -256,7 +238,7 @@ describe 'livedb', ->
 
   describe 'fetch', ->
     it 'can fetch created documents', (done) -> @create 'hi', =>
-      @collection.fetch @docName, (err, {v, data}) ->
+      @client.fetch @cName, @docName, (err, {v, data}) ->
         throw new Error err if err
         assert.deepEqual data, 'hi'
         assert.strictEqual v, 1
@@ -270,12 +252,7 @@ describe 'livedb', ->
         throw new Error err if err
         expected = {} # Urgh javascript :(
         expected[@cName] = {}
-        expected[@cName][@docName] = {data:'hi', v:1, type:textType.uri, m:{}}
-
-        for cName, docs of data
-          for docName, snapshot of docs
-            checkAndStripMetadata snapshot
-
+        expected[@cName][@docName] = {data:'hi', v:1, type:textType.uri, docName:@docName}
         assert.deepEqual data, expected
         done()
 
@@ -309,9 +286,7 @@ describe 'livedb', ->
           bbbbb: {a:{v:0}, b:{v:0}, c:{v:0}}
           zzzzz: {d:{v:0}, e:{v:0}, f:{v:0}}
         expected[@cName] = {}
-        expected[@cName][@docName] = {data:'hi', v:1, type:textType.uri, m:{}}
-
-        checkAndStripMetadata data[@cName][@docName]
+        expected[@cName][@docName] = {data:'hi', v:1, type:textType.uri, docName:@docName}
 
         assert.deepEqual data, expected
         done()
@@ -319,67 +294,50 @@ describe 'livedb', ->
 
   describe 'getOps', ->
     it 'returns an empty list for nonexistant documents', (done) ->
-      @collection.getOps @docName, 0, -1, (err, ops) ->
+      @client.getOps @cName, @docName, 0, -1, (err, ops) ->
         throw new Error err if err
         assert.deepEqual ops, []
         done()
 
     it 'returns ops that have been submitted to a document', (done) -> @create =>
-      @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-        @collection.getOps @docName, 0, 1, (err, ops) =>
+      @client.submit @cName, @docName, v:1, op:['hi'], (err, v) =>
+        @client.getOps @cName, @docName, 0, 1, (err, ops) =>
           throw new Error err if err
-          assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}, src:'']
+          assert.deepEqual stripOps(ops), [create:{type:textType.uri, data:''}, v:0, src:'']
 
-          @collection.getOps @docName, 1, 2, (err, ops) ->
+          @client.getOps @cName, @docName, 1, 2, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual stripTs(ops), [op:['hi'], v:1, m:{}, src:'']
+            assert.deepEqual stripOps(ops), [op:['hi'], v:1, src:'']
             done()
 
     it 'puts a decent timestamp in ops', (done) ->
       # TS should be between start and end.
       start = Date.now()
-      @create =>
-        end = Date.now()
-        @collection.getOps @docName, 0, (err, ops) ->
+      op1 = {v:0, create:{type:'text'}}
+      op2 = {v:1, op:['hi there'], m:{ts:123}}
+      @client.submit @cName, @docName, op1, (err) =>
+        throw Error(err) if err
+        @client.submit @cName, @docName, op2, (err) =>
           throw Error(err) if err
-          assert.equal ops.length, 1
-          assert ops[0].m.ts >= start
-          assert ops[0].m.ts <= end
+          end = Date.now()
+          assert op1.m.ts >= start
+          assert op1.m.ts <= end
+          assert op2.m.ts >= start
+          assert op2.m.ts <= end
           done()
 
-    it 'puts a decent timestamp in ops which already have a m:{} field', (done) ->
-      # TS should be between start and end.
-      start = Date.now()
-      @collection.submit @docName, {v:0, create:{type:'text'}, m:{}}, (err) =>
-        throw Error(err) if err
-        @collection.submit @docName, {v:1, op:['hi there'], m:{ts:123}}, (err) =>
-          throw Error(err) if err
-
-          end = Date.now()
-          @collection.getOps @docName, 0, (err, ops) ->
-            throw Error(err) if err
-            assert.equal ops.length, 2
-            for op in ops
-              assert op.m.ts >= start
-              assert op.m.ts <= end
-            done()
-
     it 'returns all ops if to is not defined', (done) -> @create =>
-      @collection.getOps @docName, 0, (err, ops) =>
+      @client.getOps @cName, @docName, 0, (err, ops) =>
         throw new Error err if err
-        assert.deepEqual stripTs(ops), [create:{type:textType.uri, data:''}, v:0, m:{}, src:'']
+        assert.deepEqual stripOps(ops), [create:{type:textType.uri, data:''}, v:0, src:'']
 
-        @collection.submit @docName, v:1, op:['hi'], (err, v) =>
-          @collection.getOps @docName, 0, (err, ops) ->
+        @client.submit @cName, @docName, v:1, op:['hi'], (err, v) =>
+          @client.getOps @cName, @docName, 0, (err, ops) ->
             throw new Error err if err
-            assert.deepEqual stripTs(ops), [{create:{type:textType.uri, data:''}, v:0, m:{}, src:''}, {op:['hi'], v:1, m:{}, src:''}]
+            assert.deepEqual stripOps(ops), [{create:{type:textType.uri, data:''}, v:0, src:''}, {op:['hi'], v:1, src:''}]
             done()
 
-
-
-    it 'errors if ops are missing from the snapshotdb and oplogs'
-
-
+    it 'errors if ops are missing from the db and oplogs'
 
     it 'works with separate clients', (done) -> @create =>
       return done() unless @driver.distributed
@@ -394,7 +352,7 @@ describe 'livedb', ->
         c.client.submit @cName, @docName, v:1, op:["client #{i} "], (err) ->
           throw new Error err if err
 
-      @collection.subscribe @docName, 1, (err, stream) =>
+      @client.subscribe @cName, @docName, 1, (err, stream) =>
         throw new Error err if err
         # We should get numClients ops on the stream, in order.
         seq = 1
@@ -403,7 +361,7 @@ describe 'livedb', ->
           return unless data
           #console.log 'read', data
           delete data.op
-          assert.deepEqual stripTs(data), {v:seq, m:{}} #, op:{op:'ins', p:['x', -1]}}
+          assert.deepEqual stripOps(data), {v:seq} #, op:{op:'ins', p:['x', -1]}}
 
           if seq is numClients
             #console.log 'destroy stream'
@@ -415,7 +373,7 @@ describe 'livedb', ->
             done()
 
             # Uncomment to see the actually submitted data
-            #@collection.fetch @docName, (err, {v, data}) =>
+            #@client.fetch @cName, @docName, (err, {v, data}) =>
             #  console.log data
           else
             seq++
