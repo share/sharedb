@@ -17,24 +17,28 @@ module.exports = function(create) {
       this.db.close(done);
     });
 
+    // Simplified mock of how submit request applies operations. The
+    // noteworthy dependency is that it always calls getSnapshot with
+    // the 'submit' projection and applies the op to the returned
+    // snapshot before committing. Thus, commit may rely on the behavior
+    // of getSnapshot with this special projection
+    function submit(db, collection, id, op, callback) {
+      db.getSnapshot(collection, id, 'submit', function(err, snapshot) {
+        if (err) return callback(err);
+        var err = ot.apply(snapshot, op);
+        if (err) return callback(err);
+        db.commit(collection, id, op, snapshot, callback);
+      });
+    }
+
     describe('commit', function() {
       function commitConcurrent(db, ops, test, done) {
         var numSucceeded = 0;
         async.each(ops, function(op, eachCb) {
-          // Simplified mock of how submit request applies operations. The
-          // noteworthy dependency is that it always calls getSnapshot with
-          // the 'submit' projection and applies the op to the returned
-          // snapshot before committing. Thus, commit may rely on the behavior
-          // of getSnapshot with this special projection
-          db.getSnapshot('testcollection', 'foo', 'submit', function(err, snapshot) {
+          submit(db, 'testcollection', 'foo', op, function(err, succeeded) {
             if (err) return eachCb(err);
-            var err = ot.apply(snapshot, op);
-            if (err) return eachCb(err);
-            db.commit('testcollection', 'foo', op, snapshot, function(err, succeeded) {
-              if (err) return eachCb(err);
-              if (succeeded) numSucceeded++;
-              eachCb();
-            });
+            if (succeeded) numSucceeded++;
+            eachCb();
           });
         }, function(err) {
           if (err) return done(err);
@@ -176,6 +180,206 @@ module.exports = function(create) {
       });
     });
 
+    describe('getSnapshot', function() {
+      it('getSnapshot returns v0 snapshot', function(done) {
+        this.db.getSnapshot('testcollection', 'test', null, function(err, result) {
+          if (err) throw err;
+          expect(result).eql({id: 'test', type: null, v: 0, data: null});
+          done();
+        });
+      });
+
+      it('getSnapshot returns committed data', function(done) {
+        var data = {x: 5, y: 6};
+        var op = {v: 0, create: {type: 'json0', data: data}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) throw err;
+          db.getSnapshot('testcollection', 'test', null, function(err, result) {
+            if (err) throw err;
+            expect(result).eql({id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data});
+            done();
+          });
+        });
+      });
+    });
+
+    describe('getSnapshotBulk', function() {
+      it('getSnapshotBulk returns committed and v0 snapshots', function(done) {
+        var data = {x: 5, y: 6};
+        var op = {v: 0, create: {type: 'json0', data: data}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) throw err;
+          db.getSnapshotBulk('testcollection', ['test2', 'test'], null, function(err, resultMap) {
+            if (err) throw err;
+            expect(resultMap).eql({
+              test: {id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data},
+              test2: {id: 'test2', type: null, v: 0, data: null}
+            });
+            done();
+          });
+        });
+      });
+    });
+
+    describe('getOps', function() {
+      it('getOps returns 1 committed op', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) throw err;
+          db.getOps('testcollection', 'test', 0, null, function(err, ops) {
+            if (err) throw err;
+            expect(ops).eql([op]);
+            done();
+          });
+        });
+      });
+
+      it('getOps returns 2 committed ops', function(done) {
+        var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op0, function(err, succeeded) {
+          if (err) throw err;
+          submit(db, 'testcollection', 'test', op1, function(err, succeeded) {
+            if (err) throw err;
+            db.getOps('testcollection', 'test', 0, null, function(err, ops) {
+              if (err) throw err;
+              expect(ops).eql([op0, op1]);
+              done();
+            });
+          });
+        });
+      });
+
+      it('getOps returns from specific op number', function(done) {
+        var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op0, function(err, succeeded) {
+          if (err) throw err;
+          submit(db, 'testcollection', 'test', op1, function(err, succeeded) {
+            if (err) throw err;
+            db.getOps('testcollection', 'test', 1, null, function(err, ops) {
+              if (err) throw err;
+              expect(ops).eql([op1]);
+              done();
+            });
+          });
+        });
+      });
+
+      it('getOps returns to specific op number', function(done) {
+        var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op0, function(err, succeeded) {
+          if (err) throw err;
+          submit(db, 'testcollection', 'test', op1, function(err, succeeded) {
+            if (err) throw err;
+            db.getOps('testcollection', 'test', 0, 1, function(err, ops) {
+              if (err) throw err;
+              expect(ops).eql([op0]);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    describe('getOpsBulk', function() {
+      it('getOpsBulk returns committed ops', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) throw err;
+          submit(db, 'testcollection', 'test2', op, function(err, succeeded) {
+            if (err) throw err;
+            db.getOpsBulk('testcollection', {test: 0, test2: 0}, null, function(err, opsMap) {
+              if (err) throw err;
+              expect(opsMap).eql({
+                test: [op],
+                test2: [op]
+              });
+              done();
+            });
+          });
+        });
+      });
+
+      it('getOpsBulk returns committed ops with specific froms', function(done) {
+        var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op0, function(err, succeeded) {
+          if (err) throw err;
+          submit(db, 'testcollection', 'test2', op0, function(err, succeeded) {
+            if (err) throw err;
+            submit(db, 'testcollection', 'test', op1, function(err, succeeded) {
+              if (err) throw err;
+              submit(db, 'testcollection', 'test2', op1, function(err, succeeded) {
+                if (err) throw err;
+                db.getOpsBulk('testcollection', {test: 0, test2: 1}, null, function(err, opsMap) {
+                  if (err) throw err;
+                  expect(opsMap).eql({
+                    test: [op0, op1],
+                    test2: [op1]
+                  });
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+
+      it('getOpsBulk returns committed ops with specific to', function(done) {
+        var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op0, function(err, succeeded) {
+          if (err) throw err;
+          submit(db, 'testcollection', 'test2', op0, function(err, succeeded) {
+            if (err) throw err;
+            submit(db, 'testcollection', 'test', op1, function(err, succeeded) {
+              if (err) throw err;
+              submit(db, 'testcollection', 'test2', op1, function(err, succeeded) {
+                if (err) throw err;
+                db.getOpsBulk('testcollection', {test: 1, test2: 0}, {test2: 1}, function(err, opsMap) {
+                  if (err) throw err;
+                  expect(opsMap).eql({
+                    test: [op1],
+                    test2: [op0]
+                  });
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    describe('getOpsToSnapshot', function() {
+      it('getOpsToSnapshot returns committed op', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) throw err;
+          db.getSnapshot('testcollection', 'test', 'submit', function(err, snapshot) {
+            if (err) throw err;
+            db.getOpsToSnapshot('testcollection', 'test', 0, snapshot, function(err, ops) {
+              if (err) throw err;
+              expect(ops).eql([op]);
+              done();
+            });
+          });
+        });
+      });
+    });
+
     describe('query', function() {
       it('returns data in the collection', function(done) {
         var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
@@ -226,6 +430,29 @@ module.exports = function(create) {
             expect(results).eql([{type: 'json0', v: 1, data: {}, id: 'test'}]);
             done();
           });
+        });
+      });
+    });
+
+    describe('queryPoll', function() {
+      it('returns data in the collection', function(done) {
+        var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
+        var db = this.db;
+        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, function(err, succeeded) {
+          if (err) throw err;
+          db.queryPoll('testcollection', {x: 5}, null, function(err, ids) {
+            if (err) throw err;
+            expect(ids).eql(['test']);
+            done();
+          });
+        });
+      });
+
+      it('returns nothing when there is no data', function(done) {
+        this.db.queryPoll('testcollection', {x: 5}, null, function(err, ids) {
+          if (err) throw err;
+          expect(ids).eql([]);
+          done();
         });
       });
     });
