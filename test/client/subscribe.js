@@ -6,8 +6,8 @@ describe('client subscribe', function() {
 
   it('subscribed client gets create from first client', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc2.subscribe(function(err) {
       if (err) throw err;
       doc2.on('create', function(context) {
@@ -22,8 +22,8 @@ describe('client subscribe', function() {
 
   it('subscribe fetches initial data', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.subscribe(function(err) {
@@ -37,8 +37,8 @@ describe('client subscribe', function() {
 
   it('fetch fetches new ops', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.fetch(function(err) {
@@ -56,8 +56,8 @@ describe('client subscribe', function() {
 
   it('subscribe fetches new ops', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.fetch(function(err) {
@@ -75,8 +75,8 @@ describe('client subscribe', function() {
 
   it('subscribed client gets op from first client', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.subscribe(function(err) {
@@ -93,8 +93,8 @@ describe('client subscribe', function() {
 
   it('unsubscribe stops op updates', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.subscribe(function(err) {
@@ -113,8 +113,8 @@ describe('client subscribe', function() {
 
   it('calling subscribe, unsubscribe, subscribe sync leaves a doc subscribed', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.subscribe();
@@ -131,8 +131,8 @@ describe('client subscribe', function() {
 
   it('calling subscribe, unsubscribe, subscribe sync leaves a doc subscribed', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.subscribe();

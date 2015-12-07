@@ -6,7 +6,7 @@ describe('client submit', function() {
 
   it('getting twice returns the same doc', function() {
     var backend = new Backend();
-    var connection = backend.createConnection();
+    var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
     var doc2 = connection.get('dogs', 'fido');
     expect(doc).equal(doc2);
@@ -14,7 +14,7 @@ describe('client submit', function() {
 
   it('getting then destroying then getting returns a new doc object', function() {
     var backend = new Backend();
-    var connection = backend.createConnection();
+    var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
     doc.destroy();
     var doc2 = connection.get('dogs', 'fido');
@@ -24,7 +24,7 @@ describe('client submit', function() {
 
   it('can fetch an uncreated doc', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     expect(doc.snapshot).equal(undefined);
     expect(doc.version).equal(null);
     doc.fetch(function(err) {
@@ -37,7 +37,7 @@ describe('client submit', function() {
 
   it('can fetch then create a new doc', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.fetch(function(err) {
       if (err) throw err;
       doc.create('json0', {age: 3}, function(err) {
@@ -51,7 +51,7 @@ describe('client submit', function() {
 
   it('can create a new doc without fetching', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       expect(doc.snapshot).eql({age: 3});
@@ -62,7 +62,7 @@ describe('client submit', function() {
 
   it('can create then delete then create a doc', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       expect(doc.snapshot).eql({age: 3});
@@ -85,7 +85,7 @@ describe('client submit', function() {
 
   it('can create then submit an op', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc.submitOp({p: ['age'], na: 2}, function(err) {
@@ -99,7 +99,7 @@ describe('client submit', function() {
 
   it('can create then submit an op sync', function() {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
     expect(doc.snapshot).eql({age: 3});
     expect(doc.version).eql(null);
@@ -110,7 +110,7 @@ describe('client submit', function() {
 
   it('ops submitted sync get composed', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
@@ -138,7 +138,7 @@ describe('client submit', function() {
 
   it('can create a new doc then fetch', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc.fetch(function(err) {
@@ -152,8 +152,8 @@ describe('client submit', function() {
 
   it('can commit then fetch in a new connection to get the same data', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.fetch(function(err) {
@@ -170,8 +170,8 @@ describe('client submit', function() {
 
   it('an op submitted concurrently is transformed by the first', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.fetch(function(err) {
@@ -189,8 +189,8 @@ describe('client submit', function() {
 
   it('second of two concurrent creates is rejected', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
     doc2.create('json0', {age: 5}, function(err) {
       expect(err).ok();
@@ -202,8 +202,8 @@ describe('client submit', function() {
 
   it('concurrent delete operations transform', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc2.fetch(function(err) {
@@ -221,8 +221,8 @@ describe('client submit', function() {
 
   it('second client can create following delete', function(done) {
     var backend = new Backend();
-    var doc = backend.createConnection().get('dogs', 'fido');
-    var doc2 = backend.createConnection().get('dogs', 'fido');
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) throw err;
       doc.del(function(err) {
