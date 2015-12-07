@@ -7,10 +7,6 @@ describe('Connection', function() {
   var socket = {
     readyState: 0,
     send: function() {},
-    connect: function() {
-      this.readyState = 1;
-      this.onopen();
-    },
     close: function() {
       this.readyState = 3;
       this.onclose();
