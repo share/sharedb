@@ -150,6 +150,17 @@ describe('client submit', function() {
     });
   });
 
+  it('resends create when disconnected before ack', function(done) {
+    var backend = new Backend();
+    var doc = backend.connect().get('dogs', 'fido');
+    doc.create('json0', {age: 3}, done);
+    // Disconnect and reconnect after the message has sent and before the
+    // server will have had a chance to reply
+    process.nextTick(function() {
+      backend.connect(doc.connection);
+    });
+  });
+
   it('can commit then fetch in a new connection to get the same data', function(done) {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
