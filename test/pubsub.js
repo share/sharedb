@@ -28,19 +28,11 @@ module.exports = function(create) {
       });
     });
 
-    it('publish optional callback waits', function(done) {
+    it('publish optional callback returns', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {
         if (err) throw err;
-        var emitted;
-        stream.on('data', function(data) {
-          emitted = data;
-        });
-        pubsub.publish(['x'], {test: true}, function(err) {
-          if (err) throw err;
-          expect(emitted).eql({test: true});
-          done();
-        });
+        pubsub.publish(['x'], {test: true}, done);
       });
     });
 
