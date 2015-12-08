@@ -17,6 +17,8 @@ module.exports = function(create) {
       this.db.close(done);
     });
 
+    require('./client/submit')();
+
     // Simplified mock of how submit request applies operations. The
     // noteworthy dependency is that it always calls getSnapshot with
     // the 'submit' projection and applies the op to the returned

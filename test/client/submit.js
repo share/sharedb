@@ -2,10 +2,11 @@ var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var async = require('async');
 
+module.exports = function() {
 describe('client submit', function() {
 
   it('getting twice returns the same doc', function() {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
     var doc2 = connection.get('dogs', 'fido');
@@ -13,7 +14,7 @@ describe('client submit', function() {
   });
 
   it('getting then destroying then getting returns a new doc object', function() {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
     doc.destroy();
@@ -23,7 +24,7 @@ describe('client submit', function() {
   });
 
   it('can fetch an uncreated doc', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     expect(doc.snapshot).equal(undefined);
     expect(doc.version).equal(null);
@@ -36,7 +37,7 @@ describe('client submit', function() {
   });
 
   it('can fetch then create a new doc', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.fetch(function(err) {
       if (err) return done(err);
@@ -50,7 +51,7 @@ describe('client submit', function() {
   });
 
   it('can create a new doc without fetching', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
@@ -61,7 +62,7 @@ describe('client submit', function() {
   });
 
   it('can create then delete then create a doc', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
@@ -84,7 +85,7 @@ describe('client submit', function() {
   });
 
   it('can create then submit an op', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
@@ -98,7 +99,7 @@ describe('client submit', function() {
   });
 
   it('can create then submit an op sync', function() {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
     expect(doc.snapshot).eql({age: 3});
@@ -109,7 +110,7 @@ describe('client submit', function() {
   });
 
   it('ops submitted sync get composed', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
     doc.submitOp({p: ['age'], na: 2});
@@ -137,7 +138,7 @@ describe('client submit', function() {
   });
 
   it('can create a new doc then fetch', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
@@ -163,7 +164,7 @@ describe('client submit', function() {
   }
 
   it('resends create when disconnected before ack', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
@@ -175,7 +176,7 @@ describe('client submit', function() {
   });
 
   it('resent create on top of deleted doc gets proper starting version', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 4}, function(err) {
       if (err) return done(err);
@@ -195,7 +196,7 @@ describe('client submit', function() {
   });
 
   it('resends delete when disconnected before ack', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
@@ -210,7 +211,7 @@ describe('client submit', function() {
   });
 
   it('op submitted during inflight create does not compose and gets flushed', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
     // Submit an op after message is sent but before server has a chance to reply
@@ -225,7 +226,7 @@ describe('client submit', function() {
   });
 
   it('can commit then fetch in a new connection to get the same data', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
@@ -243,7 +244,7 @@ describe('client submit', function() {
   });
 
   it('an op submitted concurrently is transformed by the first', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
@@ -262,7 +263,7 @@ describe('client submit', function() {
   });
 
   it('second of two concurrent creates is rejected', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
@@ -275,7 +276,7 @@ describe('client submit', function() {
   });
 
   it('concurrent delete operations transform', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
@@ -294,7 +295,7 @@ describe('client submit', function() {
   });
 
   it('second client can create following delete', function(done) {
-    var backend = new Backend();
+    var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
@@ -312,3 +313,4 @@ describe('client submit', function() {
   });
 
 });
+};
