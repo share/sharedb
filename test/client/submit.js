@@ -159,7 +159,7 @@ describe('client submit', function() {
       // Reconnect once the server has a chance to save the op snapshot
       setTimeout(function() {
         backend.connect(connection);
-      }, 5);
+      }, 100);
     });
   }
 
