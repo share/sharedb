@@ -10,30 +10,33 @@ require('./pubsub')(function(callback) {
 });
 
 describe('PubSub base class', function() {
-  it('returns an error if _subscribe is unimplemented', function() {
+  it('returns an error if _subscribe is unimplemented', function(done) {
     var pubsub = new PubSub();
     pubsub.subscribe('x', function(err) {
       expect(err).an(Error);
+      done();
     });
   });
 
-  it('throws an error if _unsubscribe is unimplemented', function() {
+  it('throws an error if _unsubscribe is unimplemented', function(done) {
     var pubsub = new PubSub();
     pubsub._subscribe = function(channel, callback) {
       callback();
     };
     pubsub.subscribe('x', function(err, stream) {
-      if (err) throw err;
+      if (err) return done(err);
       expect(function() {
         stream.destroy();
       }).throwException();
+      done();
     });
   });
 
-  it('returns an error if _publish is unimplemented', function() {
+  it('returns an error if _publish is unimplemented', function(done) {
     var pubsub = new PubSub();
     pubsub.publish(['x', 'y'], {test: true}, function(err) {
       expect(err).an(Error);
+      done();
     });
   });
 });

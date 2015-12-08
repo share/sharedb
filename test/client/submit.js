@@ -28,7 +28,7 @@ describe('client submit', function() {
     expect(doc.snapshot).equal(undefined);
     expect(doc.version).equal(null);
     doc.fetch(function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       expect(doc.snapshot).equal(undefined);
       expect(doc.version).equal(0);
       done();
@@ -39,9 +39,9 @@ describe('client submit', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     doc.fetch(function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc.create('json0', {age: 3}, function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc.snapshot).eql({age: 3});
         expect(doc.version).eql(1);
         done();
@@ -53,7 +53,7 @@ describe('client submit', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       expect(doc.snapshot).eql({age: 3});
       expect(doc.version).eql(1);
       done();
@@ -64,17 +64,17 @@ describe('client submit', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       expect(doc.snapshot).eql({age: 3});
       expect(doc.version).eql(1);
 
       doc.del(null, function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc.snapshot).eql(undefined);
         expect(doc.version).eql(2);
 
         doc.create('json0', {age: 2}, function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           expect(doc.snapshot).eql({age: 2});
           expect(doc.version).eql(3);
           done();
@@ -87,9 +87,9 @@ describe('client submit', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc.submitOp({p: ['age'], na: 2}, function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc.snapshot).eql({age: 5});
         expect(doc.version).eql(2);
         done();
@@ -114,19 +114,19 @@ describe('client submit', function() {
     doc.create('json0', {age: 3});
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       expect(doc.snapshot).eql({age: 7});
       // Version is 1 instead of 3, because the create and ops got composed
       expect(doc.version).eql(1);
       doc.submitOp({p: ['age'], na: 2});
       doc.submitOp({p: ['age'], na: 2}, function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc.snapshot).eql({age: 11});
         // Ops get composed
         expect(doc.version).eql(2);
         doc.submitOp({p: ['age'], na: 2});
         doc.del(function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           expect(doc.snapshot).eql(undefined);
           // del DOES NOT get composed
           expect(doc.version).eql(4);
@@ -140,9 +140,9 @@ describe('client submit', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc.fetch(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc.snapshot).eql({age: 3});
         expect(doc.version).eql(1);
         done();
@@ -214,9 +214,9 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.fetch(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc.snapshot).eql({age: 3});
         expect(doc2.snapshot).eql({age: 3});
         expect(doc.version).eql(1);
@@ -232,12 +232,12 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.fetch(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc.submitOp({p: ['age'], na: 2});
         doc2.submitOp({p: ['age'], na: 7}, function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           expect(doc2.snapshot).eql({age: 12});
           expect(doc2.version).eql(3);
           done();
@@ -264,12 +264,12 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.fetch(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc.del();
         doc2.del(function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           expect(doc2.version).eql(3);
           expect(doc2.snapshot).eql(undefined);
           done();
@@ -283,11 +283,11 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc.del(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc2.create('json0', {age: 5}, function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           expect(doc2.version).eql(3);
           expect(doc2.snapshot).eql({age: 5});
           done();

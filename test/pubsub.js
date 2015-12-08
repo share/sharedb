@@ -5,7 +5,7 @@ module.exports = function(create) {
     beforeEach(function(done) {
       var self = this;
       create(function(err, pubsub) {
-        if (err) throw err;
+        if (err) done(err);
         self.pubsub = pubsub;
         done();
       });
@@ -18,7 +18,7 @@ module.exports = function(create) {
     it('can subscribe to a channel', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {
-        if (err) throw err;
+        if (err) done(err);
         stream.on('data', function(data) {
           expect(data).eql({test: true});
           done();
@@ -31,7 +31,7 @@ module.exports = function(create) {
     it('publish optional callback returns', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {
-        if (err) throw err;
+        if (err) done(err);
         pubsub.publish(['x'], {test: true}, done);
       });
     });
@@ -40,7 +40,7 @@ module.exports = function(create) {
       var pubsub = this.pubsub;
       pubsub.subscribe('y', function(err, stream) {
         pubsub.subscribe('y', function(err, stream) {
-          if (err) throw err;
+          if (err) done(err);
           var emitted;
           stream.on('data', function(data) {
             expect(data).eql({test: true});
@@ -55,7 +55,7 @@ module.exports = function(create) {
     it('stream.destroy() unsubscribes from a channel', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {
-        if (err) throw err;
+        if (err) done(err);
         expect(pubsub.streamsCount).equal(1);
         stream.on('data', function() {
           // Will error if done is called twice

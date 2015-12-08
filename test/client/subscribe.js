@@ -9,7 +9,7 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc2.subscribe(function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.on('create', function(context) {
         expect(context).equal(false);
         expect(doc2.version).eql(1);
@@ -25,9 +25,9 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.subscribe(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         expect(doc2.version).eql(1);
         expect(doc2.snapshot).eql({age: 3})
         done();
@@ -40,11 +40,11 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.fetch(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc.submitOp({p: ['age'], na: 1}, function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           doc2.on('op', function(op, context) {
             done();
           });
@@ -59,11 +59,11 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.fetch(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc.submitOp({p: ['age'], na: 1}, function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           doc2.on('op', function(op, context) {
             done();
           });
@@ -78,9 +78,9 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.subscribe(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc2.on('op', function(op, context) {
           expect(doc2.version).eql(2);
           expect(doc2.snapshot).eql({age: 4});
@@ -96,11 +96,11 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.subscribe(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc2.unsubscribe(function(err) {
-          if (err) throw err;
+          if (err) return done(err);
           done();
           doc2.on('op', function(op, context) {
             done();
@@ -116,11 +116,11 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.subscribe();
       doc2.unsubscribe();
       doc2.subscribe(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc2.on('op', function(op, context) {
           done();
         });
@@ -134,11 +134,11 @@ describe('client subscribe', function() {
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
-      if (err) throw err;
+      if (err) return done(err);
       doc2.subscribe();
       doc2.unsubscribe();
       doc2.subscribe(function(err) {
-        if (err) throw err;
+        if (err) return done(err);
         doc2.on('op', function(op, context) {
           done();
         });
