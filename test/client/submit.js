@@ -209,6 +209,21 @@ describe('client submit', function() {
     });
   });
 
+  it('op submitted during inflight create does not compose and gets flushed', function(done) {
+    var backend = new Backend();
+    var doc = backend.connect().get('dogs', 'fido');
+    doc.create('json0', {age: 3});
+    // Submit an op after message is sent but before server has a chance to reply
+    process.nextTick(function() {
+      doc.submitOp({p: ['age'], na: 2}, function(err) {
+        if (err) return done(err);
+        expect(doc.version).equal(2);
+        expect(doc.snapshot).eql({age: 5});
+        done();
+      });
+    });
+  });
+
   it('can commit then fetch in a new connection to get the same data', function(done) {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
