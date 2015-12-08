@@ -150,14 +150,62 @@ describe('client submit', function() {
     });
   });
 
+  function delayedReconnect(backend, connection) {
+    // Disconnect after the message has sent and before the server will have
+    // had a chance to reply
+    process.nextTick(function() {
+      connection.disconnect();
+      // Reconnect once the server has a chance to save the op snapshot
+      setTimeout(function() {
+        backend.connect(connection);
+      }, 5);
+    });
+  }
+
   it('resends create when disconnected before ack', function(done) {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, done);
-    // Disconnect and reconnect after the message has sent and before the
-    // server will have had a chance to reply
-    process.nextTick(function() {
-      backend.connect(doc.connection);
+    doc.create('json0', {age: 3}, function(err) {
+      if (err) return done(err);
+      expect(doc.version).equal(1);
+      expect(doc.snapshot).eql({age: 3});
+      done();
+    });
+    delayedReconnect(backend, doc.connection);
+  });
+
+  it('resent create on top of deleted doc gets proper starting version', function(done) {
+    var backend = new Backend();
+    var doc = backend.connect().get('dogs', 'fido');
+    doc.create('json0', {age: 4}, function(err) {
+      if (err) return done(err);
+      doc.del(function(err) {
+        if (err) return done(err);
+
+        var doc2 = backend.connect().get('dogs', 'fido');
+        doc2.create('json0', {age: 3}, function(err) {
+          if (err) return done(err);
+          expect(doc2.version).equal(3);
+          expect(doc2.snapshot).eql({age: 3});
+          done();
+        });
+        delayedReconnect(backend, doc2.connection);
+      });
+    });
+  });
+
+  it('resends delete when disconnected before ack', function(done) {
+    var backend = new Backend();
+    var doc = backend.connect().get('dogs', 'fido');
+    doc.create('json0', {age: 3}, function(err) {
+      if (err) return done(err);
+      doc.del(function(err) {
+        if (err) return done(err);
+        expect(doc.version).equal(2);
+        expect(doc.snapshot).eql(undefined);
+        done();
+      });
+      delayedReconnect(backend, doc.connection);
     });
   });
 
