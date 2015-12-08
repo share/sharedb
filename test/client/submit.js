@@ -128,8 +128,8 @@ describe('client submit', function() {
         doc.del(function(err) {
           if (err) throw err;
           expect(doc.snapshot).eql(undefined);
-          // Op and del get composed
-          expect(doc.version).eql(3);
+          // del DOES NOT get composed
+          expect(doc.version).eql(4);
           done();
         });
       });
