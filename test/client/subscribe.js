@@ -46,8 +46,8 @@ describe('client subscribe', function() {
         if (err) return done(err);
         doc2.connection.startBulk();
         async.parallel([
-          function(cb) { doc2.fetch(cb); },
-          function(cb) { doc2.fetch(cb); }
+          function(cb) { doc2[method](cb); },
+          function(cb) { doc2[method](cb); }
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
@@ -56,6 +56,112 @@ describe('client subscribe', function() {
         });
         doc2.connection.endBulk();
       });
+    });
+
+    it(method + ' bulk on same collection', function(done) {
+      var backend = new Backend();
+      var connection = backend.connect();
+      async.parallel([
+        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+      ], function(err) {
+        if (err) return done(err);
+        var connection2 = backend.connect();
+        var fido = connection2.get('dogs', 'fido');
+        var spot = connection2.get('dogs', 'spot');
+        var finn = connection2.get('cats', 'finn');
+        connection2.startBulk();
+        async.parallel([
+          function(cb) { fido[method](cb); },
+          function(cb) { spot[method](cb); },
+          function(cb) { finn[method](cb); }
+        ], function(err) {
+          if (err) return done(err);
+          expect(fido.snapshot).eql({age: 3});
+          expect(spot.snapshot).eql({age: 5});
+          expect(finn.snapshot).eql({age: 2});
+          done();
+        });
+        connection2.endBulk();
+      });
+    });
+
+    it(method + ' bulk on same collection from known version', function(done) {
+      var backend = new Backend();
+      var connection2 = backend.connect();
+      var fido = connection2.get('dogs', 'fido');
+      var spot = connection2.get('dogs', 'spot');
+      var finn = connection2.get('cats', 'finn');
+      connection2.startBulk();
+      async.parallel([
+        function(cb) { fido[method](cb); },
+        function(cb) { spot[method](cb); },
+        function(cb) { finn[method](cb); }
+      ], function(err) {
+        if (err) return done(err);
+        expect(fido.version).equal(0);
+        expect(spot.version).equal(0);
+        expect(finn.version).equal(0);
+        expect(fido.snapshot).equal(undefined);
+        expect(spot.snapshot).equal(undefined);
+        expect(finn.snapshot).equal(undefined);
+
+        var connection = backend.connect();
+        async.parallel([
+          function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
+          function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
+          function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+        ], function(err) {
+          if (err) return done(err);
+          connection2.startBulk();
+          async.parallel([
+            function(cb) { fido[method](cb); },
+            function(cb) { spot[method](cb); },
+            function(cb) { finn[method](cb); }
+          ], function(err) {
+            if (err) return done(err);
+            expect(fido.snapshot).eql({age: 3});
+            expect(spot.snapshot).eql({age: 5});
+            expect(finn.snapshot).eql({age: 2});
+
+            // Test sending a fetch without any new ops being created
+            connection2.startBulk();
+            async.parallel([
+              function(cb) { fido[method](cb); },
+              function(cb) { spot[method](cb); },
+              function(cb) { finn[method](cb); }
+            ], function(err) {
+              if (err) return done(err);
+
+              // Create new ops and test if they are received
+              async.parallel([
+                function(cb) { connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}], cb); },
+                function(cb) { connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}], cb); },
+                function(cb) { connection.get('cats', 'finn').submitOp([{p: ['age'], na: 1}], cb); }
+              ], function(err) {
+                if (err) return done(err);
+                connection2.startBulk();
+                async.parallel([
+                  function(cb) { fido[method](cb); },
+                  function(cb) { spot[method](cb); },
+                  function(cb) { finn[method](cb); }
+                ], function(err) {
+                  if (err) return done(err);
+                  expect(fido.snapshot).eql({age: 4});
+                  expect(spot.snapshot).eql({age: 6});
+                  expect(finn.snapshot).eql({age: 3});
+                  done();
+                });
+                connection2.endBulk();
+              });
+            });
+            connection2.endBulk();
+          });
+          connection2.endBulk();
+        });
+      });
+      connection2.endBulk();
     });
 
     it(method + ' gets new ops', function(done) {
