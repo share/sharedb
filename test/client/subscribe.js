@@ -4,6 +4,13 @@ var async = require('async');
 
 describe('client subscribe', function() {
 
+  it('can call bulk without doing any actions', function() {
+    var backend = new Backend();
+    var connection = backend.connect();
+    connection.startBulk();
+    connection.endBulk();
+  });
+
   ['fetch', 'subscribe'].forEach(function(method) {
     it(method + ' gets initial data', function(done) {
       var backend = new Backend();
@@ -234,6 +241,36 @@ describe('client subscribe', function() {
           });
           doc.submitOp({p: ['age'], na: 1});
         });
+      });
+    });
+  });
+
+  it('bulk unsubscribe stops op updates', function(done) {
+    var backend = new Backend();
+    var doc = backend.connect().get('dogs', 'fido');
+    var connection2 = backend.connect();
+    var fido = connection2.get('dogs', 'fido');
+    var spot = connection2.get('dogs', 'spot');
+    doc.create('json0', {age: 3}, function(err) {
+      if (err) return done(err);
+      async.parallel([
+        function(cb) { fido.subscribe(cb); },
+        function(cb) { spot.subscribe(cb); }
+      ], function(err) {
+        if (err) return done(err);
+        fido.connection.startBulk();
+        async.parallel([
+          function(cb) { fido.unsubscribe(cb); },
+          function(cb) { spot.unsubscribe(cb); }
+        ], function(err) {
+          if (err) return done(err);
+          done();
+          fido.on('op', function(op, context) {
+            done();
+          });
+          doc.submitOp({p: ['age'], na: 1});
+        });
+        fido.connection.endBulk();
       });
     });
   });
