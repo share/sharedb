@@ -151,6 +151,20 @@ describe('client submit', function() {
     });
   });
 
+  it('calling create on the same doc twice fails', function(done) {
+    var backend = new Backend({db: this.db});
+    var doc = backend.connect().get('dogs', 'fido');
+    doc.create('json0', {age: 3}, function(err) {
+      if (err) return done(err);
+      doc.create('json0', {age: 4}, function(err) {
+        expect(err).ok();
+        expect(doc.version).equal(1);
+        expect(doc.snapshot).eql({age: 3});
+        done();
+      });
+    });
+  });
+
   it('trying to create an already created doc without fetching fails and fetches', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
