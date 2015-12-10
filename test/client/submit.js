@@ -151,6 +151,21 @@ describe('client submit', function() {
     });
   });
 
+  it('trying to create an already created doc without fetching fails and fetches', function(done) {
+    var backend = new Backend({db: this.db});
+    var doc = backend.connect().get('dogs', 'fido');
+    var doc2 = backend.connect().get('dogs', 'fido');
+    doc.create('json0', {age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.create('json0', {age: 4}, function(err) {
+        expect(err).ok();
+        expect(doc2.version).equal(1);
+        expect(doc2.snapshot).eql({age: 3});
+        done();
+      });
+    });
+  });
+
   function delayedReconnect(backend, connection) {
     // Disconnect after the message has sent and before the server will have
     // had a chance to reply
