@@ -3,7 +3,7 @@ var expect = require('expect.js');
 var async = require('async');
 
 module.exports = function() {
-describe.only('client query', function() {
+describe('client query', function() {
 
   ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
     it(method + ' on an empty collection', function(done) {
@@ -16,7 +16,7 @@ describe.only('client query', function() {
       });
     });
 
-    it(method + ' on collection with results', function(done) {
+    it(method + ' on collection with fetched docs', function(done) {
       var backend = new Backend({db: this.db});
       var connection = backend.connect();
       async.parallel([
@@ -34,6 +34,84 @@ describe.only('client query', function() {
         });
       });
     });
+
+    it(method + ' on collection with unfetched docs', function(done) {
+      var backend = new Backend({db: this.db});
+      var connection = backend.connect();
+      async.parallel([
+        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+      ], function(err) {
+        if (err) return done(err);
+        var connection2 = backend.connect();
+        connection2[method]('dogs', {}, null, function(err, results) {
+          if (err) return done(err);
+          sortById(results);
+          expect(pluck(results, 'id')).eql(['fido', 'spot']);
+          expect(pluck(results, 'snapshot')).eql([{age: 3}, {age: 5}]);
+          done();
+        });
+      });
+    });
+
+    it(method + ' on collection with one fetched doc', function(done) {
+      var backend = new Backend({db: this.db});
+      var connection = backend.connect();
+      async.parallel([
+        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+      ], function(err) {
+        if (err) return done(err);
+        var connection2 = backend.connect();
+        connection2.get('dogs', 'fido').fetch(function(err) {
+          if (err) return done(err);
+          connection2[method]('dogs', {}, null, function(err, results) {
+            if (err) return done(err);
+            sortById(results);
+            expect(pluck(results, 'id')).eql(['fido', 'spot']);
+            expect(pluck(results, 'snapshot')).eql([{age: 3}, {age: 5}]);
+            done();
+          });
+        });
+      });
+    });
+
+    it(method + ' on collection with one fetched doc missing an op', function(done) {
+      var backend = new Backend({db: this.db});
+      var connection = backend.connect();
+      async.parallel([
+        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+      ], function(err) {
+        if (err) return done(err);
+        var connection2 = backend.connect();
+        connection2.get('dogs', 'fido').fetch(function(err) {
+          if (err) return done(err);
+          connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}], function(err) {
+            if (err) return done(err);
+            // The results option is meant for making resubscribing more
+            // efficient and has no effect on query fetching
+            var options = {
+              results: [
+                connection2.get('dogs', 'fido'),
+                connection2.get('dogs', 'spot')
+              ]
+            };
+            connection2[method]('dogs', {}, options, function(err, results) {
+              if (err) return done(err);
+              sortById(results);
+              expect(pluck(results, 'id')).eql(['fido', 'spot']);
+              expect(pluck(results, 'snapshot')).eql([{age: 4}, {age: 5}]);
+              done();
+            });
+          });
+        });
+      });
+    });
+
   });
 
 });
