@@ -125,7 +125,7 @@ module.exports = function(create) {
       function testDelCommit(ops, snapshot) {
         expect(snapshot.v).equal(2);
         expect(ops.length).equal(2);
-        expect(snapshot.data).equal(null);
+        expect(snapshot.data).equal(undefined);
         expect(snapshot.type).equal(null);
         expect(ops[0].create).ok();
         expect(ops[1].del).equal(true);
@@ -187,7 +187,7 @@ module.exports = function(create) {
       it('getSnapshot returns v0 snapshot', function(done) {
         this.db.getSnapshot('testcollection', 'test', null, function(err, result) {
           if (err) return done(err);
-          expect(result).eql({id: 'test', type: null, v: 0, data: null});
+          expect(result).eql({id: 'test', type: null, v: 0, data: undefined});
           done();
         });
       });
@@ -218,7 +218,7 @@ module.exports = function(create) {
             if (err) return done(err);
             expect(resultMap).eql({
               test: {id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data},
-              test2: {id: 'test2', type: null, v: 0, data: null}
+              test2: {id: 'test2', type: null, v: 0, data: undefined}
             });
             done();
           });
