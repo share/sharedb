@@ -26,11 +26,11 @@ describe('client submit', function() {
   it('can fetch an uncreated doc', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    expect(doc.snapshot).equal(undefined);
+    expect(doc.data).equal(undefined);
     expect(doc.version).equal(null);
     doc.fetch(function(err) {
       if (err) return done(err);
-      expect(doc.snapshot).equal(undefined);
+      expect(doc.data).equal(undefined);
       expect(doc.version).equal(0);
       done();
     });
@@ -43,7 +43,7 @@ describe('client submit', function() {
       if (err) return done(err);
       doc.create('json0', {age: 3}, function(err) {
         if (err) return done(err);
-        expect(doc.snapshot).eql({age: 3});
+        expect(doc.data).eql({age: 3});
         expect(doc.version).eql(1);
         done();
       });
@@ -55,7 +55,7 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
-      expect(doc.snapshot).eql({age: 3});
+      expect(doc.data).eql({age: 3});
       expect(doc.version).eql(1);
       done();
     });
@@ -66,17 +66,17 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
-      expect(doc.snapshot).eql({age: 3});
+      expect(doc.data).eql({age: 3});
       expect(doc.version).eql(1);
 
       doc.del(null, function(err) {
         if (err) return done(err);
-        expect(doc.snapshot).eql(undefined);
+        expect(doc.data).eql(undefined);
         expect(doc.version).eql(2);
 
         doc.create('json0', {age: 2}, function(err) {
           if (err) return done(err);
-          expect(doc.snapshot).eql({age: 2});
+          expect(doc.data).eql({age: 2});
           expect(doc.version).eql(3);
           done();
         });
@@ -91,7 +91,7 @@ describe('client submit', function() {
       if (err) return done(err);
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
-        expect(doc.snapshot).eql({age: 5});
+        expect(doc.data).eql({age: 5});
         expect(doc.version).eql(2);
         done();
       });
@@ -102,10 +102,10 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     doc.create('json0', {age: 3});
-    expect(doc.snapshot).eql({age: 3});
+    expect(doc.data).eql({age: 3});
     expect(doc.version).eql(null);
     doc.submitOp({p: ['age'], na: 2});
-    expect(doc.snapshot).eql({age: 5});
+    expect(doc.data).eql({age: 5});
     expect(doc.version).eql(null);
   });
 
@@ -116,19 +116,19 @@ describe('client submit', function() {
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
       if (err) return done(err);
-      expect(doc.snapshot).eql({age: 7});
+      expect(doc.data).eql({age: 7});
       // Version is 1 instead of 3, because the create and ops got composed
       expect(doc.version).eql(1);
       doc.submitOp({p: ['age'], na: 2});
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
-        expect(doc.snapshot).eql({age: 11});
+        expect(doc.data).eql({age: 11});
         // Ops get composed
         expect(doc.version).eql(2);
         doc.submitOp({p: ['age'], na: 2});
         doc.del(function(err) {
           if (err) return done(err);
-          expect(doc.snapshot).eql(undefined);
+          expect(doc.data).eql(undefined);
           // del DOES NOT get composed
           expect(doc.version).eql(4);
           done();
@@ -144,7 +144,7 @@ describe('client submit', function() {
       if (err) return done(err);
       doc.fetch(function(err) {
         if (err) return done(err);
-        expect(doc.snapshot).eql({age: 3});
+        expect(doc.data).eql({age: 3});
         expect(doc.version).eql(1);
         done();
       });
@@ -159,7 +159,7 @@ describe('client submit', function() {
       doc.create('json0', {age: 4}, function(err) {
         expect(err).ok();
         expect(doc.version).equal(1);
-        expect(doc.snapshot).eql({age: 3});
+        expect(doc.data).eql({age: 3});
         done();
       });
     });
@@ -174,7 +174,7 @@ describe('client submit', function() {
       doc2.create('json0', {age: 4}, function(err) {
         expect(err).ok();
         expect(doc2.version).equal(1);
-        expect(doc2.snapshot).eql({age: 3});
+        expect(doc2.data).eql({age: 3});
         done();
       });
     });
@@ -185,7 +185,7 @@ describe('client submit', function() {
     // had a chance to reply
     process.nextTick(function() {
       connection.disconnect();
-      // Reconnect once the server has a chance to save the op snapshot
+      // Reconnect once the server has a chance to save the op data
       setTimeout(function() {
         backend.connect(connection);
       }, 100);
@@ -198,7 +198,7 @@ describe('client submit', function() {
     doc.create('json0', {age: 3}, function(err) {
       if (err) return done(err);
       expect(doc.version).equal(1);
-      expect(doc.snapshot).eql({age: 3});
+      expect(doc.data).eql({age: 3});
       done();
     });
     delayedReconnect(backend, doc.connection);
@@ -216,7 +216,7 @@ describe('client submit', function() {
         doc2.create('json0', {age: 3}, function(err) {
           if (err) return done(err);
           expect(doc2.version).equal(3);
-          expect(doc2.snapshot).eql({age: 3});
+          expect(doc2.data).eql({age: 3});
           done();
         });
         delayedReconnect(backend, doc2.connection);
@@ -232,7 +232,7 @@ describe('client submit', function() {
       doc.del(function(err) {
         if (err) return done(err);
         expect(doc.version).equal(2);
-        expect(doc.snapshot).eql(undefined);
+        expect(doc.data).eql(undefined);
         done();
       });
       delayedReconnect(backend, doc.connection);
@@ -248,7 +248,7 @@ describe('client submit', function() {
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
         expect(doc.version).equal(2);
-        expect(doc.snapshot).eql({age: 5});
+        expect(doc.data).eql({age: 5});
         done();
       });
     });
@@ -262,11 +262,11 @@ describe('client submit', function() {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
-        expect(doc.snapshot).eql({age: 3});
-        expect(doc2.snapshot).eql({age: 3});
+        expect(doc.data).eql({age: 3});
+        expect(doc2.data).eql({age: 3});
         expect(doc.version).eql(1);
         expect(doc2.version).eql(1);
-        expect(doc.snapshot).not.equal(doc2.snapshot);
+        expect(doc.data).not.equal(doc2.data);
         done();
       });
     });
@@ -283,7 +283,7 @@ describe('client submit', function() {
         doc.submitOp({p: ['age'], na: 2});
         doc2.submitOp({p: ['age'], na: 7}, function(err) {
           if (err) return done(err);
-          expect(doc2.snapshot).eql({age: 12});
+          expect(doc2.data).eql({age: 12});
           expect(doc2.version).eql(3);
           done();
         });
@@ -299,7 +299,7 @@ describe('client submit', function() {
     doc2.create('json0', {age: 5}, function(err) {
       expect(err).ok();
       expect(doc2.version).eql(1);
-      expect(doc2.snapshot).eql({age: 3});
+      expect(doc2.data).eql({age: 3});
       done();
     });
   });
@@ -316,7 +316,7 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(3);
-          expect(doc2.snapshot).eql(undefined);
+          expect(doc2.data).eql(undefined);
           done();
         });
       });
@@ -334,7 +334,7 @@ describe('client submit', function() {
         doc2.create('json0', {age: 5}, function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(3);
-          expect(doc2.snapshot).eql({age: 5});
+          expect(doc2.data).eql({age: 5});
           done();
         });
       });

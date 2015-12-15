@@ -29,7 +29,7 @@ describe('client query', function() {
           if (err) return done(err);
           sortById(results);
           expect(pluck(results, 'id')).eql(['fido', 'spot']);
-          expect(pluck(results, 'snapshot')).eql([{age: 3}, {age: 5}]);
+          expect(pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
           done();
         });
       });
@@ -49,7 +49,7 @@ describe('client query', function() {
           if (err) return done(err);
           sortById(results);
           expect(pluck(results, 'id')).eql(['fido', 'spot']);
-          expect(pluck(results, 'snapshot')).eql([{age: 3}, {age: 5}]);
+          expect(pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
           done();
         });
       });
@@ -71,7 +71,7 @@ describe('client query', function() {
             if (err) return done(err);
             sortById(results);
             expect(pluck(results, 'id')).eql(['fido', 'spot']);
-            expect(pluck(results, 'snapshot')).eql([{age: 3}, {age: 5}]);
+            expect(pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
             done();
           });
         });
@@ -104,7 +104,7 @@ describe('client query', function() {
               if (err) return done(err);
               sortById(results);
               expect(pluck(results, 'id')).eql(['fido', 'spot']);
-              expect(pluck(results, 'snapshot')).eql([{age: 4}, {age: 5}]);
+              expect(pluck(results, 'data')).eql([{age: 4}, {age: 5}]);
               done();
             });
           });

@@ -21,7 +21,7 @@ describe('client subscribe', function() {
         doc2[method](function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.snapshot).eql({age: 3})
+          expect(doc2.data).eql({age: 3})
           done();
         });
       });
@@ -39,7 +39,7 @@ describe('client subscribe', function() {
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.snapshot).eql({age: 3})
+          expect(doc2.data).eql({age: 3})
           done();
         });
       });
@@ -58,7 +58,7 @@ describe('client subscribe', function() {
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.snapshot).eql({age: 3})
+          expect(doc2.data).eql({age: 3})
           done();
         });
         doc2.connection.endBulk();
@@ -85,9 +85,9 @@ describe('client subscribe', function() {
           function(cb) { finn[method](cb); }
         ], function(err) {
           if (err) return done(err);
-          expect(fido.snapshot).eql({age: 3});
-          expect(spot.snapshot).eql({age: 5});
-          expect(finn.snapshot).eql({age: 2});
+          expect(fido.data).eql({age: 3});
+          expect(spot.data).eql({age: 5});
+          expect(finn.data).eql({age: 2});
           done();
         });
         connection2.endBulk();
@@ -110,9 +110,9 @@ describe('client subscribe', function() {
         expect(fido.version).equal(0);
         expect(spot.version).equal(0);
         expect(finn.version).equal(0);
-        expect(fido.snapshot).equal(undefined);
-        expect(spot.snapshot).equal(undefined);
-        expect(finn.snapshot).equal(undefined);
+        expect(fido.data).equal(undefined);
+        expect(spot.data).equal(undefined);
+        expect(finn.data).equal(undefined);
 
         var connection = backend.connect();
         async.parallel([
@@ -128,9 +128,9 @@ describe('client subscribe', function() {
             function(cb) { finn[method](cb); }
           ], function(err) {
             if (err) return done(err);
-            expect(fido.snapshot).eql({age: 3});
-            expect(spot.snapshot).eql({age: 5});
-            expect(finn.snapshot).eql({age: 2});
+            expect(fido.data).eql({age: 3});
+            expect(spot.data).eql({age: 5});
+            expect(finn.data).eql({age: 2});
 
             // Test sending a fetch without any new ops being created
             connection2.startBulk();
@@ -155,9 +155,9 @@ describe('client subscribe', function() {
                   function(cb) { finn[method](cb); }
                 ], function(err) {
                   if (err) return done(err);
-                  expect(fido.snapshot).eql({age: 4});
-                  expect(spot.snapshot).eql({age: 6});
-                  expect(finn.snapshot).eql({age: 3});
+                  expect(fido.data).eql({age: 4});
+                  expect(spot.data).eql({age: 6});
+                  expect(finn.data).eql({age: 3});
                   done();
                 });
                 connection2.endBulk();
@@ -200,7 +200,7 @@ describe('client subscribe', function() {
       doc2.on('create', function(context) {
         expect(context).equal(false);
         expect(doc2.version).eql(1);
-        expect(doc2.snapshot).eql({age: 3});
+        expect(doc2.data).eql({age: 3});
         done();
       });
       doc.create('json0', {age: 3});
@@ -217,7 +217,7 @@ describe('client subscribe', function() {
         if (err) return done(err);
         doc2.on('op', function(op, context) {
           expect(doc2.version).eql(2);
-          expect(doc2.snapshot).eql({age: 4});
+          expect(doc2.data).eql({age: 4});
           done();
         });
         doc.submitOp({p: ['age'], na: 1});
