@@ -10,8 +10,7 @@ describe('Connection', function() {
     close: function() {
       this.readyState = 3;
       this.onclose();
-    },
-    canSendWhileConnecting: true
+    }
   };
 
   beforeEach(function() {
@@ -44,12 +43,6 @@ describe('Connection', function() {
       socket.onopen();
       assert.equal(this.connection.state, 'connecting');
     });
-
-    it('sets canSend', function() {
-      assert(!this.connection.canSend);
-      socket.onopen();
-      assert(this.connection.canSend);
-    });
   });
 
   describe('socket onclose', function() {
@@ -57,12 +50,6 @@ describe('Connection', function() {
       assert.equal(this.connection.state, 'connecting');
       socket.close();
       assert.equal(this.connection.state, 'disconnected');
-    });
-
-    it('sets canSend', function() {
-      assert(this.connection.canSend);
-      socket.close();
-      assert(!this.connection.canSend);
     });
   });
 
