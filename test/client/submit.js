@@ -41,7 +41,7 @@ describe('client submit', function() {
     var doc = backend.connect().get('dogs', 'fido');
     doc.fetch(function(err) {
       if (err) return done(err);
-      doc.create('json0', {age: 3}, function(err) {
+      doc.create({age: 3}, function(err) {
         if (err) return done(err);
         expect(doc.data).eql({age: 3});
         expect(doc.version).eql(1);
@@ -53,7 +53,7 @@ describe('client submit', function() {
   it('can create a new doc without fetching', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       expect(doc.data).eql({age: 3});
       expect(doc.version).eql(1);
@@ -64,7 +64,7 @@ describe('client submit', function() {
   it('can create then delete then create a doc', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       expect(doc.data).eql({age: 3});
       expect(doc.version).eql(1);
@@ -74,7 +74,7 @@ describe('client submit', function() {
         expect(doc.data).eql(undefined);
         expect(doc.version).eql(2);
 
-        doc.create('json0', {age: 2}, function(err) {
+        doc.create({age: 2}, function(err) {
           if (err) return done(err);
           expect(doc.data).eql({age: 2});
           expect(doc.version).eql(3);
@@ -87,7 +87,7 @@ describe('client submit', function() {
   it('can create then submit an op', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
@@ -101,7 +101,7 @@ describe('client submit', function() {
   it('can create then submit an op sync', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3});
+    doc.create({age: 3});
     expect(doc.data).eql({age: 3});
     expect(doc.version).eql(null);
     doc.submitOp({p: ['age'], na: 2});
@@ -112,7 +112,7 @@ describe('client submit', function() {
   it('ops submitted sync get composed', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3});
+    doc.create({age: 3});
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
       if (err) return done(err);
@@ -140,7 +140,7 @@ describe('client submit', function() {
   it('can create a new doc then fetch', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc.fetch(function(err) {
         if (err) return done(err);
@@ -154,9 +154,9 @@ describe('client submit', function() {
   it('calling create on the same doc twice fails', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
-      doc.create('json0', {age: 4}, function(err) {
+      doc.create({age: 4}, function(err) {
         expect(err).ok();
         expect(doc.version).equal(1);
         expect(doc.data).eql({age: 3});
@@ -169,9 +169,9 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
-      doc2.create('json0', {age: 4}, function(err) {
+      doc2.create({age: 4}, function(err) {
         expect(err).ok();
         expect(doc2.version).equal(1);
         expect(doc2.data).eql({age: 3});
@@ -195,7 +195,7 @@ describe('client submit', function() {
   it('resends create when disconnected before ack', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       expect(doc.version).equal(1);
       expect(doc.data).eql({age: 3});
@@ -207,13 +207,13 @@ describe('client submit', function() {
   it('resent create on top of deleted doc gets proper starting version', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 4}, function(err) {
+    doc.create({age: 4}, function(err) {
       if (err) return done(err);
       doc.del(function(err) {
         if (err) return done(err);
 
         var doc2 = backend.connect().get('dogs', 'fido');
-        doc2.create('json0', {age: 3}, function(err) {
+        doc2.create({age: 3}, function(err) {
           if (err) return done(err);
           expect(doc2.version).equal(3);
           expect(doc2.data).eql({age: 3});
@@ -227,7 +227,7 @@ describe('client submit', function() {
   it('resends delete when disconnected before ack', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc.del(function(err) {
         if (err) return done(err);
@@ -242,7 +242,7 @@ describe('client submit', function() {
   it('op submitted during inflight create does not compose and gets flushed', function(done) {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3});
+    doc.create({age: 3});
     // Submit an op after message is sent but before server has a chance to reply
     process.nextTick(function() {
       doc.submitOp({p: ['age'], na: 2}, function(err) {
@@ -258,7 +258,7 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
@@ -276,7 +276,7 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
@@ -295,8 +295,8 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3});
-    doc2.create('json0', {age: 5}, function(err) {
+    doc.create({age: 3});
+    doc2.create({age: 5}, function(err) {
       expect(err).ok();
       expect(doc2.version).eql(1);
       expect(doc2.data).eql({age: 3});
@@ -308,7 +308,7 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
@@ -327,11 +327,11 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc.del(function(err) {
         if (err) return done(err);
-        doc2.create('json0', {age: 5}, function(err) {
+        doc2.create({age: 5}, function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(3);
           expect(doc2.data).eql({age: 5});

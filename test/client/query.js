@@ -20,9 +20,9 @@ describe('client query', function() {
       var backend = new Backend({db: this.db});
       var connection = backend.connect();
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
         connection[method]('dogs', {}, null, function(err, results) {
@@ -39,9 +39,9 @@ describe('client query', function() {
       var backend = new Backend({db: this.db});
       var connection = backend.connect();
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
         var connection2 = backend.connect();
@@ -59,9 +59,9 @@ describe('client query', function() {
       var backend = new Backend({db: this.db});
       var connection = backend.connect();
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
         var connection2 = backend.connect();
@@ -82,9 +82,9 @@ describe('client query', function() {
       var backend = new Backend({db: this.db});
       var connection = backend.connect();
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
         var connection2 = backend.connect();

@@ -16,7 +16,7 @@ describe('client subscribe', function() {
       var backend = new Backend();
       var doc = backend.connect().get('dogs', 'fido');
       var doc2 = backend.connect().get('dogs', 'fido');
-      doc.create('json0', {age: 3}, function(err) {
+      doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2[method](function(err) {
           if (err) return done(err);
@@ -31,7 +31,7 @@ describe('client subscribe', function() {
       var backend = new Backend();
       var doc = backend.connect().get('dogs', 'fido');
       var doc2 = backend.connect().get('dogs', 'fido');
-      doc.create('json0', {age: 3}, function(err) {
+      doc.create({age: 3}, function(err) {
         if (err) return done(err);
         async.parallel([
           function(cb) { doc2.fetch(cb); },
@@ -49,7 +49,7 @@ describe('client subscribe', function() {
       var backend = new Backend();
       var doc = backend.connect().get('dogs', 'fido');
       var doc2 = backend.connect().get('dogs', 'fido');
-      doc.create('json0', {age: 3}, function(err) {
+      doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.connection.startBulk();
         async.parallel([
@@ -69,9 +69,9 @@ describe('client subscribe', function() {
       var backend = new Backend();
       var connection = backend.connect();
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
+        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
         var connection2 = backend.connect();
@@ -116,9 +116,9 @@ describe('client subscribe', function() {
 
         var connection = backend.connect();
         async.parallel([
-          function(cb) { connection.get('dogs', 'fido').create('json0', {age: 3}, cb); },
-          function(cb) { connection.get('dogs', 'spot').create('json0', {age: 5}, cb); },
-          function(cb) { connection.get('cats', 'finn').create('json0', {age: 2}, cb); }
+          function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+          function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
+          function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
         ], function(err) {
           if (err) return done(err);
           connection2.startBulk();
@@ -175,7 +175,7 @@ describe('client subscribe', function() {
       var backend = new Backend();
       var doc = backend.connect().get('dogs', 'fido');
       var doc2 = backend.connect().get('dogs', 'fido');
-      doc.create('json0', {age: 3}, function(err) {
+      doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.fetch(function(err) {
           if (err) return done(err);
@@ -203,7 +203,7 @@ describe('client subscribe', function() {
         expect(doc2.data).eql({age: 3});
         done();
       });
-      doc.create('json0', {age: 3});
+      doc.create({age: 3});
     });
   });
 
@@ -211,7 +211,7 @@ describe('client subscribe', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
@@ -229,7 +229,7 @@ describe('client subscribe', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
@@ -251,7 +251,7 @@ describe('client subscribe', function() {
     var connection2 = backend.connect();
     var fido = connection2.get('dogs', 'fido');
     var spot = connection2.get('dogs', 'spot');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       async.parallel([
         function(cb) { fido.subscribe(cb); },
@@ -279,7 +279,7 @@ describe('client subscribe', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe();
       doc2.unsubscribe();
@@ -297,7 +297,7 @@ describe('client subscribe', function() {
     var backend = new Backend();
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create('json0', {age: 3}, function(err) {
+    doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe();
       doc2.unsubscribe();
