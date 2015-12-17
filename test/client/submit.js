@@ -280,12 +280,30 @@ describe('client submit', function() {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
-        doc.submitOp({p: ['age'], na: 2});
-        doc2.submitOp({p: ['age'], na: 7}, function(err) {
+        var count = 0;
+        doc.submitOp({p: ['age'], na: 2}, function(err) {
+          count++;
           if (err) return done(err);
-          expect(doc2.data).eql({age: 12});
-          expect(doc2.version).eql(3);
-          done();
+          if (count === 1) {
+            expect(doc.data).eql({age: 5});
+            expect(doc.version).eql(2);
+          } else {
+            expect(doc.data).eql({age: 12});
+            expect(doc.version).eql(3);
+            done();
+          }
+        });
+        doc2.submitOp({p: ['age'], na: 7}, function(err) {
+          count++;
+          if (err) return done(err);
+          if (count === 1) {
+            expect(doc2.data).eql({age: 10});
+            expect(doc2.version).eql(2);
+          } else {
+            expect(doc2.data).eql({age: 12});
+            expect(doc2.version).eql(3);
+            done();
+          }
         });
       });
     });
@@ -295,12 +313,32 @@ describe('client submit', function() {
     var backend = new Backend({db: this.db});
     var doc = backend.connect().get('dogs', 'fido');
     var doc2 = backend.connect().get('dogs', 'fido');
-    doc.create({age: 3});
+    var count = 0;
+    doc.create({age: 3}, function(err) {
+      count++;
+      if (count === 1) {
+        if (err) return done(err);
+        expect(doc.version).eql(1);
+        expect(doc.data).eql({age: 3});
+      } else {
+        expect(err).ok();
+        expect(doc.version).eql(1);
+        expect(doc.data).eql({age: 5});
+        done();
+      }
+    });
     doc2.create({age: 5}, function(err) {
-      expect(err).ok();
-      expect(doc2.version).eql(1);
-      expect(doc2.data).eql({age: 3});
-      done();
+      count++;
+      if (count === 1) {
+        if (err) return done(err);
+        expect(doc2.version).eql(1);
+        expect(doc2.data).eql({age: 5});
+      } else {
+        expect(err).ok();
+        expect(doc2.version).eql(1);
+        expect(doc2.data).eql({age: 3});
+        done();
+      }
     });
   });
 
@@ -312,12 +350,30 @@ describe('client submit', function() {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
-        doc.del();
-        doc2.del(function(err) {
+        var count = 0;
+        doc.del(function(err) {
+          count++;
           if (err) return done(err);
-          expect(doc2.version).eql(3);
-          expect(doc2.data).eql(undefined);
-          done();
+          if (count === 1) {
+            expect(doc.version).eql(2);
+            expect(doc.data).eql(undefined);
+          } else {
+            expect(doc.version).eql(3);
+            expect(doc.data).eql(undefined);
+            done();
+          }
+        });
+        doc2.del(function(err) {
+          count++;
+          if (err) return done(err);
+          if (count === 1) {
+            expect(doc2.version).eql(2);
+            expect(doc2.data).eql(undefined);
+          } else {
+            expect(doc2.version).eql(3);
+            expect(doc2.data).eql(undefined);
+            done();
+          }
         });
       });
     });

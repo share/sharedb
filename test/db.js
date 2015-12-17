@@ -28,6 +28,10 @@ module.exports = function(create) {
     function submit(db, collection, id, op, callback) {
       db.getSnapshot(collection, id, 'submit', function(err, snapshot) {
         if (err) return callback(err);
+        if (snapshot.v !== op.v) {
+          var succeeded = false;
+          return callback(null, succeeded);
+        }
         var err = ot.apply(snapshot, op);
         if (err) return callback(err);
         db.commit(collection, id, op, snapshot, callback);
@@ -95,6 +99,23 @@ module.exports = function(create) {
         expect(ops[1].op).ok();
       }
 
+      function testDelCommit(ops, snapshot) {
+        expect(snapshot.v).equal(2);
+        expect(ops.length).equal(2);
+        expect(snapshot.data).equal(undefined);
+        expect(snapshot.type).equal(null);
+        expect(ops[0].create).ok();
+        expect(ops[1].del).equal(true);
+      }
+
+      function testOpOrDelCommit(ops, snapshot) {
+        if (ops[1].op) {
+          testOpCommit(ops, snapshot);
+        } else {
+          testDelCommit(ops, snapshot);
+        }
+      }
+
       it('one commit succeeds from 2 simultaneous ops', function(done) {
         var ops = [
           {v: 1, op: []},
@@ -121,15 +142,6 @@ module.exports = function(create) {
           commitConcurrent(db, ops, testOpCommit, done);
         });
       });
-
-      function testDelCommit(ops, snapshot) {
-        expect(snapshot.v).equal(2);
-        expect(ops.length).equal(2);
-        expect(snapshot.data).equal(undefined);
-        expect(snapshot.type).equal(null);
-        expect(ops[0].create).ok();
-        expect(ops[1].del).equal(true);
-      }
 
       it('one commit succeeds from 2 simultaneous deletes', function(done) {
         var ops = [
@@ -166,7 +178,7 @@ module.exports = function(create) {
         var db = this.db;
         createDoc(db, function(err) {
           if (err) return done(err);
-          commitConcurrent(db, ops, testDelCommit, done);
+          commitConcurrent(db, ops, testOpOrDelCommit, done);
         });
       });
 
@@ -178,7 +190,7 @@ module.exports = function(create) {
         var db = this.db;
         createDoc(db, function(err) {
           if (err) return done(err);
-          commitConcurrent(db, ops, testOpCommit, done);
+          commitConcurrent(db, ops, testOpOrDelCommit, done);
         });
       });
     });
