@@ -232,6 +232,22 @@ describe('client projections', function() {
         });
       });
     }
+    function testError(op, done) {
+      var doc = this.connection.get('dogs', 'fido');
+      var projected = this.backend.connect().get('dogs_summary', 'fido');
+      projected.fetch(function(err) {
+        if (err) return done(err);
+        projected.submitOp(op, function(err) {
+          expect(err).ok();
+          doc.fetch(function(err) {
+            if (err) return done(err);
+            expect(doc.data).eql({age: 3, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}});
+            expect(doc.version).equal(1);
+            done();
+          });
+        });
+      });
+    }
 
     it('can set on projected field', function(done) {
       test.call(this,
@@ -239,6 +255,75 @@ describe('client projections', function() {
         {age: 4, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}},
         done
       );
+    });
+
+    it('can set on child of projected field', function(done) {
+      test.call(this,
+        {p: ['owner', 'sex'], oi: 'male'},
+        {age: 3, color: 'gold', owner: {name: 'jim', sex: 'male'}, litter: {count: 4}},
+        done
+      );
+    });
+
+    it('cannot set on non-projected field', function(done) {
+      testError.call(this,
+        {p: ['color'], od: 'gold', oi: 'tan'},
+        done
+      );
+    });
+
+    it('cannot set on root path of projected doc', function(done) {
+      testError.call(this,
+        {p: [], oi: null},
+        done
+      );
+    });
+
+    it('can delete on projected doc', function(done) {
+      var doc = this.connection.get('dogs', 'fido');
+      var projected = this.backend.connect().get('dogs_summary', 'fido');
+      projected.fetch(function(err) {
+        if (err) return done(err);
+        projected.del(function(err) {
+          if (err) return done(err);
+          doc.fetch(function(err) {
+            if (err) return done(err);
+            expect(doc.data).eql(undefined);
+            expect(doc.version).equal(2);
+            done();
+          });
+        });
+      });
+    });
+
+    it('can create a projected doc with only projected fields', function(done) {
+      var doc = this.connection.get('dogs', 'spot');
+      var projected = this.backend.connect().get('dogs_summary', 'spot');
+      var data = {age: 5};
+      projected.create(data, function(err) {
+        if (err) return done(err);
+        doc.fetch(function(err) {
+          if (err) return done(err);
+          expect(doc.data).eql({age: 5});
+          expect(doc.version).equal(1);
+          done();
+        });
+      });
+    });
+
+    it('cannot create a projected doc with non-projected fields', function(done) {
+      var doc = this.connection.get('dogs', 'spot');
+      var projected = this.backend.connect().get('dogs_summary', 'spot');
+      var data = {age: 5, foo: 'bar'};
+      projected.create(data, function(err) {
+        expect(err).ok();
+        doc.fetch(function(err) {
+          if (err) return done(err);
+          expect(doc.data).eql(undefined);
+          expect(doc.version).equal(0);
+          done();
+        });
+      });
     });
   });
 
