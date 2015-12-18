@@ -19,6 +19,7 @@ module.exports = function(create) {
 
     require('./client/submit')();
     require('./client/query')();
+    require('./client/projections')();
 
     // Simplified mock of how submit request applies operations. The
     // noteworthy dependency is that it always calls getSnapshot with
