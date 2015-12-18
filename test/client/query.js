@@ -1,6 +1,7 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var async = require('async');
+var util = require('../util');
 
 module.exports = function() {
 describe('client query', function() {
@@ -27,9 +28,9 @@ describe('client query', function() {
         if (err) return done(err);
         connection[method]('dogs', {}, null, function(err, results) {
           if (err) return done(err);
-          sortById(results);
-          expect(pluck(results, 'id')).eql(['fido', 'spot']);
-          expect(pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
+          var sorted = util.sortById(results);
+          expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
+          expect(util.pluck(sorted, 'data')).eql([{age: 3}, {age: 5}]);
           done();
         });
       });
@@ -47,9 +48,9 @@ describe('client query', function() {
         var connection2 = backend.connect();
         connection2[method]('dogs', {}, null, function(err, results) {
           if (err) return done(err);
-          sortById(results);
-          expect(pluck(results, 'id')).eql(['fido', 'spot']);
-          expect(pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
+          var sorted = util.sortById(results);
+          expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
+          expect(util.pluck(sorted, 'data')).eql([{age: 3}, {age: 5}]);
           done();
         });
       });
@@ -69,9 +70,9 @@ describe('client query', function() {
           if (err) return done(err);
           connection2[method]('dogs', {}, null, function(err, results) {
             if (err) return done(err);
-            sortById(results);
-            expect(pluck(results, 'id')).eql(['fido', 'spot']);
-            expect(pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
+            var sorted = util.sortById(results);
+            expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
+            expect(util.pluck(sorted, 'data')).eql([{age: 3}, {age: 5}]);
             done();
           });
         });
@@ -102,9 +103,9 @@ describe('client query', function() {
             };
             connection2[method]('dogs', {}, options, function(err, results) {
               if (err) return done(err);
-              sortById(results);
-              expect(pluck(results, 'id')).eql(['fido', 'spot']);
-              expect(pluck(results, 'data')).eql([{age: 4}, {age: 5}]);
+              var sorted = util.sortById(results);
+              expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
+              expect(util.pluck(sorted, 'data')).eql([{age: 4}, {age: 5}]);
               done();
             });
           });
@@ -116,19 +117,3 @@ describe('client query', function() {
 
 });
 };
-
-function sortById(docs) {
-  docs.sort(function(a, b) {
-    if (a.id > b.id) return 1;
-    if (b.id > a.id) return -1;
-    return 0;
-  });
-}
-
-function pluck(docs, key) {
-  var values = [];
-  for (var i = 0; i < docs.length; i++) {
-    values.push(docs[i][key]);
-  }
-  return values;
-}

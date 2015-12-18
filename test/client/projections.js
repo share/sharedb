@@ -1,5 +1,6 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
+var util = require('../util');
 
 module.exports = function() {
 describe('client projections', function() {
@@ -49,13 +50,21 @@ describe('client projections', function() {
 
     it('non-projected field', function(done) {
       test.call(this,
-        {p: ['color'], oi: 'brown'},
+        {p: ['color'], oi: 'brown', od: 'gold'},
         {age: 3, owner: {name: 'jim'}},
         done
       );
     });
 
-    it('parent field', function(done) {
+    it('parent field replace', function(done) {
+      test.call(this,
+        {p: [], oi: {age: 2, color: 'brown', owner: false}, od: {age: 3, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}}},
+        {age: 2, owner: false},
+        done
+      );
+    });
+
+    it('parent field set', function(done) {
       test.call(this,
         {p: [], oi: {age: 2, color: 'brown', owner: false}},
         {age: 2, owner: false},
@@ -158,5 +167,52 @@ describe('client projections', function() {
     opTests(test);
   });
 
+  function queryUpdateTests(test) {
+    it('doc create', function(done) {
+      test.call(this,
+        function(connection, callback) {
+          var data = {age: 5, color: 'spotted', owner: {name: 'sue'}, litter: {count: 6}};
+          connection.get('dogs', 'spot').create(data, callback);
+        },
+        function(err, results) {
+          var sorted = util.sortById(results.slice());
+          expect(sorted.length).eql(2);
+          expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
+          expect(util.pluck(sorted, 'data')).eql([
+            {age: 3, owner: {name: 'jim'}},
+            {age: 5, owner: {name: 'sue'}}
+          ]);
+          done();
+        }
+      );
+    });
+  }
+
+  describe('subscribe query', function() {
+    function test(trigger, callback) {
+      var connection = this.connection;
+      var connection2 = this.backend.connect();
+      var query = connection2.createSubscribeQuery('dogs_summary', {}, null, function(err) {
+        if (err) return callback(err);
+        query.on('insert', function() {
+          callback(null, query.results);
+        });
+        trigger(connection);
+      });
+    }
+    queryUpdateTests(test);
+  });
+
+  describe('fetch query', function() {
+    function test(trigger, callback) {
+      var connection = this.connection;
+      var connection2 = this.backend.connect();
+      trigger(connection, function(err) {
+        if (err) return callback(err);
+        connection2.createFetchQuery('dogs_summary', {}, null, callback);
+      });
+    }
+    queryUpdateTests(test);
+  });
 });
 };
