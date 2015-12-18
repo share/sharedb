@@ -214,5 +214,33 @@ describe('client projections', function() {
     }
     queryUpdateTests(test);
   });
+
+  describe('submit on projected doc', function() {
+    function test(op, expected, done) {
+      var doc = this.connection.get('dogs', 'fido');
+      var projected = this.backend.connect().get('dogs_summary', 'fido');
+      projected.fetch(function(err) {
+        if (err) return done(err);
+        projected.submitOp(op, function(err) {
+          if (err) return done(err);
+          doc.fetch(function(err) {
+            if (err) return done(err);
+            expect(doc.data).eql(expected);
+            expect(doc.version).equal(2);
+            done();
+          });
+        });
+      });
+    }
+
+    it('can set on projected field', function(done) {
+      test.call(this,
+        {p: ['age'], na: 1},
+        {age: 4, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}},
+        done
+      );
+    });
+  });
+
 });
 };
