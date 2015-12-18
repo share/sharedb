@@ -23,11 +23,11 @@ module.exports = function(create) {
 
     // Simplified mock of how submit request applies operations. The
     // noteworthy dependency is that it always calls getSnapshot with
-    // the 'submit' projection and applies the op to the returned
+    // the {$submit: true} projection and applies the op to the returned
     // snapshot before committing. Thus, commit may rely on the behavior
     // of getSnapshot with this special projection
     function submit(db, collection, id, op, callback) {
-      db.getSnapshot(collection, id, 'submit', function(err, snapshot) {
+      db.getSnapshot(collection, id, {$submit: true}, function(err, snapshot) {
         if (err) return callback(err);
         if (snapshot.v !== op.v) {
           var succeeded = false;
@@ -384,7 +384,7 @@ module.exports = function(create) {
         var db = this.db;
         submit(db, 'testcollection', 'test', op, function(err, succeeded) {
           if (err) return done(err);
-          db.getSnapshot('testcollection', 'test', 'submit', function(err, snapshot) {
+          db.getSnapshot('testcollection', 'test', {$submit: true}, function(err, snapshot) {
             if (err) return done(err);
             db.getOpsToSnapshot('testcollection', 'test', 0, snapshot, function(err, ops) {
               if (err) return done(err);
