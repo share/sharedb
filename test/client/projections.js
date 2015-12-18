@@ -25,6 +25,19 @@ describe('client projections', function() {
     });
   });
 
+  ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
+    it('snapshot ' + method, function(done) {
+      var connection2 = this.backend.connect();
+      connection2[method]('dogs_summary', {}, null, function(err, results) {
+        if (err) return done(err);
+        expect(results.length).eql(1);
+        expect(results[0].data).eql({age: 3, owner: {name: 'jim'}});
+        expect(results[0].version).eql(1);
+        done();
+      });
+    });
+  });
+
   function opTests(test) {
     it('projected field', function(done) {
       test.call(this,
@@ -94,6 +107,45 @@ describe('client projections', function() {
       var connection2 = this.backend.connect();
       var fido = connection2.get('dogs_summary', 'fido');
       fido.subscribe(function(err) {
+        if (err) return done(err);
+        fido.on('after op', function() {
+          expect(fido.data).eql(expected);
+          expect(fido.version).eql(2);
+          done();
+        });
+        connection.get('dogs', 'fido').submitOp(op);
+      });
+    };
+    opTests(test);
+  });
+
+  describe('op fetch query', function() {
+    function test(op, expected, done) {
+      var connection = this.connection;
+      var connection2 = this.backend.connect();
+      var fido = connection2.get('dogs_summary', 'fido');
+      fido.fetch(function(err) {
+        if (err) return done(err);
+        connection.get('dogs', 'fido').submitOp(op, function(err) {
+          if (err) return done(err);
+          connection2.createFetchQuery('dogs_summary', {}, null, function(err) {
+            if (err) return done(err);
+            expect(fido.data).eql(expected);
+            expect(fido.version).eql(2);
+            done();
+          });
+        });
+      });
+    };
+    opTests(test);
+  });
+
+  describe('op subscribe query', function() {
+    function test(op, expected, done) {
+      var connection = this.connection;
+      var connection2 = this.backend.connect();
+      var fido = connection2.get('dogs_summary', 'fido');
+      connection2.createSubscribeQuery('dogs_summary', {}, null, function(err) {
         if (err) return done(err);
         fido.on('after op', function() {
           expect(fido.data).eql(expected);
