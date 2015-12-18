@@ -29,14 +29,16 @@ function filter(snapshots, query) {
 // Support sorting with the Mongo $orderby syntax
 function sort(snapshots, orderby) {
   if (!orderby) return;
-  snapshots.sort(function(a, b) {
+  snapshots.sort(function(snapshotA, snapshotB) {
     for (var key in orderby) {
       var value = orderby[key];
       if (value !== 1 && value !== -1) {
         throw new Error('Invalid $orderby value');
       }
-      if (a[key] > b[key]) return value;
-      if (b[key] > a[key]) return -value;
+      var a = snapshotA.data && snapshotA.data[key];
+      var b = snapshotB.data && snapshotB.data[key];
+      if (a > b) return value;
+      if (b > a) return -value;
     }
     return 0;
   });
