@@ -61,12 +61,6 @@ describe('Connection', function() {
         key: 'value'
       });
     });
-
-    it('pushes message buffer', function() {
-      assert(this.connection.messageBuffer.length === 0);
-      socket.onmessage({data: {key: 'value'}});
-      assert(this.connection.messageBuffer.length === 1);
-    });
   });
 
   describe('#disconnect', function() {
