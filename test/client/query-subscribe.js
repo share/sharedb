@@ -73,6 +73,28 @@ describe('client query subscribe', function() {
     });
   });
 
+  it('subscribed query does not get updated after destroyed', function(done) {
+    var connection = this.connection;
+    var connection2 = this.backend.connect();
+    async.parallel([
+      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
+      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+    ], function(err) {
+      if (err) return done(err);
+      var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
+        if (err) return done(err);
+        query.destroy(function(err) {
+          if (err) return done(err);
+          connection2.get('dogs', 'taco').create({age: 2});
+          done();
+        });
+      });
+      query.on('insert', function() {
+        done();
+      });
+    });
+  });
+
   it('subscribed query does not get updated after connection is disconnected', function(done) {
     var connection = this.connection;
     var connection2 = this.backend.connect();
