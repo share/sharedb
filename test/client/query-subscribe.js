@@ -50,31 +50,6 @@ describe('client query subscribe', function() {
     });
   });
 
-  it('creating multiple additional documents updates a subscribed query', function(done) {
-    var connection = this.connection;
-    async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
-    ], function(err) {
-      if (err) return done(err);
-      var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
-        if (err) return done(err);
-        connection.get('dogs', 'taco').create({age: 2});
-        connection.get('dogs', 'wilco').create({age: 1});
-      });
-      query.on('insert', function(docs, index) {
-        var sorted = util.sortById(docs);
-        expect(util.pluck(sorted, 'id')).eql(['taco', 'wilco']);
-        expect(util.pluck(sorted, 'data')).eql([{age: 2}, {age: 1}]);
-        expect(query.results[index]).equal(docs[0]);
-        var results = util.sortById(query.results);
-        expect(util.pluck(results, 'id')).eql(['fido', 'spot', 'taco', 'wilco']);
-        expect(util.pluck(results, 'data')).eql([{age: 3}, {age: 5}, {age: 2}, {age: 1}]);
-        done();
-      });
-    });
-  });
-
   it('deleting a document updates a subscribed query', function(done) {
     var connection = this.connection;
     async.parallel([
