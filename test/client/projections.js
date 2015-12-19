@@ -1,4 +1,3 @@
-var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var util = require('../util');
 
@@ -6,7 +5,6 @@ module.exports = function() {
 describe('client projections', function() {
 
   beforeEach(function(done) {
-    this.backend = new Backend({db: this.db});
     this.backend.addProjection('dogs_summary', 'dogs', {age: true, owner: true});
     this.connection = this.backend.connect();
     var data = {age: 3, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}};

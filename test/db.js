@@ -1,5 +1,6 @@
 var async = require('async');
 var expect = require('expect.js');
+var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
 
 module.exports = function(create) {
@@ -9,18 +10,20 @@ module.exports = function(create) {
       create(function(err, db) {
         if (err) return done(err);
         self.db = db;
+        self.backend = new Backend({db: db});
         done();
       });
     });
 
-    afterEach(function(done) {
-      this.db.close(done);
+    afterEach(function() {
+      this.backend.close();
     });
 
-    require('./client/submit')();
-    require('./client/query')();
-    require('./client/query-subscribe')();
     require('./client/projections')();
+    require('./client/query-subscribe')();
+    require('./client/query')();
+    require('./client/submit')();
+    require('./client/subscribe')();
 
     // Simplified mock of how submit request applies operations. The
     // noteworthy dependency is that it always calls getSnapshot with

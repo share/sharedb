@@ -1,4 +1,3 @@
-var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var async = require('async');
 var util = require('../util');
@@ -6,13 +5,8 @@ var util = require('../util');
 module.exports = function() {
 describe('client query subscribe', function() {
 
-  beforeEach(function() {
-    this.backend = new Backend({db: this.db});
-    this.connection = this.backend.connect();
-  });
-
   it('creating a document updates a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
       if (err) return done(err);
       connection.get('dogs', 'fido').create({age: 3});
@@ -28,7 +22,7 @@ describe('client query subscribe', function() {
   });
 
   it('creating an additional document updates a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
@@ -51,7 +45,7 @@ describe('client query subscribe', function() {
   });
 
   it('deleting a document updates a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
@@ -74,7 +68,7 @@ describe('client query subscribe', function() {
   });
 
   it('subscribed query does not get updated after destroyed', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     var connection2 = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
@@ -96,7 +90,7 @@ describe('client query subscribe', function() {
   });
 
   it('subscribed query does not get updated after connection is disconnected', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     var connection2 = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
@@ -117,7 +111,7 @@ describe('client query subscribe', function() {
 
   it('subscribed query gets update after reconnecting', function(done) {
     var backend = this.backend;
-    var connection = this.connection;
+    var connection = backend.connect();
     var connection2 = backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
@@ -140,7 +134,7 @@ describe('client query subscribe', function() {
 
   it('subscribed query gets simultaneous insert and remove after reconnecting', function(done) {
     var backend = this.backend;
-    var connection = this.connection;
+    var connection = backend.connect();
     var connection2 = backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
@@ -181,7 +175,7 @@ describe('client query subscribe', function() {
   });
 
   it('creating an additional document updates a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
@@ -204,7 +198,7 @@ describe('client query subscribe', function() {
   });
 
   it('changing a filtered property removes from a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 3}, cb); }
@@ -230,7 +224,7 @@ describe('client query subscribe', function() {
   });
 
   it('changing a filtered property inserts to a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
@@ -256,7 +250,7 @@ describe('client query subscribe', function() {
   });
 
   it('changing a sorted property moves in a subscribed query', function(done) {
-    var connection = this.connection;
+    var connection = this.backend.connect();
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }

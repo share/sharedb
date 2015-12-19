@@ -1,21 +1,19 @@
-var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var async = require('async');
 
-describe('client subscribe', function() {
+module.exports = function() {
+describe('client submit', function() {
 
   it('can call bulk without doing any actions', function() {
-    var backend = new Backend();
-    var connection = backend.connect();
+    var connection = this.backend.connect();
     connection.startBulk();
     connection.endBulk();
   });
 
   ['fetch', 'subscribe'].forEach(function(method) {
     it(method + ' gets initial data', function(done) {
-      var backend = new Backend();
-      var doc = backend.connect().get('dogs', 'fido');
-      var doc2 = backend.connect().get('dogs', 'fido');
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2[method](function(err) {
@@ -28,9 +26,8 @@ describe('client subscribe', function() {
     });
 
     it(method + ' twice simultaneously calls back', function(done) {
-      var backend = new Backend();
-      var doc = backend.connect().get('dogs', 'fido');
-      var doc2 = backend.connect().get('dogs', 'fido');
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         async.parallel([
@@ -46,9 +43,8 @@ describe('client subscribe', function() {
     });
 
     it(method + ' twice in bulk simultaneously calls back', function(done) {
-      var backend = new Backend();
-      var doc = backend.connect().get('dogs', 'fido');
-      var doc2 = backend.connect().get('dogs', 'fido');
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.connection.startBulk();
@@ -66,15 +62,14 @@ describe('client subscribe', function() {
     });
 
     it(method + ' bulk on same collection', function(done) {
-      var backend = new Backend();
-      var connection = backend.connect();
+      var connection = this.backend.connect();
+      var connection2 = this.backend.connect();
       async.parallel([
         function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
         function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
         function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
-        var connection2 = backend.connect();
         var fido = connection2.get('dogs', 'fido');
         var spot = connection2.get('dogs', 'spot');
         var finn = connection2.get('cats', 'finn');
@@ -95,8 +90,8 @@ describe('client subscribe', function() {
     });
 
     it(method + ' bulk on same collection from known version', function(done) {
-      var backend = new Backend();
-      var connection2 = backend.connect();
+      var connection = this.backend.connect();
+      var connection2 = this.backend.connect();
       var fido = connection2.get('dogs', 'fido');
       var spot = connection2.get('dogs', 'spot');
       var finn = connection2.get('cats', 'finn');
@@ -114,7 +109,6 @@ describe('client subscribe', function() {
         expect(spot.data).equal(undefined);
         expect(finn.data).equal(undefined);
 
-        var connection = backend.connect();
         async.parallel([
           function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
           function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
@@ -172,9 +166,8 @@ describe('client subscribe', function() {
     });
 
     it(method + ' gets new ops', function(done) {
-      var backend = new Backend();
-      var doc = backend.connect().get('dogs', 'fido');
-      var doc2 = backend.connect().get('dogs', 'fido');
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.fetch(function(err) {
@@ -192,9 +185,8 @@ describe('client subscribe', function() {
   });
 
   it('subscribed client gets create from first client', function(done) {
-    var backend = new Backend();
-    var doc = backend.connect().get('dogs', 'fido');
-    var doc2 = backend.connect().get('dogs', 'fido');
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
     doc2.subscribe(function(err) {
       if (err) return done(err);
       doc2.on('create', function(context) {
@@ -208,9 +200,8 @@ describe('client subscribe', function() {
   });
 
   it('subscribed client gets op from first client', function(done) {
-    var backend = new Backend();
-    var doc = backend.connect().get('dogs', 'fido');
-    var doc2 = backend.connect().get('dogs', 'fido');
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe(function(err) {
@@ -226,19 +217,37 @@ describe('client subscribe', function() {
   });
 
   it('unsubscribe stops op updates', function(done) {
-    var backend = new Backend();
-    var doc = backend.connect().get('dogs', 'fido');
-    var doc2 = backend.connect().get('dogs', 'fido');
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
+        doc2.on('op', function(op, context) {
+          done();
+        });
         doc2.unsubscribe(function(err) {
           if (err) return done(err);
           done();
-          doc2.on('op', function(op, context) {
-            done();
-          });
+          doc.submitOp({p: ['age'], na: 1});
+        });
+      });
+    });
+  });
+
+  it('doc destroy stops op updates', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        doc2.on('op', function(op, context) {
+          done();
+        });
+        doc2.destroy(function(err) {
+          if (err) return done(err);
+          done();
           doc.submitOp({p: ['age'], na: 1});
         });
       });
@@ -246,9 +255,9 @@ describe('client subscribe', function() {
   });
 
   it('bulk unsubscribe stops op updates', function(done) {
-    var backend = new Backend();
-    var doc = backend.connect().get('dogs', 'fido');
-    var connection2 = backend.connect();
+    var connection = this.backend.connect();
+    var connection2 = this.backend.connect();
+    var doc = connection.get('dogs', 'fido');
     var fido = connection2.get('dogs', 'fido');
     var spot = connection2.get('dogs', 'spot');
     doc.create({age: 3}, function(err) {
@@ -276,9 +285,8 @@ describe('client subscribe', function() {
   });
 
   it('calling subscribe, unsubscribe, subscribe sync leaves a doc subscribed', function(done) {
-    var backend = new Backend();
-    var doc = backend.connect().get('dogs', 'fido');
-    var doc2 = backend.connect().get('dogs', 'fido');
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe();
@@ -294,9 +302,8 @@ describe('client subscribe', function() {
   });
 
   it('calling subscribe, unsubscribe, subscribe sync leaves a doc subscribed', function(done) {
-    var backend = new Backend();
-    var doc = backend.connect().get('dogs', 'fido');
-    var doc2 = backend.connect().get('dogs', 'fido');
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe();
@@ -312,3 +319,4 @@ describe('client subscribe', function() {
   });
 
 });
+};

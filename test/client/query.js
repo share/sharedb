@@ -1,4 +1,3 @@
-var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var async = require('async');
 var util = require('../util');
@@ -8,8 +7,7 @@ describe('client query', function() {
 
   ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
     it(method + ' on an empty collection', function(done) {
-      var backend = new Backend({db: this.db});
-      var connection = backend.connect();
+      var connection = this.backend.connect();
       connection[method]('dogs', {}, null, function(err, results) {
         if (err) return done(err);
         expect(results).eql([]);
@@ -18,8 +16,7 @@ describe('client query', function() {
     });
 
     it(method + ' on collection with fetched docs', function(done) {
-      var backend = new Backend({db: this.db});
-      var connection = backend.connect();
+      var connection = this.backend.connect();
       async.parallel([
         function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
         function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
@@ -37,15 +34,14 @@ describe('client query', function() {
     });
 
     it(method + ' on collection with unfetched docs', function(done) {
-      var backend = new Backend({db: this.db});
-      var connection = backend.connect();
+      var connection = this.backend.connect();
+      var connection2 = this.backend.connect();
       async.parallel([
         function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
         function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
         function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
-        var connection2 = backend.connect();
         connection2[method]('dogs', {}, null, function(err, results) {
           if (err) return done(err);
           var sorted = util.sortById(results);
@@ -57,15 +53,14 @@ describe('client query', function() {
     });
 
     it(method + ' on collection with one fetched doc', function(done) {
-      var backend = new Backend({db: this.db});
-      var connection = backend.connect();
+      var connection = this.backend.connect();
+      var connection2 = this.backend.connect();
       async.parallel([
         function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
         function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
         function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
-        var connection2 = backend.connect();
         connection2.get('dogs', 'fido').fetch(function(err) {
           if (err) return done(err);
           connection2[method]('dogs', {}, null, function(err, results) {
@@ -80,15 +75,14 @@ describe('client query', function() {
     });
 
     it(method + ' on collection with one fetched doc missing an op', function(done) {
-      var backend = new Backend({db: this.db});
-      var connection = backend.connect();
+      var connection = this.backend.connect();
+      var connection2 = this.backend.connect();
       async.parallel([
         function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
         function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
         function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
-        var connection2 = backend.connect();
         connection2.get('dogs', 'fido').fetch(function(err) {
           if (err) return done(err);
           connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}], function(err) {
