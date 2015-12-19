@@ -14,7 +14,6 @@ require('./db')(function(callback) {
     this.getSnapshot(collection, id, null, function(err, snapshot) {
       if (err) return callback(err);
       var result = filterSnapshot(snapshot, query);
-      console.log(snapshot, query, result)
       callback(null, result);
     });
   };
