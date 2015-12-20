@@ -197,6 +197,26 @@ describe('client query subscribe', function() {
     });
   });
 
+  it('pollDebounce option reduces subsequent poll interval', function(done) {
+    var connection = this.backend.connect();
+    this.backend.db.canPollDoc = function() {
+      return false;
+    };
+    var query = connection.createSubscribeQuery('items', {}, {pollDebounce: 100});
+    var expected = [1, 9];
+    query.on('insert', function(docs, index) {
+      expect(docs.length).equal(expected.shift());
+      if (!expected.length) done();
+    });
+    function createDoc(count) {
+      connection.get('items', count.toString()).create({});
+      if (--count) {
+        setTimeout(createDoc, 5, count);
+      }
+    }
+    createDoc(10);
+  });
+
   it('changing a filtered property removes from a subscribed query', function(done) {
     var connection = this.backend.connect();
     async.parallel([
