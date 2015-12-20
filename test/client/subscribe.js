@@ -216,6 +216,23 @@ describe('client subscribe', function() {
     });
   });
 
+  it('disconnecting stops op updates', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        doc2.on('op', function(op, context) {
+          done();
+        });
+        doc2.connection.close();
+        doc.submitOp({p: ['age'], na: 1});
+        done();
+      });
+    });
+  });
+
   it('unsubscribe stops op updates', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
