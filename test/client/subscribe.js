@@ -2,7 +2,7 @@ var expect = require('expect.js');
 var async = require('async');
 
 module.exports = function() {
-describe('client submit', function() {
+describe('client subscribe', function() {
 
   it('can call bulk without doing any actions', function() {
     var connection = this.backend.connect();

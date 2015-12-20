@@ -99,7 +99,7 @@ describe('client query subscribe', function() {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
         if (err) return done(err);
-        connection.disconnect();
+        connection.close();
         connection2.get('dogs', 'taco').create({age: 2});
         done();
       });
@@ -120,7 +120,7 @@ describe('client query subscribe', function() {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
         if (err) return done(err);
-        connection.disconnect();
+        connection.close();
         connection2.get('dogs', 'taco').create({age: 2});
         process.nextTick(function() {
           backend.connect(connection);
@@ -143,7 +143,7 @@ describe('client query subscribe', function() {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
         if (err) return done(err);
-        connection.disconnect();
+        connection.close();
         connection2.get('dogs', 'fido').fetch(function(err) {
           if (err) return done(err);
           connection2.get('dogs', 'fido').del();

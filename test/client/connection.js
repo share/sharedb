@@ -1,82 +1,64 @@
-var sinon = require('sinon');
-var assert = require('assert');
-var Connection = require('../../lib/client').Connection;
-var Doc = require('../../lib/client').Doc;
+var expect = require('expect.js');
+var Backend = require('../../lib/backend');
 
-describe('Connection', function() {
-  var socket = {
-    readyState: 0,
-    send: function() {},
-    close: function() {
-      this.readyState = 3;
-      this.onclose();
-    }
-  };
+describe('client connection', function() {
 
   beforeEach(function() {
-    socket.readyState = 0;
-    this.connection = new Connection(socket);
+    this.backend = new Backend();
   });
 
-  describe('state and socket', function() {
-    it('is set to disconnected', function() {
-      socket.readyState = 3;
-      var connection = new Connection(socket);
-      assert.equal(connection.state, 'disconnected');
-    });
-
-    it('is set to connecting', function() {
-      socket.readyState = 1;
-      var connection = new Connection(socket);
-      assert.equal(connection.state, 'connecting');
-    });
-  });
-
-  describe('socket onopen', function() {
-    beforeEach(function() {
-      socket.readyState = 3;
-      this.connection = new Connection(socket);
-    });
-
-    it('sets connecting state', function() {
-      assert.equal(this.connection.state, 'disconnected');
-      socket.onopen();
-      assert.equal(this.connection.state, 'connecting');
-    });
-  });
-
-  describe('socket onclose', function() {
-    it('sets disconnected state', function() {
-      assert.equal(this.connection.state, 'connecting');
-      socket.close();
-      assert.equal(this.connection.state, 'disconnected');
-    });
-  });
-
-  describe('socket onmessage', function() {
-    it('calls handle message', function() {
-      var handleMessage = sinon.spy(this.connection, 'handleMessage');
-      socket.onmessage({data: {key: 'value'}});
-      sinon.assert.calledWith(handleMessage, {
-        key: 'value'
+  it('ends the agent stream when a connection is closed after connect', function(done) {
+    this.backend.use('connect', function(request, next) {
+      request.agent.stream.on('end', function() {
+        done();
       });
+      next();
+    });
+    var connection = this.backend.connect();
+    connection.on('connected', function() {
+      connection.close();
     });
   });
 
-  describe('#disconnect', function() {
-    it('calls socket.close()', function() {
-      var close;
-      close = sinon.spy(socket, 'close');
-      this.connection.disconnect();
-      sinon.assert.calledOnce(close);
-      close.reset();
+  it('ends the agent stream when a connection is immediately closed', function(done) {
+    this.backend.use('connect', function(request, next) {
+      request.agent.stream.on('end', function() {
+        done();
+      });
+      next();
     });
+    var connection = this.backend.connect();
+    connection.close();
+  });
 
-    it('emits disconnected', function() {
-      var emit = sinon.spy(this.connection, 'emit');
-      this.connection.disconnect();
-      sinon.assert.calledWith(emit, 'disconnected');
-      emit.reset();
+  it('emits closed event on call to connection.close()', function(done) {
+    var connection = this.backend.connect();
+    connection.on('closed', function() {
+      done();
+    });
+    connection.close();
+  });
+
+  it('ends the agent steam on call to agent.close()', function(done) {
+    this.backend.use('connect', function(request, next) {
+      request.agent.stream.on('end', function() {
+        done();
+      });
+      request.agent.close();
+      next();
+    });
+    var connection = this.backend.connect();
+  })
+
+  it('emits stopped event on call to agent.close()', function(done) {
+    this.backend.use('connect', function(request, next) {
+      request.agent.close();
+      next();
+    });
+    var connection = this.backend.connect();
+    connection.on('stopped', function() {
+      done();
     });
   });
+
 });

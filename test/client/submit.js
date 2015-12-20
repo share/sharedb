@@ -154,7 +154,7 @@ describe('client submit', function() {
     // Disconnect after the message has sent and before the server will have
     // had a chance to reply
     process.nextTick(function() {
-      connection.disconnect();
+      connection.close();
       // Reconnect once the server has a chance to save the op data
       setTimeout(function() {
         backend.connect(connection);
