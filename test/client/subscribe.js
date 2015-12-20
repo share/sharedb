@@ -182,9 +182,38 @@ describe('client subscribe', function() {
         });
       });
     });
+
+    it(method + ' calls back after reconnect', function(done) {
+      var backend = this.backend;
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        doc2[method](function(err) {
+          if (err) return done(err);
+          expect(doc2.version).eql(1);
+          expect(doc2.data).eql({age: 3})
+          done();
+        });
+        doc2.connection.close();
+        process.nextTick(function() {
+          backend.connect(doc2.connection);
+        });
+      });
+    });
   });
 
-  it('subscribed client gets create from first client', function(done) {
+  it('unsubscribe calls back immediately on disconnect', function(done) {
+    var backend = this.backend;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.subscribe(function(err) {
+      if (err) return done(err);
+      doc.unsubscribe(done);
+      doc.connection.close();
+    });
+  });
+
+  it('subscribed client gets create from other client', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc2.subscribe(function(err) {
@@ -199,7 +228,7 @@ describe('client subscribe', function() {
     });
   });
 
-  it('subscribed client gets op from first client', function(done) {
+  it('subscribed client gets op from other client', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -297,6 +326,29 @@ describe('client subscribe', function() {
           doc.submitOp({p: ['age'], na: 1});
         });
         fido.connection.endBulk();
+      });
+    });
+  });
+
+  it('a subscribed doc is re-subscribed after reconnect and gets any missing ops', function(done) {
+    var backend = this.backend;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        doc2.on('op', function(op, context) {
+          expect(doc2.version).eql(2);
+          expect(doc2.data).eql({age: 4});
+          done();
+        });
+
+        doc2.connection.close();
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          backend.connect(doc2.connection);
+        });
       });
     });
   });
