@@ -1,3 +1,4 @@
+var async = require('async');
 var expect = require('expect.js');
 
 module.exports = function() {
@@ -356,6 +357,78 @@ describe('client submit', function() {
           expect(doc2.version).eql(3);
           expect(doc2.data).eql({age: 5});
           done();
+        });
+      });
+    });
+  });
+
+  it('doc.pause() prevents ops from being sent', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.pause();
+    doc.create({age: 3}, done);
+    done();
+  });
+
+  it('can call doc.resume() without pausing', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.resume();
+    doc.create({age: 3}, done);
+  });
+
+  it('doc.resume() resumes sending ops after pause', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.pause();
+    doc.create({age: 3}, done);
+    doc.resume();
+  });
+
+  it('pending ops are transformed by ops from other clients', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        doc.pause();
+        doc.submitOp({p: ['age'], na: 1});
+        doc.submitOp({p: ['color'], oi: 'gold'});
+        expect(doc.version).equal(1);
+
+        doc2.submitOp({p: ['age'], na: 5});
+        process.nextTick(function() {
+          doc2.submitOp({p: ['sex'], oi: 'female'}, function(err) {
+            if (err) return done(err);
+            expect(doc2.version).equal(3);
+
+            async.parallel([
+              function(cb) { doc.fetch(cb) },
+              function(cb) { doc2.fetch(cb) }
+            ], function(err) {
+              if (err) return done(err);
+              expect(doc.data).eql({age: 9, color: 'gold', sex: 'female'});
+              expect(doc.version).equal(3);
+              expect(doc.hasPending()).equal(true);
+
+              expect(doc2.data).eql({age: 8, sex: 'female'});
+              expect(doc2.version).equal(3);
+              expect(doc2.hasPending()).equal(false);
+
+              doc.resume();
+              doc.whenNothingPending(function() {
+                doc2.fetch(function(err) {
+                  if (err) return done(err);
+                  expect(doc.data).eql({age: 9, color: 'gold', sex: 'female'});
+                  expect(doc.version).equal(4);
+                  expect(doc.hasPending()).equal(false);
+
+                  expect(doc2.data).eql({age: 9, color: 'gold', sex: 'female'});
+                  expect(doc2.version).equal(4);
+                  expect(doc2.hasPending()).equal(false);
+                  done();
+                });
+              });
+            });
+          });
         });
       });
     });
