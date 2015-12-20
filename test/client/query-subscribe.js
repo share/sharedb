@@ -203,10 +203,15 @@ describe('client query subscribe', function() {
       return false;
     };
     var query = connection.createSubscribeQuery('items', {}, {pollDebounce: 100});
-    var expected = [1, 9];
-    query.on('insert', function(docs, index) {
-      expect(docs.length).equal(expected.shift());
-      if (!expected.length) done();
+    var calls = 0;
+    var total = 0;
+    query.on('insert', function(docs) {
+      calls++;
+      total += docs.length;
+      if (total === 10) {
+        expect(calls).equal(2);
+        done();
+      }
     });
     function createDoc(count) {
       connection.get('items', count.toString()).create({});
