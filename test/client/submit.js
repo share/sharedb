@@ -84,6 +84,22 @@ describe('client submit', function() {
     expect(doc.version).eql(null);
   });
 
+  it('cannot submit op on an uncreated doc', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.submitOp({p: ['age'], na: 2}, function(err) {
+      expect(err).ok();
+      done();
+    });
+  });
+
+  it('cannot delete an uncreated doc', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.del(function(err) {
+      expect(err).ok();
+      done();
+    });
+  });
+
   it('ops submitted sync get composed', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3});
