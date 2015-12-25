@@ -450,5 +450,20 @@ describe('client submit', function() {
     });
   });
 
+  it('reverts a create op rejected in submit middleware', function(done) {
+    this.backend.use('submit', function(request, next) {
+      return next(request.rejectedError());
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      expect(doc.version).equal(0);
+      expect(doc.data).equal(undefined);
+      done();
+    });
+    expect(doc.version).equal(null);
+    expect(doc.data).eql({age: 3});
+  });
+
 });
 };
