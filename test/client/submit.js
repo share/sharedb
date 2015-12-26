@@ -452,7 +452,7 @@ describe('client submit', function() {
 
   it('passing an error in submit middleware rejects a create and calls back with the erorr', function(done) {
     this.backend.use('submit', function(request, next) {
-      return next({message: 'Custom error'});
+      next({message: 'Custom error'});
     });
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -467,7 +467,7 @@ describe('client submit', function() {
 
   it('passing an error in submit middleware rejects a create and throws the erorr', function(done) {
     this.backend.use('submit', function(request, next) {
-      return next({message: 'Custom error'});
+      next({message: 'Custom error'});
     });
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3});
@@ -481,9 +481,44 @@ describe('client submit', function() {
     });
   });
 
+  it('passing an error in submit middleware rejects pending ops after failed create', function(done) {
+    var submitCount = 0;
+    this.backend.use('submit', function(request, next) {
+      submitCount++;
+      if (submitCount === 1) return next({message: 'Custom error'});
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    async.parallel([
+      function(cb) {
+        doc.create({age: 3}, function(err) {
+          expect(err.message).equal('Custom error');
+          expect(doc.version).equal(0);
+          expect(doc.data).equal(undefined);
+          cb();
+        });
+        expect(doc.version).equal(null);
+        expect(doc.data).eql({age: 3});
+      },
+      function(cb) {
+        process.nextTick(function() {
+          doc.submitOp({p: ['age'], na: 1}, function(err) {
+            expect(err.message).equal('Custom error');
+            expect(doc.version).equal(0);
+            expect(doc.data).equal(undefined);
+            expect(submitCount).equal(1);
+            cb();
+          });
+          expect(doc.version).equal(null);
+          expect(doc.data).eql({age: 4});
+        });
+      }
+    ], done);
+  });
+
   it('request.rejectedError() soft rejects a create', function(done) {
     this.backend.use('submit', function(request, next) {
-      return next(request.rejectedError());
+      next(request.rejectedError());
     });
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -498,7 +533,7 @@ describe('client submit', function() {
 
   it('request.rejectedError() soft rejects a create without callback', function(done) {
     this.backend.use('submit', function(request, next) {
-      return next(request.rejectedError());
+      next(request.rejectedError());
     });
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3});
@@ -545,6 +580,42 @@ describe('client submit', function() {
         expect(err.message).equal('Custom error');
         expect(doc.version).equal(1);
         expect(doc.data).eql({age: 3});
+        done();
+      });
+    });
+  });
+
+  it('passing an error in submit middleware transforms pending ops after failed op', function(done) {
+    var submitCount = 0;
+    this.backend.use('submit', function(request, next) {
+      submitCount++;
+      if (submitCount === 2) return next({message: 'Custom error'});
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      async.parallel([
+        function(cb) {
+          doc.submitOp({p: ['age'], na: 1}, function(err) {
+            expect(err.message).equal('Custom error');
+            cb();
+          });
+          expect(doc.version).equal(1);
+          expect(doc.data).eql({age: 4});
+        },
+        function(cb) {
+          process.nextTick(function() {
+            doc.submitOp({p: ['age'], na: 5}, cb);
+            expect(doc.version).equal(1);
+            expect(doc.data).eql({age: 9});
+          });
+        }
+      ], function(err) {
+        if (err) return done(err);
+        expect(doc.version).equal(2);
+        expect(doc.data).eql({age: 8});
+        expect(submitCount).equal(3);
         done();
       });
     });
