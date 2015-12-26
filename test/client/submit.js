@@ -450,7 +450,38 @@ describe('client submit', function() {
     });
   });
 
-  it('reverts a create op rejected in submit middleware', function(done) {
+  it('passing an error in submit middleware rejects a create and calls back with the erorr', function(done) {
+    this.backend.use('submit', function(request, next) {
+      return next({message: 'Custom error'});
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      expect(err.message).equal('Custom error');
+      expect(doc.version).equal(0);
+      expect(doc.data).equal(undefined);
+      done();
+    });
+    expect(doc.version).equal(null);
+    expect(doc.data).eql({age: 3});
+  });
+
+  it('passing an error in submit middleware rejects a create and throws the erorr', function(done) {
+    this.backend.use('submit', function(request, next) {
+      return next({message: 'Custom error'});
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3});
+    expect(doc.version).equal(null);
+    expect(doc.data).eql({age: 3});
+    doc.on('error', function(err) {
+      expect(err.message).equal('Custom error');
+      expect(doc.version).equal(0);
+      expect(doc.data).equal(undefined);
+      done();
+    });
+  });
+
+  it('request.rejectedError() soft rejects a create', function(done) {
     this.backend.use('submit', function(request, next) {
       return next(request.rejectedError());
     });
@@ -463,6 +494,98 @@ describe('client submit', function() {
     });
     expect(doc.version).equal(null);
     expect(doc.data).eql({age: 3});
+  });
+
+  it('request.rejectedError() soft rejects a create without callback', function(done) {
+    this.backend.use('submit', function(request, next) {
+      return next(request.rejectedError());
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3});
+    expect(doc.version).equal(null);
+    expect(doc.data).eql({age: 3});
+    doc.whenNothingPending(function() {
+      expect(doc.version).equal(0);
+      expect(doc.data).equal(undefined);
+      done();
+    });
+  });
+
+  it('passing an error in submit middleware rejects an op and calls back with the erorr', function(done) {
+    this.backend.use('submit', function(request, next) {
+      if (request.op.op) return next({message: 'Custom error'});
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.submitOp({p: ['age'], na: 1}, function(err) {
+        expect(err.message).equal('Custom error');
+        expect(doc.version).equal(1);
+        expect(doc.data).eql({age: 3});
+        done();
+      });
+      expect(doc.version).equal(1);
+      expect(doc.data).eql({age: 4});
+    });
+  });
+
+  it('passing an error in submit middleware rejects an op and emits the erorr', function(done) {
+    this.backend.use('submit', function(request, next) {
+      if (request.op.op) return next({message: 'Custom error'});
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.submitOp({p: ['age'], na: 1});
+      expect(doc.version).equal(1);
+      expect(doc.data).eql({age: 4});
+      doc.on('error', function(err) {
+        expect(err.message).equal('Custom error');
+        expect(doc.version).equal(1);
+        expect(doc.data).eql({age: 3});
+        done();
+      });
+    });
+  });
+
+  it('request.rejectedError() soft rejects an op', function(done) {
+    this.backend.use('submit', function(request, next) {
+      if (request.op.op) return next(request.rejectedError());
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.submitOp({p: ['age'], na: 1}, function(err) {
+        if (err) return done(err);
+        expect(doc.version).equal(1);
+        expect(doc.data).eql({age: 3});
+        done();
+      });
+      expect(doc.version).equal(1);
+      expect(doc.data).eql({age: 4});
+    });
+  });
+
+  it('request.rejectedError() soft rejects an op without callback', function(done) {
+    this.backend.use('submit', function(request, next) {
+      if (request.op.op) return next(request.rejectedError());
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.submitOp({p: ['age'], na: 1});
+      expect(doc.version).equal(1);
+      expect(doc.data).eql({age: 4});
+      doc.whenNothingPending(function() {
+        expect(doc.version).equal(1);
+        expect(doc.data).eql({age: 3});
+        done();
+      });
+    });
   });
 
 });
