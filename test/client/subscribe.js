@@ -262,6 +262,24 @@ describe('client subscribe', function() {
     });
   });
 
+  it('backend.suppressPublish stops op updates', function(done) {
+    var backend = this.backend;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        doc2.on('op', function(op, context) {
+          done();
+        });
+        backend.suppressPublish = true;
+        doc.submitOp({p: ['age'], na: 1});
+        done();
+      });
+    });
+  });
+
   it('unsubscribe stops op updates', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
@@ -383,6 +401,72 @@ describe('client subscribe', function() {
           done();
         });
         doc.submitOp({p: ['age'], na: 1});
+      });
+    });
+  });
+
+  it('doc fetches ops to catch up if it receives a future op', function(done) {
+    var backend = this.backend;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        var expected = [
+          [{p: ['age'], na: 1}],
+          [{p: ['age'], na: 5}],
+        ];
+        doc2.on('op', function(op, context) {
+          var item = expected.shift();
+          expect(op).eql(item);
+          if (expected.length) return;
+          expect(doc2.version).equal(3);
+          expect(doc2.data).eql({age: 9});
+          done();
+        });
+        backend.suppressPublish = true;
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          backend.suppressPublish = false;
+          doc.submitOp({p: ['age'], na: 5});
+        });
+      });
+    });
+  });
+
+  it('doc fetches ops to catch up if it receives multiple future ops', function(done) {
+    var backend = this.backend;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    // Delaying op replies will cause multiple future ops to be received
+    // before the fetch to catch up completes
+    backend.use('op', function(request, next) {
+      setTimeout(next, 10 * Math.random());
+    });
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        var wait = 4;
+        doc2.on('op', function(op, context) {
+          if (--wait) return;
+          expect(doc2.version).eql(5);
+          expect(doc2.data).eql({age: 122});
+          done();
+        });
+        backend.suppressPublish = true;
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          backend.suppressPublish = false;
+          doc.submitOp({p: ['age'], na: 5}, function(err) {
+            if (err) return done(err);
+            doc.submitOp({p: ['age'], na: 13}, function(err) {
+              if (err) return done(err);
+              doc.submitOp({p: ['age'], na: 100});
+            });
+          });
+        });
       });
     });
   });
