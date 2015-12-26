@@ -19,7 +19,7 @@ describe('client subscribe', function() {
         doc2[method](function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.data).eql({age: 3})
+          expect(doc2.data).eql({age: 3});
           done();
         });
       });
@@ -36,7 +36,7 @@ describe('client subscribe', function() {
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.data).eql({age: 3})
+          expect(doc2.data).eql({age: 3});
           done();
         });
       });
@@ -54,7 +54,7 @@ describe('client subscribe', function() {
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.data).eql({age: 3})
+          expect(doc2.data).eql({age: 3});
           done();
         });
         doc2.connection.endBulk();
@@ -192,12 +192,47 @@ describe('client subscribe', function() {
         doc2[method](function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
-          expect(doc2.data).eql({age: 3})
+          expect(doc2.data).eql({age: 3});
           done();
         });
         doc2.connection.close();
         process.nextTick(function() {
           backend.connect(doc2.connection);
+        });
+      });
+    });
+
+    it(method + ' returns error passed to doc read middleware', function(done) {
+      this.backend.use('doc', function(request, next) {
+        next({message: 'Reject doc read'});
+      });
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        doc2[method](function(err) {
+          expect(err.message).equal('Reject doc read');
+          expect(doc2.version).eql(null);
+          expect(doc2.data).eql(undefined);
+          done();
+        });
+      });
+    });
+
+    it(method + ' emits error passed to doc read middleware', function(done) {
+      this.backend.use('doc', function(request, next) {
+        next({message: 'Reject doc read'});
+      });
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        doc2[method]();
+        doc2.on('error', function(err) {
+          expect(err.message).equal('Reject doc read');
+          expect(doc2.version).eql(null);
+          expect(doc2.data).eql(undefined);
+          done();
         });
       });
     });
@@ -210,6 +245,16 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc.unsubscribe(done);
       doc.connection.close();
+    });
+  });
+
+  it('unsubscribe calls back immediately when already disconnected', function(done) {
+    var backend = this.backend;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.subscribe(function(err) {
+      if (err) return done(err);
+      doc.connection.close();
+      doc.unsubscribe(done);
     });
   });
 
