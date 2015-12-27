@@ -33,4 +33,9 @@ describe('client query subscribe', function() {
     expect(doc).eql(doc2);
   });
 
+  it('doc.destroy() calls back', function(done) {
+    var doc = this.connection.get('dogs', 'fido');
+    doc.destroy(done);
+  });
+
 });
