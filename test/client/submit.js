@@ -74,7 +74,7 @@ describe('client submit', function() {
     });
   });
 
-  it('can create then submit an op sync', function() {
+  it('can create then submit an op sync', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3});
     expect(doc.data).eql({age: 3});
@@ -82,6 +82,7 @@ describe('client submit', function() {
     doc.submitOp({p: ['age'], na: 2});
     expect(doc.data).eql({age: 5});
     expect(doc.version).eql(null);
+    doc.whenNothingPending(done);
   });
 
   it('submitting an op from a future version fails', function(done) {

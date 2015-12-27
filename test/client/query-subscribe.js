@@ -79,8 +79,7 @@ describe('client query subscribe', function() {
         if (err) return done(err);
         query.destroy(function(err) {
           if (err) return done(err);
-          connection2.get('dogs', 'taco').create({age: 2});
-          done();
+          connection2.get('dogs', 'taco').create({age: 2}, done);
         });
       });
       query.on('insert', function() {
@@ -100,8 +99,7 @@ describe('client query subscribe', function() {
       var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
         if (err) return done(err);
         connection.close();
-        connection2.get('dogs', 'taco').create({age: 2});
-        done();
+        connection2.get('dogs', 'taco').create({age: 2}, done);
       });
       query.on('insert', function() {
         done();

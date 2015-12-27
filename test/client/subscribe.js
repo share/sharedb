@@ -252,7 +252,8 @@ describe('client subscribe', function() {
       doc.pause();
       doc.create({age: 3});
       doc[method](done);
-      done();
+      // HACK: Delay done call to keep from closing the db connection too soon
+      setTimeout(done, 10);
     });
 
     it(method + ' will wait for write when doc is locally created', function(done) {
@@ -363,8 +364,7 @@ describe('client subscribe', function() {
           done();
         });
         doc2.connection.close();
-        doc.submitOp({p: ['age'], na: 1});
-        done();
+        doc.submitOp({p: ['age'], na: 1}, done);
       });
     });
   });
@@ -381,8 +381,7 @@ describe('client subscribe', function() {
           done();
         });
         backend.suppressPublish = true;
-        doc.submitOp({p: ['age'], na: 1});
-        done();
+        doc.submitOp({p: ['age'], na: 1}, done);
       });
     });
   });
@@ -399,8 +398,7 @@ describe('client subscribe', function() {
         });
         doc2.unsubscribe(function(err) {
           if (err) return done(err);
-          done();
-          doc.submitOp({p: ['age'], na: 1});
+          doc.submitOp({p: ['age'], na: 1}, done);
         });
       });
     });
@@ -418,8 +416,7 @@ describe('client subscribe', function() {
         });
         doc2.destroy(function(err) {
           if (err) return done(err);
-          done();
-          doc.submitOp({p: ['age'], na: 1});
+          doc.submitOp({p: ['age'], na: 1}, done);
         });
       });
     });
@@ -444,11 +441,10 @@ describe('client subscribe', function() {
           function(cb) { spot.unsubscribe(cb); }
         ], function(err) {
           if (err) return done(err);
-          done();
           fido.on('op', function(op, context) {
             done();
           });
-          doc.submitOp({p: ['age'], na: 1});
+          doc.submitOp({p: ['age'], na: 1}, done);
         });
         fido.connection.endBulk();
       });
