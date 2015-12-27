@@ -772,6 +772,31 @@ describe('client submit', function() {
     });
   });
 
+  it('setting op.op to null makes it a no-op while returning success to the submitting client', function(done) {
+    this.backend.use('submit', function(request, next) {
+      if (request.op) request.op.op = null;
+      next();
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.submitOp({p: ['age'], na: 1}, function(err) {
+        if (err) return done(err);
+        expect(doc.version).equal(2);
+        expect(doc.data).eql({age: 4});
+        doc2.fetch(function(err) {
+          if (err) return done(err);
+          expect(doc.version).equal(2);
+          expect(doc.data).eql({age: 3});
+        });
+        done();
+      });
+      expect(doc.version).equal(1);
+      expect(doc.data).eql({age: 4});
+    });
+  });
+
   it('submitting an invalid op message returns error', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
