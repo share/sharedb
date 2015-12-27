@@ -222,6 +222,50 @@ describe('client query subscribe', function() {
     createDoc(10);
   });
 
+  it('query extra is returned to client', function(done) {
+    var connection = this.backend.connect();
+    this.backend.db.query = function(collection, query, fields, options, callback) {
+      process.nextTick(function() {
+        callback(null, [], {colors: ['brown', 'gold']});
+      });
+    };
+    var query = connection.createSubscribeQuery('dogs', {}, null, function(err, results, extra) {
+      if (err) return done(err);
+      expect(results).eql([]);
+      expect(extra).eql({colors: ['brown', 'gold']});
+      expect(query.extra).eql({colors: ['brown', 'gold']});
+      done();
+    });
+  });
+
+  it('query extra is updated on change', function(done) {
+    var connection = this.backend.connect();
+    this.backend.db.query = function(collection, query, fields, options, callback) {
+      process.nextTick(function() {
+        callback(null, [], 1);
+      });
+    };
+    this.backend.db.queryPoll = function(collection, query, options, callback) {
+      process.nextTick(function() {
+        callback(null, [], 2);
+      });
+    };
+    this.backend.db.canPollDoc = function() {
+      return false;
+    };
+    var query = connection.createSubscribeQuery('dogs', {}, null, function(err, results, extra) {
+      if (err) return done(err);
+      expect(extra).eql(1);
+      expect(query.extra).eql(1);
+    });
+    query.on('extra', function(extra) {
+      expect(extra).eql(2);
+      expect(query.extra).eql(2);
+      done();
+    });
+    connection.get('dogs', 'fido').create({age: 3});
+  });
+
   it('changing a filtered property removes from a subscribed query', function(done) {
     var connection = this.backend.connect();
     async.parallel([
