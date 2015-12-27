@@ -659,5 +659,16 @@ describe('client submit', function() {
     });
   });
 
+  it('submitting an invalid op message returns error', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc._submit({}, null, function(err) {
+        expect(err).ok();
+        done();
+      });
+    });
+  });
+
 });
 };
