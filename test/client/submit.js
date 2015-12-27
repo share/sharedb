@@ -84,6 +84,18 @@ describe('client submit', function() {
     expect(doc.version).eql(null);
   });
 
+  it('submitting an op from a future version fails', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.version++;
+      doc.submitOp({p: ['age'], na: 2}, function(err) {
+        expect(err).ok();
+        done();
+      });
+    });
+  });
+
   it('cannot submit op on an uncreated doc', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.submitOp({p: ['age'], na: 2}, function(err) {
@@ -163,6 +175,72 @@ describe('client submit', function() {
         expect(doc2.version).equal(1);
         expect(doc2.data).eql({age: 3});
         done();
+      });
+    });
+  });
+
+  it('server fetches and transforms by already committed op', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          doc2.submitOp({p: ['age'], na: 2}, function(err) {
+            if (err) return done(err);
+            expect(doc2.version).equal(3);
+            expect(doc2.data).eql({age: 6});
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('submit fails if the server is missing ops required for transforming', function(done) {
+    this.backend.db.getOpsToSnapshot = function(collection, id, from, snapshot, callback) {
+      callback(null, []);
+    };
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          doc2.submitOp({p: ['age'], na: 2}, function(err) {
+            expect(err).ok();
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('submit fails if ops returned are not the expected version', function(done) {
+    var getOpsToSnapshot = this.backend.db.getOpsToSnapshot;
+    this.backend.db.getOpsToSnapshot = function(collection, id, from, snapshot, callback) {
+      getOpsToSnapshot.call(this, collection, id, from, snapshot, function(err, ops) {
+        ops[0].v++;
+        callback(null, ops);
+      });
+    };
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          doc2.submitOp({p: ['age'], na: 2}, function(err) {
+            expect(err).ok();
+            done();
+          });
+        });
       });
     });
   });
@@ -357,6 +435,50 @@ describe('client submit', function() {
             done();
           }
         });
+      });
+    });
+  });
+
+  it('submits retry below the backend.maxSubmitRetries threshold', function(done) {
+    this.backend.maxSubmitRetries = 10;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        var count = 0;
+        var cb = function(err) {
+          count++;
+          if (err) return done(err);
+          if (count > 1) done();
+        };
+        doc.submitOp({p: ['age'], na: 2}, cb);
+        doc2.submitOp({p: ['age'], na: 7}, cb);
+      });
+    });
+  });
+
+  it('submits retry below the backend.maxSubmitRetries threshold', function(done) {
+    this.backend.maxSubmitRetries = 0;
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        var count = 0;
+        var cb = function(err) {
+          count++;
+          if (count === 1) {
+            if (err) return done(err);
+          } else {
+            expect(err).ok();
+            done();
+          }
+        };
+        doc.submitOp({p: ['age'], na: 2}, cb);
+        doc2.submitOp({p: ['age'], na: 7}, cb);
       });
     });
   });
