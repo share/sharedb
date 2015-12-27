@@ -909,10 +909,10 @@ describe('client submit', function() {
         expect(doc.data).eql({age: 4});
         doc2.fetch(function(err) {
           if (err) return done(err);
-          expect(doc.version).equal(2);
-          expect(doc.data).eql({age: 3});
+          expect(doc2.version).equal(2);
+          expect(doc2.data).eql({age: 3});
+          done();
         });
-        done();
       });
       expect(doc.version).equal(1);
       expect(doc.data).eql({age: 4});
