@@ -61,4 +61,13 @@ describe('client connection', function() {
     });
   });
 
+  it('emits socket errors as "connection error" events', function(done) {
+    var connection = this.backend.connect();
+    connection.on('connection error', function(err) {
+      expect(err.message).equal('Test');
+      done();
+    });
+    connection.socket.onerror({message: 'Test'});
+  });
+
 });
