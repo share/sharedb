@@ -236,6 +236,68 @@ describe('client subscribe', function() {
         });
       });
     });
+
+    it(method + ' will call back when ops are pending', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        doc.pause();
+        doc.submitOp({p: ['age'], na: 1});
+        doc[method](done);
+      });
+    });
+
+    it(method + ' will not call back when creating the doc is pending', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.pause();
+      doc.create({age: 3});
+      doc[method](done);
+      done();
+    });
+
+    it(method + ' will wait for write when doc is locally created', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.pause();
+      var calls = 0;
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        calls++;
+      });
+      doc[method](function(err) {
+        if (err) return done(err);
+        expect(calls).equal(1);
+        expect(doc.version).equal(1);
+        expect(doc.data).eql({age: 3});
+        done();
+      });
+      setTimeout(function() {
+        doc.resume();
+      }, 10);
+    });
+
+    it(method + ' will wait for write when doc is locally created and will fail to submit', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      doc2.create({age: 5}, function(err) {
+        if (err) return done(err);
+        doc.pause();
+        var calls = 0;
+        doc.create({age: 3}, function(err) {
+          expect(err).ok();
+          calls++;
+        });
+        doc[method](function(err) {
+          if (err) return done(err);
+          expect(calls).equal(1);
+          expect(doc.version).equal(1);
+          expect(doc.data).eql({age: 5});
+          done();
+        });
+        setTimeout(function() {
+          doc.resume();
+        }, 10);
+      });
+    });
   });
 
   it('unsubscribe calls back immediately on disconnect', function(done) {
