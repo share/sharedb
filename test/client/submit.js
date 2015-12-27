@@ -449,6 +449,31 @@ describe('client submit', function() {
     });
   });
 
+  it('transforming pending op by server create returns error', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.del(function(err) {
+        if (err) return done(err);
+        doc2.fetch(function(err) {
+          if (err) return done(err);
+          doc2.create({age: 5}, function(err) {
+            if (err) return done(err);
+            doc.pause();
+            doc.create({age: 9}, function(err) {
+              expect(err).ok();
+              expect(doc.version).equal(3);
+              expect(doc.data).eql({age: 5});
+              done();
+            });
+            doc.fetch();
+          });
+        });
+      });
+    });
+  });
+
   it('second client can create following delete', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
