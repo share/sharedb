@@ -3,9 +3,14 @@ var DB = require('../lib/db');
 var MemoryDB = require('../lib/db/memory');
 
 describe('DB base class', function() {
-  it('can call db.close()', function() {
+  it('can call db.close() without callback', function() {
     var db = new DB();
     db.close();
+  });
+
+  it('can call db.close() with callback', function(done) {
+    var db = new DB();
+    db.close(done);
   });
 
   it('returns an error if db.commit() is unimplemented', function(done) {

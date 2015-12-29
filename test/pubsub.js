@@ -15,6 +15,14 @@ module.exports = function(create) {
       this.pubsub.close(done);
     });
 
+    it('can call pubsub.close() without callback', function(done) {
+      create(function(err, pubsub) {
+        if (err) done(err);
+        pubsub.close();
+        done();
+      });
+    });
+
     it('can subscribe to a channel', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {

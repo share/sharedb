@@ -15,8 +15,16 @@ module.exports = function(create) {
       });
     });
 
-    afterEach(function() {
-      this.backend.close();
+    afterEach(function(done) {
+      this.backend.close(done);
+    });
+
+    it('can call db.close() without callback', function(done) {
+      create(function(err, db) {
+        if (err) return done(err);
+        db.close();
+        done();
+      });
     });
 
     require('./client/projections')();
