@@ -244,6 +244,14 @@ module.exports = function(create) {
     });
 
     describe('getOps', function() {
+      it('getOps returns empty list when there are no ops', function(done) {
+        this.db.getOps('testcollection', 'test', 0, null, function(err, ops) {
+          if (err) return done(err);
+          expect(ops).eql([]);
+          done();
+        });
+      });
+
       it('getOps returns 1 committed op', function(done) {
         var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
         var db = this.db;
@@ -310,6 +318,17 @@ module.exports = function(create) {
     });
 
     describe('getOpsBulk', function() {
+      it('getOpsBulk returns empty map when there are no ops', function(done) {
+        this.db.getOpsBulk('testcollection', {test: 0, test2: 0}, null, function(err, opsMap) {
+          if (err) return done(err);
+          expect(opsMap).eql({
+            test: [],
+            test2: []
+          });
+          done();
+        });
+      });
+
       it('getOpsBulk returns committed ops', function(done) {
         var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
         var db = this.db;
