@@ -78,10 +78,10 @@ describe('client connection', function() {
       expect(backend.agentsCount).equal(1);
       connection.on('connected', function() {
         connection.close();
-        process.nextTick(function() {
+        setTimeout(function() {
           expect(backend.agentsCount).equal(0);
           done();
-        });
+        }, 10);
       });
     });
 
