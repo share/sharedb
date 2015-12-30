@@ -1,152 +1,107 @@
 # ShareDB
 
-ShareDB is a realtime database backend based on Operational Transformation (OT) of JSON documents. It is the default realtime backend for the DerbyJS web application framework.
+  [![NPM Version](https://img.shields.io/npm/v/sharedb.svg)](https://npmjs.org/package/sharedb)
+  [![Build Status](https://travis-ci.org/share/sharedb.svg?branch=master)](https://travis-ci.org/share/sharedb)
 
-ShareDB lets submit operations (edit documents) and subscribe to documents.
-Subscribing gives you a stream of all operations applied to the given
-document, as they happen. You can also make live bound queries, which give you
-the results of your query and a feed of changes to the result set over time.
+ShareDB is a realtime database backend based on [Operational Transformation
+(OT)](https://en.wikipedia.org/wiki/Operational_transformation) of JSON
+documents. It is the realtime backend for the [DerbyJS web application
+framework](http://derbyjs.com/).
 
-To use it, you need a database to actually store your data in.
-A database wrapper for mongo is available in
-[share/sharedb-mongo](https://github.com/share/sharedb-mongo). I hope to add more
-over time.
+For questions, discussion and announcements, join the [ShareJS mailing
+list](https://groups.google.com/forum/?fromgroups#!forum/sharejs).
 
-If you want to mess about, sharedb also has an in-memory database backend you
-can use. The in-memory database stores all documents and operations in memory
-forever (or at least, until you restart your server - at which point all
-documents and operations are lost.)
+Please report any bugs you find to the [issue
+tracker](https://github.com/share/sharedb/issues).
 
-For questions, discussion and announcements, join the [ShareJS mailing list](https://groups.google.com/forum/?fromgroups#!forum/sharejs).
 
-Please report any bugs you find to the [issue tracker](https://github.com/share/sharedb/issues).
+## Features
+
+- Realtime synchronization of any JSON document
+- Concurrent multi-user collaboration
+- Synchronous editing API with asynchronous eventual consistency
+- Realtime query subscriptions
+- Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo)
+- Horizontally scalable with simple pub/sub integration - [Redis](https://github.com/share/sharedb-redis-pubsub)
+- Project (select desired fields from) documents and operations
+- Middleware for implementing access control and custom extensions
+- Ideal for use in browsers or on the server
+- Reconnection of document and query subscriptions
+- Offline change syncing upon reconnection
+- In-memory implementations of database and pub/sub for unit testing
 
 
 ## Quick tour
 
-```javascript
-var sharedb = require('sharedb');
-var db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
+```js
+var ShareDB = require('sharedb');
+var db = require('sharedb-mongo')('localhost:27017/test');
 
-backend = sharedb.client(db);
+var backend = ShareDB({db: db});
+var connection = backend.connect();
 
-backend.fetchAndSubscribe('users', 'fred', function(err, data, stream) {
-  // Data is simply {v:0} because the fred document doesn't exist yet.
-
-  stream.on('data', function(op) {
-    // We'll see all changes to the fred document as they happen
-    console.log('Fred was edited by the operation', op);
-  });
+// Subscribe to any database query
+var query = connection.createSubscribeQuery('users', {accountId: 'acme'});
+query.once('ready', function() {
+  // Initially matching documents
+  console.log(query.results);
+});
+query.on('insert', function(docs, index) {
+  // Documents that now match the query
+  console.log(docs);
+});
+query.on('remove', function(docs, index) {
+  // Documents that no longer match the query
+  console.log(docs);
+});
+query.on('move', function(docs, from, to) {
+  // Documents that were moved in the results order for sorted queries
+  console.log(docs);
 });
 
+// Create and modify documents with synchronously applied operations
+var doc = connection.get('users', 'jane');
+doc.create({accountId: 'acme', name: 'Jane'});
+doc.submitOp({p: ['email'], oi: 'jane@example.com'});
 
-// This could happen from a different process / server but only if you use the
-// redis driver. (Otherwise they won't see each other's changes and everything
-// breaks)
-backend.submit('users', 'fred', {v:0, create:{type:'json0', data:{name:'Fred'}}}, function(err) {
-  // Created with data {name:'Fred'}
-
-  // Other concurrent edits can happen too, and they'll all be merged using OT.
-  // This operations says at doc['name'][4], insert characters ' Flintstone'.
-  backend.submit('users', 'fred', {v:1, op:[{p:['name', 4], si:' Flintstone'}]}, function(err) {
-    // users.fred now has data {name:'Fred Flintstone'}
-  });
+// Subscribe to documents directly as well as through queries
+var connection2 = backend.connect();
+var doc2 = connection2.get('users', 'jane');
+doc2.subscribe(function(err) {
+  // Current document data
+  console.log(doc2.data);
+});
+doc2.on('op', function(op, source) {
+  // Op that changed the document
+  console.log(op);
+  // `true` if submitted locally and `false` if from another client
+  console.log(source);
 });
 ```
 
-
 ## Data Model
 
-In LiveDB's view of the world, every document has 3 properties:
+In ShareDB's view of the world, every document has 3 properties:
 
 - **version**: an incrementing number starting at 0
 - **type**: an OT type. OT types are defined in
-[share/ottypes](https://github.com/share/ottypes). Types are referenced using
-their URIs (even though those URIs don't actually mean anything). Documents
+[share/ottypes](https://github.com/share/ottypes). Documents
 which don't exist implicitly have a type of `null`.
 - **data**: The actual data that the document contains. This must be pure
 acyclic JSON. Its also type-specific. (JSON type uses raw JSON, text documents
 use a string, etc).
 
-LiveDB implicitly has a record for every document you can access. New documents
+ShareDB implicitly has a record for every document you can access. New documents
 have version 0, a null type and no data. To use a document, you must first
 submit a *create operation*, which will set the document's type and give it
 initial data. Then you can submit editing operations on the document (using
 OT). Finally you can delete the document with a delete operation. By
-default, sharedb stores all operations forever - nothing is truly deleted.
+default, ShareDB stores all operations forever - nothing is truly deleted.
 
----
+
+<!-- Old docs from LiveDB:
 
 ## Using ShareDB
-
-ShareDB requires 3 puzzle pieces to operate:
-
-- A snapshot database, to store actual documents.
-- An oplog to store historical operations. We currently require that operations
-  are stored forever, but I want to change this before 1.0. (It might work
-  today, but we're missing tests).
-- A sharedb driver. If you have multiple servers, the driver manages
-  communication between them all. The driver also makes commits atomic (so
-  servers won't clobber each other's changes) and publishes operations.  If you
-  only have one frontend server, you can use the inprocess driver. (This is the
-  default if you do not specify a driver.)
-
-You can put operations and snapshot data in different places if you want, but
-its easier to put all of your data in the same database.
-
-The backend database(s) needs to implement a [simple API which has
-documentation and a sample implementation
-here](https://github.com/share/sharedb/blob/master/lib/memory.js). Currently the
-only database binding is [sharedb-mongo](https://github.com/share/sharedb-mongo).
-
-A sharedb client is created using either an options object or a database
-backend. If you specify a database backend, its used as both oplog and
-snapshot.
-
-```javascript
-db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
-backend = sharedb.client(db);
-```
-
-This is the equivalent to this:
-
-```javascript
-db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
-backend = sharedb.client({db:db});
-// Also equivalent to sharedb.client({db:db, oplog:db});
-```
-
-You can use a different database for both snapshots and operations if you want:
-
-```javascript
-db = require('sharedb-mongo')('localhost:27017/test?auto_reconnect', {safe:true});
-oplog = {writeOp:..., getVersion:..., getOps:...};
-backend = sharedb.client({db:db, oplog:oplog});
-```
-
-All of the above examples will use the in-process driver by default. If you
-want to scale across multiple frontend servers, you should use the redis driver:
-
-```javascript
-var redis = require('redis');
-client1 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
-client2 = redis.createClient(6379, '192.168.1.123', auth_pass:'secret');
-
-driver = sharedb.redisDriver(oplog, client1, client2);
-backend = sharedb.client({db:db, driver:driver});
-```
-
-The redis driver needs 2 redis clients because redis can't use the same
-connection for commands and pubsub. [See node-redis documentation for help
-configuring
-redis](https://github.com/mranney/node_redis#rediscreateclientport-host-options).
-
-
-The options object can also be passed:
-
-- **extraDbs:** *{name:query db}* This is used to register extra database
-  backends which will be notified whenever operations are submitted. They can
-  also be used in queries.
 
 ### Creating documents
 
@@ -274,7 +229,7 @@ sharedb.submit('users', 'fred', {create:{type:'json0', data:{name:'Fred'}}}, fun
   });
 });
 
-// ---- Sometime later...
+// Sometime later...
 
 sharedb.getOps('users', 'fred', 0, null, function(err, ops) {
   // ops contains the two operations which were submitted above:
@@ -405,7 +360,6 @@ Configure a projection by calling `addProjection(projCName, realCName, type, fie
 Limitations:
 
 - You can only whitelist fields (not blacklist them).
-- The third parameter must be 'json0'.
 - Projections can only limit / allow fields at the top level of the document
 
 ## Error codes
@@ -420,13 +374,14 @@ ShareDB returns errors as plain JavaScript objects with the format:
 
 Additional fields may be added to the error object for debugging context depending on the error. Common additional fields include `collection`, `id`, and `op`.
 
-### 4000 -- Bad request
+### 4000 - Bad request
 
-* 4001 --
+* 4001 -
 
-### 5000 -- Internal error
+### 5000 - Internal error
 
 The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the `42xx` and `52xx` codes are reserved for use by ShareDB PubSub adapters.
 
-* 5001 -- No new ops returned when retrying unsuccessful submit
+* 5001 - No new ops returned when retrying unsuccessful submit
 
+-->
