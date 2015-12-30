@@ -65,8 +65,8 @@ var doc = connection.get('users', 'jane');
 doc.create({accountId: 'acme', name: 'Jane'});
 doc.submitOp({p: ['email'], oi: 'jane@example.com'});
 
-
-// Create multiple concurrent connections to the same documents
+// Create multiple concurrent connections to the same document for
+// collaborative editing by multiple clients
 var connection2 = backend.connect();
 var doc2 = connection2.get('users', 'jane');
 
