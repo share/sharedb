@@ -22,8 +22,8 @@ tracker](https://github.com/share/sharedb/issues).
 - Synchronous editing API with asynchronous eventual consistency
 - Realtime query subscriptions
 - Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo)
-- Horizontally scalable with simple pub/sub integration - [Redis](https://github.com/share/sharedb-redis-pubsub)
-- Project (select desired fields from) documents and operations
+- Horizontally scalable with pub/sub integration - [Redis](https://github.com/share/sharedb-redis-pubsub)
+- Projections to select desired fields from documents and operations
 - Middleware for implementing access control and custom extensions
 - Ideal for use in browsers or on the server
 - Reconnection of document and query subscriptions
@@ -42,6 +42,7 @@ var connection = backend.connect();
 
 // Subscribe to any database query
 var query = connection.createSubscribeQuery('users', {accountId: 'acme'});
+
 query.once('ready', function() {
   // Initially matching documents
   console.log(query.results);
@@ -64,9 +65,12 @@ var doc = connection.get('users', 'jane');
 doc.create({accountId: 'acme', name: 'Jane'});
 doc.submitOp({p: ['email'], oi: 'jane@example.com'});
 
-// Subscribe to documents directly as well as through queries
+
+// Create multiple concurrent connections to the same documents
 var connection2 = backend.connect();
 var doc2 = connection2.get('users', 'jane');
+
+// Subscribe to documents directly as well as through queries
 doc2.subscribe(function(err) {
   // Current document data
   console.log(doc2.data);
@@ -74,7 +78,7 @@ doc2.subscribe(function(err) {
 doc2.on('op', function(op, source) {
   // Op that changed the document
   console.log(op);
-  // `true` if submitted locally and `false` if from another client
+  // truthy if submitted locally and `false` if from another client
   console.log(source);
 });
 ```
