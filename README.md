@@ -87,11 +87,11 @@ doc2.on('op', function(op, source) {
 
 In ShareDB's view of the world, every document has 3 properties:
 
-- **version**: an incrementing number starting at 0
-- **type**: an OT type. OT types are defined in
+- **version** - An incrementing number starting at 0
+- **type** - An OT type. OT types are defined in
 [share/ottypes](https://github.com/share/ottypes). Documents
 which don't exist implicitly have a type of `null`.
-- **data**: The actual data that the document contains. This must be pure
+- **data** - The actual data that the document contains. This must be pure
 acyclic JSON. Its also type-specific. (JSON type uses raw JSON, text documents
 use a string, etc).
 
