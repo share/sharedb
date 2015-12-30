@@ -83,7 +83,7 @@ doc2.on('op', function(op, source) {
 });
 ```
 
-## Data Model
+## Data model
 
 In ShareDB's view of the world, every document has 3 properties:
 
