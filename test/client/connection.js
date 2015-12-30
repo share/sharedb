@@ -70,4 +70,30 @@ describe('client connection', function() {
     connection.socket.onerror({message: 'Test'});
   });
 
+  describe('backend.agentsCount', function() {
+    it('updates after connect and connection.close()', function(done) {
+      var backend = this.backend;
+      expect(backend.agentsCount).equal(0);
+      var connection = backend.connect();
+      expect(backend.agentsCount).equal(1);
+      connection.on('connected', function() {
+        connection.close();
+        process.nextTick(function() {
+          expect(backend.agentsCount).equal(0);
+          done();
+        });
+      });
+    });
+
+    it('does not increment when agent connect is rejected', function() {
+      var backend = this.backend;
+      backend.use('connect', function(request, next) {
+        next({message: 'Error'});
+      });
+      expect(backend.agentsCount).equal(0);
+      var connection = backend.connect();
+      expect(backend.agentsCount).equal(0);
+    });
+  });
+
 });
