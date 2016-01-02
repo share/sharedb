@@ -686,6 +686,25 @@ describe('client submit', function() {
     });
   });
 
+  it('fetch does not revert version of doc with final pending delete', function(done) {
+    this.backend.use('doc', function(request, next) {
+      setTimeout(next, 10);
+    });
+    var doc = this.backend.connect().get('dogs', 'fido');
+    async.parallel([
+      function(cb) { doc.fetch(cb); },
+      function(cb) { doc.create({age: 3}, cb); }
+    ], function(err) {
+      if (err) return done(err);
+      expect(doc.version).equal(1);
+      doc.resume();
+    });
+    process.nextTick(function() {
+      doc.pause();
+      doc.del(done);
+    });
+  });
+
   it('passing an error in submit middleware rejects a create and calls back with the erorr', function(done) {
     this.backend.use('submit', function(request, next) {
       next({message: 'Custom error'});
