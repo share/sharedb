@@ -653,8 +653,8 @@ describe('client submit', function() {
             expect(doc2.version).equal(3);
 
             async.parallel([
-              function(cb) { doc.fetch(cb) },
-              function(cb) { doc2.fetch(cb) }
+              function(cb) { doc.fetch(cb); },
+              function(cb) { doc2.fetch(cb); }
             ], function(err) {
               if (err) return done(err);
               expect(doc.data).eql({age: 9, color: 'gold', sex: 'female'});
