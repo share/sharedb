@@ -686,22 +686,68 @@ describe('client submit', function() {
     });
   });
 
-  it('fetch does not revert version of doc with final pending delete', function(done) {
-    this.backend.use('doc', function(request, next) {
-      setTimeout(next, 10);
-    });
+  it('snapshot fetch does not revert the version of deleted doc without pending ops', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
-    async.parallel([
-      function(cb) { doc.fetch(cb); },
-      function(cb) { doc.create({age: 3}, cb); }
-    ], function(err) {
+    this.backend.use('doc', function(request, next) {
+      doc.create({age: 3});
+      doc.del(next);
+    });
+    doc.fetch(function(err) {
+      if (err) return done(err);
+      expect(doc.version).equal(2);
+      done();
+    });
+  });
+
+  it('snapshot fetch does not revert the version of deleted doc with pending ops', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    this.backend.use('doc', function(request, next) {
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        next();
+      });
+      process.nextTick(function() {
+        doc.pause();
+        doc.del(done);
+      });
+    });
+    doc.fetch(function(err) {
       if (err) return done(err);
       expect(doc.version).equal(1);
       doc.resume();
     });
+  });
+
+  it('snapshot fetch from query does not advance version of doc with pending ops', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create({name: 'kido'}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        doc2.submitOp({p: ['name', 0], si: 'f'}, function(err) {
+          if (err) return done(err);
+          expect(doc2.data).eql({name: 'fkido'});
+          doc.connection.createFetchQuery('dogs', {}, null, function(err) {
+            if (err) return done(err);
+            doc.resume();
+          });
+        });
+      });
+    });
     process.nextTick(function() {
       doc.pause();
-      doc.del(done);
+      doc.submitOp({p: ['name', 0], sd: 'k'}, function(err) {
+        if (err) return done(err);
+        doc.pause();
+        doc2.fetch(function(err) {
+          if (err) return done(err);
+          expect(doc2.version).equal(3);
+          expect(doc2.data).eql({name: 'fido'});
+          done();
+        });
+      });
+      doc.del();
     });
   });
 
