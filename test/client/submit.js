@@ -140,6 +140,50 @@ describe('client submit', function() {
     });
   });
 
+  it('does not compose ops when doc.preventCompose is true', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.preventCompose = true;
+    doc.create({age: 3});
+    doc.submitOp({p: ['age'], na: 2});
+    doc.submitOp({p: ['age'], na: 2}, function(err) {
+      if (err) return done(err);
+      expect(doc.data).eql({age: 7});
+      // Compare to version in above test
+      expect(doc.version).eql(3);
+      doc.submitOp({p: ['age'], na: 2});
+      doc.submitOp({p: ['age'], na: 2}, function(err) {
+        if (err) return done(err);
+        expect(doc.data).eql({age: 11});
+        // Compare to version in above test
+        expect(doc.version).eql(5);
+        done();
+      });
+    });
+  });
+
+  it('resumes composing after doc.preventCompose is set back to false', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.preventCompose = true;
+    doc.create({age: 3});
+    doc.submitOp({p: ['age'], na: 2});
+    doc.submitOp({p: ['age'], na: 2}, function(err) {
+      if (err) return done(err);
+      expect(doc.data).eql({age: 7});
+      // Compare to version in above test
+      expect(doc.version).eql(3);
+      // Reset back to start composing ops again
+      doc.preventCompose = false;
+      doc.submitOp({p: ['age'], na: 2});
+      doc.submitOp({p: ['age'], na: 2}, function(err) {
+        if (err) return done(err);
+        expect(doc.data).eql({age: 11});
+        // Compare to version in above test
+        expect(doc.version).eql(4);
+        done();
+      });
+    });
+  });
+
   it('can create a new doc then fetch', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
