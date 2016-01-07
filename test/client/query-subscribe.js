@@ -220,6 +220,74 @@ describe('client query subscribe', function() {
     createDoc(10);
   });
 
+  it('db.pollDebounce option reduces subsequent poll interval', function(done) {
+    var connection = this.backend.connect();
+    this.backend.db.canPollDoc = function() {
+      return false;
+    };
+    this.backend.db.pollDebounce = 100;
+    var query = connection.createSubscribeQuery('items', {});
+    var calls = 0;
+    var total = 0;
+    query.on('insert', function(docs) {
+      calls++;
+      total += docs.length;
+      if (total === 10) {
+        expect(calls).equal(2);
+        done();
+      }
+    });
+    function createDoc(count) {
+      connection.get('items', count.toString()).create({});
+      if (--count) {
+        setTimeout(createDoc, 5, count);
+      }
+    }
+    createDoc(10);
+  });
+
+  it('pollInterval updates a subscribed query after an unpublished create', function(done) {
+    var connection = this.backend.connect();
+    this.backend.suppressPublish = true;
+    var query = connection.createSubscribeQuery('dogs', {}, {pollInterval: 50}, function(err) {
+      if (err) return done(err);
+      connection.get('dogs', 'fido').create({});
+    });
+    query.on('insert', function(docs, index) {
+      expect(util.pluck(docs, 'id')).eql(['fido']);
+      done();
+    });
+  });
+
+  it('db.pollInterval updates a subscribed query after an unpublished create', function(done) {
+    var connection = this.backend.connect();
+    this.backend.suppressPublish = true;
+    this.backend.db.pollInterval = 50;
+    var query = connection.createSubscribeQuery('dogs', {}, null, function(err) {
+      if (err) return done(err);
+      connection.get('dogs', 'fido').create({});
+    });
+    query.on('insert', function(docs, index) {
+      expect(util.pluck(docs, 'id')).eql(['fido']);
+      done();
+    });
+  });
+
+  it('pollInterval captures additional unpublished creates', function(done) {
+    var connection = this.backend.connect();
+    this.backend.suppressPublish = true;
+    var count = 0;
+    var query = connection.createSubscribeQuery('dogs', {}, {pollInterval: 50}, function(err) {
+      if (err) return done(err);
+      connection.get('dogs', count.toString()).create({});
+    });
+    query.on('insert', function() {
+      count++;
+      if (count === 3) return done();
+      connection.get('dogs', count.toString()).create({});
+    });
+  });
+
   it('query extra is returned to client', function(done) {
     var connection = this.backend.connect();
     this.backend.db.query = function(collection, query, fields, options, callback) {
