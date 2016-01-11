@@ -115,7 +115,7 @@ describe('client projections', function() {
       var fido = connection2.get('dogs_summary', 'fido');
       fido.subscribe(function(err) {
         if (err) return done(err);
-        fido.on('after op', function() {
+        fido.on('op', function() {
           expect(fido.data).eql(expected);
           expect(fido.version).eql(2);
           done();
@@ -154,7 +154,7 @@ describe('client projections', function() {
       var fido = connection2.get('dogs_summary', 'fido');
       connection2.createSubscribeQuery('dogs_summary', {}, null, function(err) {
         if (err) return done(err);
-        fido.on('after op', function() {
+        fido.on('op', function() {
           expect(fido.data).eql(expected);
           expect(fido.version).eql(2);
           done();
