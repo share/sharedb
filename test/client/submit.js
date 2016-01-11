@@ -504,7 +504,7 @@ describe('client submit', function() {
     });
   });
 
-  it('submits retry below the backend.maxSubmitRetries threshold', function(done) {
+  it('submits fail above the backend.maxSubmitRetries threshold', function(done) {
     this.backend.maxSubmitRetries = 0;
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
