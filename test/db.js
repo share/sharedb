@@ -290,6 +290,23 @@ module.exports = function(create) {
         });
       });
 
+      it('getOps returns all ops when from and to are null', function(done) {
+        var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op0, function(err, succeeded) {
+          if (err) return done(err);
+          submit(db, 'testcollection', 'test', op1, function(err, succeeded) {
+            if (err) return done(err);
+            db.getOps('testcollection', 'test', null, null, function(err, ops) {
+              if (err) return done(err);
+              expect(ops).eql([op0, op1]);
+              done();
+            });
+          });
+        });
+      });
+
       it('getOps returns from specific op number', function(done) {
         var op0 = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
         var op1 = {v: 1, op: [{p: ['x'], na: 1}]};
@@ -345,6 +362,25 @@ module.exports = function(create) {
           submit(db, 'testcollection', 'test2', op, function(err, succeeded) {
             if (err) return done(err);
             db.getOpsBulk('testcollection', {test: 0, test2: 0}, null, function(err, opsMap) {
+              if (err) return done(err);
+              expect(opsMap).eql({
+                test: [op],
+                test2: [op]
+              });
+              done();
+            });
+          });
+        });
+      });
+
+      it('getOpsBulk returns all ops committed from null', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          submit(db, 'testcollection', 'test2', op, function(err, succeeded) {
+            if (err) return done(err);
+            db.getOpsBulk('testcollection', {test: null, test2: null}, null, function(err, opsMap) {
               if (err) return done(err);
               expect(opsMap).eql({
                 test: [op],
