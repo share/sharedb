@@ -1,11 +1,11 @@
 // npm install sharedb connect ws
 
-var http = require('http');
-var sharedb = require('sharedb');
+var http = require("http");
+var sharedb = require("sharedb");
 var connect = require("connect");
 
-var WebSocket = require('ws');
-var Duplex = require('stream').Duplex;
+var WebSocket = require("ws");
+var Duplex = require("stream").Duplex;
 
 var server = http.createServer(connect());
 var wss = new WebSocket.Server({
@@ -13,40 +13,37 @@ var wss = new WebSocket.Server({
 });
 var share = sharedb();
 
-wss.on("connection", function(client, req) {
+wss.on("connection", function(ws, req) {
   var stream = new Duplex({
     objectMode: true
   });
 
-  var kill = function() {
-    stream.push(null);
-    stream.emit("close");
-    stream.emit("end");
-    stream.end();
-
-    client.close();
-  }
-
-  stream.headers = client.headers;
-  stream.remoteAddress = stream.address;
-  stream._write = function(chunk, encoding, next) {
-    client.send(JSON.stringify(chunk));
+  stream.headers = ws.upgradeReq.headers;
+  stream.remoteAddress = ws.upgradeReq.connection.remoteAddress;
+  stream._write = function(op, encoding, next) {
+    ws.send(JSON.stringify(op));
     next();
   };
   stream._read = function() {};
   stream.on("error", function(msg) {
-    client.close();
+    ws.close();
   });
   stream.on("end", function() {
-    client.close();
+    ws.close();
   });
-  share.listen(stream);
 
-  client.on("message", function(data) {
-    console.log('c -> s', JSON.stringify(JSON.parse(data), null, 2));
-    stream.push(data);
+  ws.on("message", function(op) {
+    // console.log('op', JSON.stringify(JSON.parse(op), null, 2));
+    stream.push(op);
   });
-  client.on("close", kill);
+  ws.on("close", function() {
+    stream.push(null);
+    stream.emit("close");
+    stream.emit("end");
+    stream.end();
+  });
+
+  share.listen(stream);
 });
 
 server.listen(8888);
