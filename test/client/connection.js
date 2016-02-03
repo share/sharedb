@@ -8,26 +8,20 @@ describe('client connection', function() {
   });
 
   it('ends the agent stream when a connection is closed after connect', function(done) {
-    this.backend.use('connect', function(request, next) {
-      request.agent.stream.on('end', function() {
-        done();
-      });
-      next();
-    });
     var connection = this.backend.connect();
+    connection.agent.stream.on('end', function() {
+      done();
+    });
     connection.on('connected', function() {
       connection.close();
     });
   });
 
   it('ends the agent stream when a connection is immediately closed', function(done) {
-    this.backend.use('connect', function(request, next) {
-      request.agent.stream.on('end', function() {
-        done();
-      });
-      next();
-    });
     var connection = this.backend.connect();
+    connection.agent.stream.on('end', function() {
+      done();
+    });
     connection.close();
   });
 
