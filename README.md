@@ -2,6 +2,7 @@
 
   [![NPM Version](https://img.shields.io/npm/v/sharedb.svg)](https://npmjs.org/package/sharedb)
   [![Build Status](https://travis-ci.org/share/sharedb.svg?branch=master)](https://travis-ci.org/share/sharedb)
+  [![Coverage Status](https://coveralls.io/repos/github/share/sharedb/badge.svg?branch=master)](https://coveralls.io/github/share/sharedb?branch=master)
 
 ShareDB is a realtime database backend based on [Operational Transformation
 (OT)](https://en.wikipedia.org/wiki/Operational_transformation) of JSON
