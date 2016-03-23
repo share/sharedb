@@ -104,6 +104,11 @@ OT). Finally you can delete the document with a delete operation. By
 default, ShareDB stores all operations forever - nothing is truly deleted.
 
 
+## Operations
+
+See https://github.com/ottypes/json0 for documentation of the supported operations.
+
+
 <!-- Old docs from LiveDB:
 
 ## Using ShareDB
