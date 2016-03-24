@@ -201,21 +201,24 @@ describe('client query subscribe', function() {
       return false;
     };
     var query = connection.createSubscribeQuery('items', {}, {pollDebounce: 100});
-    var calls = 0;
+    var batchSizes = [];
     var total = 0;
     query.on('insert', function(docs) {
-      calls++;
+      batchSizes.push(docs.length);
       total += docs.length;
       if (total === 10) {
-        expect(calls).equal(2);
+        // first document is its own batch; then subsequent creates
+        // are debounced until after all other 9 docs are created
+        expect(batchSizes).eql([1, 9]);
         done();
       }
     });
     function createDoc(count) {
-      connection.get('items', count.toString()).create({});
-      if (--count) {
-        setTimeout(createDoc, 5, count);
-      }
+      connection.get('items', count.toString()).create({}, function() {
+        if (--count) {
+          createDoc(count);
+        }
+      });
     }
     createDoc(10);
   });
@@ -227,21 +230,24 @@ describe('client query subscribe', function() {
     };
     this.backend.db.pollDebounce = 100;
     var query = connection.createSubscribeQuery('items', {});
-    var calls = 0;
+    var batchSizes = [];
     var total = 0;
     query.on('insert', function(docs) {
-      calls++;
+      batchSizes.push(docs.length);
       total += docs.length;
       if (total === 10) {
-        expect(calls).equal(2);
+        // first document is its own batch; then subsequent creates
+        // are debounced until after all other 9 docs are created
+        expect(batchSizes).eql([1, 9]);
         done();
       }
     });
     function createDoc(count) {
-      connection.get('items', count.toString()).create({});
-      if (--count) {
-        setTimeout(createDoc, 5, count);
-      }
+      connection.get('items', count.toString()).create({}, function() {
+        if (--count) {
+          createDoc(count);
+        }
+      });
     }
     createDoc(10);
   });
