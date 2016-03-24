@@ -214,10 +214,11 @@ describe('client query subscribe', function() {
       }
     });
     function createDoc(count) {
-      connection.get('items', count.toString()).create({});
-      if (--count) {
-        setTimeout(createDoc, 5, count);
-      }
+      connection.get('items', count.toString()).create({}, function() {
+        if (--count) {
+          createDoc(count);
+        }
+      });
     }
     createDoc(10);
   });
@@ -242,10 +243,11 @@ describe('client query subscribe', function() {
       }
     });
     function createDoc(count) {
-      connection.get('items', count.toString()).create({});
-      if (--count) {
-        setTimeout(createDoc, 5, count);
-      }
+      connection.get('items', count.toString()).create({}, function() {
+        if (--count) {
+          createDoc(count);
+        }
+      });
     }
     createDoc(10);
   });
