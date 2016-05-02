@@ -1,6 +1,7 @@
 var expect = require('expect.js');
 var DB = require('../lib/db');
-var MingoMemoryDB = require('sharedb-mingo-memory');
+var MemoryDB = require('../lib/db/memory');
+var ShareDBMingo = require('sharedb-mingo-memory').extendMemoryDB(MemoryDB);
 
 describe('DB base class', function() {
   it('can call db.close() without callback', function() {
@@ -55,7 +56,7 @@ describe('DB base class', function() {
 });
 
 require('./db')(function(callback) {
-  var db = new MingoMemoryDB();
+  var db = new ShareDBMingo;
   callback(null, db);
 });
 
