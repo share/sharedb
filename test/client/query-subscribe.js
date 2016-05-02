@@ -397,18 +397,27 @@ describe('client query subscribe', function() {
   });
 
   it('changing a sorted property moves in a subscribed query', function(done) {
+    // DB driver used must implement 'makeSortedQuery' to generate a
+    // query object with a given sort order
+    var db = this.backend.db;
+    if (!db.makeSortedQuery) this.skip();
+
     var connection = this.backend.connect();
+
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
     ], function(err) {
       if (err) return done(err);
-      var query = connection.createSubscribeQuery('dogs', {$orderby: {age: 1}}, null, function(err, results) {
-        if (err) return done(err);
-        expect(util.pluck(results, 'id')).eql(['fido', 'spot']);
-        expect(util.pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
-        connection.get('dogs', 'spot').submitOp({p: ['age'], na: -3});
-      });
+      var query = connection.createSubscribeQuery(
+        'dogs', db.makeSortedQuery({}, [['age', 1]]), null,
+        function(err, results) {
+          if (err) return done(err);
+          expect(util.pluck(results, 'id')).eql(['fido', 'spot']);
+          expect(util.pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
+          connection.get('dogs', 'spot').submitOp({p: ['age'], na: -3});
+        });
+
       query.on('move', function(docs, from, to) {
         expect(docs.length).eql(1);
         expect(from).a('number');
