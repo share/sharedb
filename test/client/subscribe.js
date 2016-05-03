@@ -557,5 +557,58 @@ describe('client subscribe', function() {
     });
   });
 
+  describe('doc.subscribed', function() {
+    it('is set to false initially', function() {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      expect(doc.subscribed).equal(false);
+    });
+
+    it('remains false before subscribe call completes', function() {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.subscribe();
+      expect(doc.subscribed).equal(false);
+    });
+
+    it('is set to true after subscribe completes', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.subscribe(function(err) {
+        if (err) return done(err);
+        expect(doc.subscribed).equal(true);
+        done();
+      });
+    });
+
+    it('is not set to true after subscribe completes if already unsubscribed', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.subscribe(function(err) {
+        if (err) return done(err);
+        expect(doc.subscribed).equal(false);
+        done();
+      });
+      doc.unsubscribe();
+    });
+
+    it('is set to false sychronously in unsubscribe', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.subscribe(function(err) {
+        if (err) return done(err);
+        expect(doc.subscribed).equal(true);
+        doc.unsubscribe();
+        expect(doc.subscribed).equal(false);
+        done();
+      });
+    });
+
+    it('is set to false sychronously on disconnect', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.subscribe(function(err) {
+        if (err) return done(err);
+        expect(doc.subscribed).equal(true);
+        doc.connection.close();
+        expect(doc.subscribed).equal(false);
+        done();
+      });
+    });
+  });
 });
 };
