@@ -31,8 +31,8 @@ describe('client subscribe', function() {
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         async.parallel([
-          function(cb) { doc2.fetch(cb); },
-          function(cb) { doc2.fetch(cb); }
+          function(cb) { doc2[method](cb); },
+          function(cb) { doc2[method](cb); }
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
