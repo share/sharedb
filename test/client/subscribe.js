@@ -491,23 +491,6 @@ describe('client subscribe', function() {
     });
   });
 
-  it('calling subscribe, unsubscribe, subscribe sync leaves a doc subscribed', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    var doc2 = this.backend.connect().get('dogs', 'fido');
-    doc.create({age: 3}, function(err) {
-      if (err) return done(err);
-      doc2.subscribe();
-      doc2.unsubscribe();
-      doc2.subscribe(function(err) {
-        if (err) return done(err);
-        doc2.on('op', function(op, context) {
-          done();
-        });
-        doc.submitOp({p: ['age'], na: 1});
-      });
-    });
-  });
-
   it('doc fetches ops to catch up if it receives a future op', function(done) {
     var backend = this.backend;
     var doc = this.backend.connect().get('dogs', 'fido');
