@@ -15,7 +15,7 @@
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.2",
     "mocha": "^2.3.3",
-    "sharedb-mingo-memory": "^0.1.5"
+    "sharedb-mingo-memory": "^0.1.10"
   },
   "scripts": {
     "test": "node_modules/.bin/mocha",
