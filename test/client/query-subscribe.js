@@ -2,7 +2,7 @@ var expect = require('expect.js');
 var async = require('async');
 var util = require('../util');
 
-module.exports = function() {
+module.exports = function(makeSortedQuery) {
 describe('client query subscribe', function() {
 
   it('creating a document updates a subscribed query', function(done) {
@@ -397,10 +397,7 @@ describe('client query subscribe', function() {
   });
 
   it('changing a sorted property moves in a subscribed query', function(done) {
-    // DB driver used must implement 'makeSortedQuery' to generate a
-    // query object with a given sort order
-    var db = this.backend.db;
-    if (!db.makeSortedQuery) this.skip();
+    if (!makeSortedQuery) this.skip();
 
     var connection = this.backend.connect();
 
@@ -410,7 +407,7 @@ describe('client query subscribe', function() {
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery(
-        'dogs', db.makeSortedQuery({}, [['age', 1]]), null,
+        'dogs', makeSortedQuery({}, [['age', 1]]), null,
         function(err, results) {
           if (err) return done(err);
           expect(util.pluck(results, 'id')).eql(['fido', 'spot']);

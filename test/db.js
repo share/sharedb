@@ -3,7 +3,7 @@ var expect = require('expect.js');
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
 
-module.exports = function(create) {
+module.exports = function(create, makeSortedQuery) {
   describe('db', function() {
     beforeEach(function(done) {
       var self = this;
@@ -28,7 +28,7 @@ module.exports = function(create) {
     });
 
     require('./client/projections')();
-    require('./client/query-subscribe')();
+    require('./client/query-subscribe')(makeSortedQuery);
     require('./client/query')();
     require('./client/submit')();
     require('./client/subscribe')();
