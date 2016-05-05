@@ -61,7 +61,7 @@ require('./db')(function(callback) {
   db._querySync = function(snapshots, query) {
     var filtered = filter(snapshots, query.$query || query);
     sort(filtered, query.$orderby);
-    return filtered;
+    return {snapshots: filtered};
   };
 
   db.queryPollDoc = function(collection, id, query, options, callback) {
