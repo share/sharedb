@@ -1,6 +1,9 @@
 var expect = require('expect.js');
 var DB = require('../lib/db');
 var MemoryDB = require('../lib/db/memory');
+
+// Extend from MemoryDB as defined in this package, not the one that
+// sharedb-mingo-memory depends on.
 var ShareDbMingo = require('sharedb-mingo-memory').extendMemoryDB(MemoryDB);
 
 describe('DB base class', function() {
