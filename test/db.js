@@ -584,5 +584,33 @@ module.exports = function(create, makeSortedQuery) {
       });
     });
 
+    describe('makeSortedQuery', function() {
+      it('makeSortedQuery argument order', function(done) {
+        if (!makeSortedQuery) return this.skip();
+
+        // test that makeSortedQuery({}, [['foo', 1], ['bar', -1]])
+        // sorts by foo first, then bar
+        var snapshots = [
+          {type: 'json0', id: "0", v: 1, data: {foo: 1, bar: 1}},
+          {type: 'json0', id: "1", v: 1, data: {foo: 2, bar: 1}},
+          {type: 'json0', id: "2", v: 1, data: {foo: 1, bar: 2}},
+          {type: 'json0', id: "3", v: 1, data: {foo: 2, bar: 2}}
+        ];
+        var db = this.db;
+        var query = makeSortedQuery({}, [['foo', 1], ['bar', -1]]);
+
+        async.each(snapshots, function(snapshot, cb) {
+          db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, cb);
+        }, function(err) {
+          if (err) throw err;
+          db.query('testcollection', query, null, null, function(err, results) {
+            if (err) throw err;
+            expect(results).eql(
+              [snapshots[2], snapshots[0], snapshots[3], snapshots[1]]);
+            done();
+          });
+        });
+      });
+    });
   });
 };

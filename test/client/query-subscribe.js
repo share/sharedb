@@ -397,7 +397,7 @@ describe('client query subscribe', function() {
   });
 
   it('changing a sorted property moves in a subscribed query', function(done) {
-    if (!makeSortedQuery) this.skip();
+    if (!makeSortedQuery) return this.skip();
 
     var connection = this.backend.connect();
 
