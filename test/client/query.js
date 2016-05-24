@@ -2,13 +2,16 @@ var expect = require('expect.js');
 var async = require('async');
 var util = require('../util');
 
-module.exports = function() {
+module.exports = function(options) {
+var getQuery = options.getQuery;
+
 describe('client query', function() {
+  var nullDbQuery = getQuery({query: {}});
 
   ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
     it(method + ' on an empty collection', function(done) {
       var connection = this.backend.connect();
-      connection[method]('dogs', {}, null, function(err, results) {
+      connection[method]('dogs', nullDbQuery, null, function(err, results) {
         if (err) return done(err);
         expect(results).eql([]);
         done();
@@ -23,7 +26,7 @@ describe('client query', function() {
         function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
-        connection[method]('dogs', {}, null, function(err, results) {
+        connection[method]('dogs', nullDbQuery, null, function(err, results) {
           if (err) return done(err);
           var sorted = util.sortById(results);
           expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
@@ -42,7 +45,7 @@ describe('client query', function() {
         function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
       ], function(err) {
         if (err) return done(err);
-        connection2[method]('dogs', {}, null, function(err, results) {
+        connection2[method]('dogs', nullDbQuery, null, function(err, results) {
           if (err) return done(err);
           var sorted = util.sortById(results);
           expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
@@ -63,7 +66,7 @@ describe('client query', function() {
         if (err) return done(err);
         connection2.get('dogs', 'fido').fetch(function(err) {
           if (err) return done(err);
-          connection2[method]('dogs', {}, null, function(err, results) {
+          connection2[method]('dogs', nullDbQuery, null, function(err, results) {
             if (err) return done(err);
             var sorted = util.sortById(results);
             expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
@@ -95,7 +98,7 @@ describe('client query', function() {
                 connection2.get('dogs', 'spot')
               ]
             };
-            connection2[method]('dogs', {}, options, function(err, results) {
+            connection2[method]('dogs', nullDbQuery, options, function(err, results) {
               if (err) return done(err);
               var sorted = util.sortById(results);
               expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);

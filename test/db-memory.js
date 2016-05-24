@@ -5,7 +5,7 @@ var MemoryDB = require('../lib/db/memory');
 // Extend from MemoryDB as defined in this package, not the one that
 // sharedb-mingo-memory depends on.
 var ShareDbMingo = require('sharedb-mingo-memory').extendMemoryDB(MemoryDB);
-var makeSortedQuery = require('sharedb-mingo-memory/make-sorted-query');
+var getQuery = require('sharedb-mingo-memory/get-query');
 
 describe('DB base class', function() {
   it('can call db.close() without callback', function() {
@@ -59,8 +59,10 @@ describe('DB base class', function() {
   });
 });
 
-require('./db')(function(callback) {
-  var db = new ShareDbMingo;
-  callback(null, db);
-}, makeSortedQuery);
-
+require('./db')({
+  create: function(callback) {
+    var db = new ShareDbMingo;
+    callback(null, db);
+  },
+  getQuery: getQuery
+});
