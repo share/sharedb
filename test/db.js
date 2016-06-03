@@ -7,7 +7,8 @@ module.exports = function(options) {
   var create = options.create;
   function getQuery(queryOptions) {
     for (var key in queryOptions.query) {
-      if (key[0] === '$') throw new Error('unsupported in tests: ' + key);
+      var mongoKey = (key[0] === '$' || (key.indexOf('.') !== -1));
+      if (mongoKey) throw new Error('unsupported in tests: ' + key);
     }
     return options.getQuery(queryOptions);
   }
