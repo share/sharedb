@@ -3,7 +3,16 @@ var expect = require('expect.js');
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
 
-module.exports = function(create) {
+module.exports = function(options) {
+  var create = options.create;
+  function getQuery(queryOptions) {
+    for (var key in queryOptions.query) {
+      var mongoKey = (key[0] === '$' || (key.indexOf('.') !== -1));
+      if (mongoKey) throw new Error('unsupported in tests: ' + key);
+    }
+    return options.getQuery(queryOptions);
+  }
+
   describe('db', function() {
     beforeEach(function(done) {
       var self = this;
@@ -28,8 +37,8 @@ module.exports = function(create) {
     });
 
     require('./client/projections')();
-    require('./client/query-subscribe')();
-    require('./client/query')();
+    require('./client/query-subscribe')({getQuery: getQuery});
+    require('./client/query')({getQuery: getQuery});
     require('./client/submit')();
     require('./client/subscribe')();
 
@@ -584,5 +593,31 @@ module.exports = function(create) {
       });
     });
 
+    describe('getQuery', function() {
+      it('getQuery argument order', function(done) {
+        // test that getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]})
+        // sorts by foo first, then bar
+        var snapshots = [
+          {type: 'json0', id: "0", v: 1, data: {foo: 1, bar: 1}},
+          {type: 'json0', id: "1", v: 1, data: {foo: 2, bar: 1}},
+          {type: 'json0', id: "2", v: 1, data: {foo: 1, bar: 2}},
+          {type: 'json0', id: "3", v: 1, data: {foo: 2, bar: 2}}
+        ];
+        var db = this.db;
+        var dbQuery = getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]});
+
+        async.each(snapshots, function(snapshot, cb) {
+          db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, cb);
+        }, function(err) {
+          if (err) throw err;
+          db.query('testcollection', dbQuery, null, null, function(err, results) {
+            if (err) throw err;
+            expect(results).eql(
+              [snapshots[2], snapshots[0], snapshots[3], snapshots[1]]);
+            done();
+          });
+        });
+      });
+    });
   });
 };

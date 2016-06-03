@@ -14,7 +14,8 @@
     "coveralls": "^2.11.8",
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.2",
-    "mocha": "^2.3.3"
+    "mocha": "^2.3.3",
+    "sharedb-mingo-memory": "^0.1.14"
   },
   "scripts": {
     "test": "node_modules/.bin/mocha",
