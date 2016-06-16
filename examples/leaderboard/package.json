@@ -1,0 +1,33 @@
+{
+  "name": "sharedb-websocket-example",
+  "version": "0.0.1",
+  "description": "A simple client/server app using ShareDB and WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "build": "./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client.jsx -o dist/bundle.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Dmitry Kharitonov <geakstr@me.com> (https://dkharitonov.me/)",
+  "contributors": [
+    "Dmitry Kharitonov <geakstr@me.com> (https://dkharitonov.me/)",
+    "Avital Oliver <avital@aoliver.org> (https://aoliver.org/)"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "classnames": "^2.2.5",
+    "connect": "^3.4.1",
+    "react": "^15.1.0",
+    "react-dom": "^15.1.0",
+    "sharedb": "^0.11.37",
+    "through2": "^2.0.1",
+    "underscore": "^1.8.3",
+    "websocket-stream": "^3.2.1",
+    "ws": "^1.1.0"
+  },
+  "devDependencies": {
+    "babel-preset-react": "^6.5.0",
+    "babelify": "^7.3.0",
+    "browserify": "^13.0.1"
+  }
+}
