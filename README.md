@@ -372,6 +372,8 @@ Limitations:
 - You can only whitelist fields (not blacklist them).
 - Projections can only limit / allow fields at the top level of the document
 
+-->
+
 ## Error codes
 
 ShareDB returns errors as plain JavaScript objects with the format:
@@ -386,12 +388,32 @@ Additional fields may be added to the error object for debugging context dependi
 
 ### 4000 - Bad request
 
-* 4001 -
+* 4001 - Unknown error type
+* 4002 - Database adapter does not support subscribe
+* 4003 - Database adapter not found
+* 4004 - Missing op
+* 4005 - Op must be an array
+* 4006 - Create data in op must be an object
+* 4007 - Create op missing type
+* 4008 - Unknown type
+* 4009 - del value must be true
+* 4010 - Missing op, create or del
+* 4011 - Invalid src
+* 4012 - Invalid seq
+* 4013 - Found seq but not src
+* 4014 - op.m invalid
+* 4015 - Document does not exist
+* 4016 - Document already exists
+* 4017 - Document was deleted
+* 4018 - Document was created remotely
 
 ### 5000 - Internal error
 
 The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the `42xx` and `52xx` codes are reserved for use by ShareDB PubSub adapters.
 
 * 5001 - No new ops returned when retrying unsuccessful submit
-
--->
+* 5002 - Missing snapshot
+* 5003 - Snapshot and op version don't match
+* 5004 - Missing op
+* 5005 - Missing document
+* 5006 - Version mismatch
