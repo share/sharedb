@@ -1,5 +1,5 @@
 {
-  "name": "sharedb-websocket-example",
+  "name": "counters",
   "version": "0.0.1",
   "description": "A simple client/server app using ShareDB and WebSockets",
   "main": "server.js",
