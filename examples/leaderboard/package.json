@@ -8,9 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "author": "Dmitry Kharitonov <geakstr@me.com> (https://dkharitonov.me/)",
+  "author": "Tom Coleman <tom@percolatestudio.com> (https://tom.thesnail.org/)",
   "contributors": [
-    "Dmitry Kharitonov <geakstr@me.com> (https://dkharitonov.me/)",
+    "Tom Coleman <tom@percolatestudio.com> (https://tom.thesnail.org/)",
     "Avital Oliver <avital@aoliver.org> (https://aoliver.org/)"
   ],
   "license": "MIT",
