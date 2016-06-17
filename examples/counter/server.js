@@ -5,29 +5,31 @@ var WebSocket = require('ws');
 var serveStatic = require('serve-static');
 var WebSocketJSONStream = require('websocket-json-stream');
 
-// Start ShareDB
 var share = ShareDB();
+createCounterDoc(startServer);
 
-// Create a web server to serve files and listen to WebSocket connections
-var app = connect();
-app.use(serveStatic('.'));
-var server = http.createServer(app);
-var wss = new WebSocket.Server({server: server});
-server.listen(8080);
+// Create initial counter document then fire callback
+function createCounterDoc(callback) {
+  var connection = share.connect();
+  var doc = connection.get('dummy', 'counters');
+  doc.fetch(function(err) {
+    if (err) throw err;
+    if (doc.type === null) { doc.create({numClicks: 0}, callback); }
+  });
+};
 
-// Connect any incoming WebSocket connection to ShareDB
-wss.on('connection', function(ws, req) {
-  var stream = new WebSocketJSONStream(ws);
-  share.listen(stream);
-});
+function startServer() {
+  // Create a web server to serve files and listen to WebSocket connections
+  var app = connect();
+  app.use(serveStatic('.'));
+  var server = http.createServer(app);
+  var wss = new WebSocket.Server({server: server});
+  server.listen(8080);
 
-// Initialize counter document
-var connection = share.connect();
-var doc = connection.get('dummy', 'counters');
-doc.fetch(function(err) {
-  if (err) throw err;
+  // Connect any incoming WebSocket connection to ShareDB
+  wss.on('connection', function(ws, req) {
+    var stream = new WebSocketJSONStream(ws);
+    share.listen(stream);
+  });
+}
 
-  if (doc.type === null) {
-    doc.create({numClicks: 0});
-  }
-});
