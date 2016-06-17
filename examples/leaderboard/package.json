@@ -4,9 +4,9 @@
   "description": "React Leaderboard backed by ShareDB",
   "main": "server.js",
   "scripts": {
-    "build": "mkdir -p dist/ && ./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client.jsx -o dist/bundle.js",
+    "build": "mkdir -p dist/ && ./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client/index.jsx -o dist/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server/index.js"
   },
   "author": "Tom Coleman <tom@percolatestudio.com> (https://tom.thesnail.org/)",
   "contributors": [
