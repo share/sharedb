@@ -24,22 +24,19 @@ wss.on('connection', function(ws, req) {
   share.listen(stream);
 });
 
-// Connect to ShareDB instance
+// Create initial documents
 var connection = share.connect();
+connection.createFetchQuery('players', {}, {}, function(err, results) {
+  if (err) { throw err; }
 
-var query = connection.createFetchQuery('players', {}, {},
-  function(err, results) {
-    if (err) { console.error(err); return; }
+  if (results.length === 0) {
+    var names = ["Ada Lovelace", "Grace Hopper", "Marie Curie",
+                 "Carl Friedrich Gauss", "Nikola Tesla", "Claude Shannon"];
 
-    if (results.length === 0) {
-      var names = ["Ada Lovelace", "Grace Hopper", "Marie Curie",
-                   "Carl Friedrich Gauss", "Nikola Tesla", "Claude Shannon"];
-
-      names.forEach(function(name, index) {
-        var doc = connection.get('players', ''+index);
-        var snapshot = {name: name, score: Math.floor(Math.random() * 10) * 5};
-        doc.create(snapshot);
-      });
-    }
+    names.forEach(function(name, index) {
+      var doc = connection.get('players', ''+index);
+      var data = {name: name, score: Math.floor(Math.random() * 10) * 5};
+      doc.create(data);
+    });
   }
-);
+});
