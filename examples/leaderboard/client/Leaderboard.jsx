@@ -13,9 +13,9 @@ var Leaderboard = React.createClass({
 
   componentDidMount: function() {
     var comp = this;
-    var queryObj = {$sort: {score: -1}};
+    var dbQuery = {$sort: {score: -1}};
 
-    var query = connection.createSubscribeQuery('players', queryObj, {}, update);
+    var query = connection.createSubscribeQuery('players', dbQuery, {}, update);
     query.on('insert', update);
     query.on('move', update);
     query.on('remove', update);
