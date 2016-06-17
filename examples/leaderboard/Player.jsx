@@ -3,28 +3,24 @@ var classNames = require('classnames');
 
 var Player = React.createClass({
   propTypes: {
-    playerId: React.PropTypes.string.isRequired,
+    doc: React.PropTypes.object.isRequired,
     onPlayerSelected: React.PropTypes.func.isRequired,
     selected: React.PropTypes.bool.isRequired
   },
 
-  getInitialState() {
-    return {player: {}};
-  },
-
   handleClick: function(event) {
-    this.props.onPlayerSelected(this.props.playerId);
+    this.props.onPlayerSelected(this.props.doc.id);
   },
 
   componentDidMount: function() {
     var comp = this;
-    var doc = comp.doc = connection.get('players', comp.props.playerId);
-
-    doc.subscribe(update);
+    var doc = comp.props.doc;
+    doc.subscribe();
     doc.on('load', update);
     doc.on('op', update);
     function update() {
-      comp.setState({player: doc.data});
+      // `comp.props.doc.data` is now updated. re-render component.
+      comp.forceUpdate();
     }
   },
 
@@ -40,8 +36,8 @@ var Player = React.createClass({
 
     return (
       <li className={classNames(classes)} onClick={this.handleClick}>
-        <span className="name">{this.state.player.name}</span>
-        <span className="score">{this.state.player.score}</span>
+        <span className="name">{this.props.doc.data.name}</span>
+        <span className="score">{this.props.doc.data.score}</span>
       </li>
     );
   }

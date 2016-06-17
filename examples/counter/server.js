@@ -27,9 +27,7 @@ var doc = connection.get('dummy', 'counters');
 doc.fetch(function(err) {
   if (err) throw err;
 
-  if (!doc.data) {
-    doc.create({numClicks: 0}, function(err) {
-      if (err) throw err;
-    });
+  if (doc.type === null) {
+    doc.create({numClicks: 0});
   }
 });

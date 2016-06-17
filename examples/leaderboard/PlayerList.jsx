@@ -16,7 +16,7 @@ var PlayerList = React.createClass({
       var selected = selectedPlayerId === player.id;
 
       return (
-        <Player {...other} playerId={player.id} key={player.id} selected={selected} />
+        <Player {...other} doc={player} key={player.id} selected={selected} />
       );
     });
     return (

@@ -38,9 +38,7 @@ var query = connection.createFetchQuery('players', {}, {},
       names.forEach(function(name, index) {
         var doc = connection.get('players', ''+index);
         var snapshot = {name: name, score: Math.floor(Math.random() * 10) * 5};
-        doc.create(snapshot, function(err) {
-          if (err) { console.error(err); }
-        });
+        doc.create(snapshot);
       });
     }
   }

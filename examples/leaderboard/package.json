@@ -1,7 +1,7 @@
 {
-  "name": "sharedb-websocket-example",
+  "name": "leaderboard",
   "version": "0.0.1",
-  "description": "A simple client/server app using ShareDB and WebSockets",
+  "description": "React Leaderboard backed by ShareDB",
   "main": "server.js",
   "scripts": {
     "build": "mkdir -p dist/ && ./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client.jsx -o dist/bundle.js",

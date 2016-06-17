@@ -3,8 +3,7 @@ var sharedb = require('sharedb/lib/client');
 // Open WebSocket connection to ShareDB server
 var connection = new sharedb.Connection(new WebSocket('ws://localhost:8080'));
 
-// Create local Doc instance mapped to 'counters' collection's
-// document with id 'theCounter'
+// Create local Doc instance mapped to 'dummy' collection document with id 'counters'
 var doc = connection.get('dummy', 'counters');
 
 // Get initial value of document and subscribe to changes
@@ -23,9 +22,7 @@ function showNumbers() {
 function increment() {
   // Increment `doc.data.numClicks`. See
   // https://github.com/ottypes/json0 for list of valid operations.
-  doc.submitOp([{p: ['numClicks'], na: 1}], function(err) {
-    if (err) throw err;
-  });
+  doc.submitOp([{p: ['numClicks'], na: 1}]);
 }
 
 // Expose to index.html
