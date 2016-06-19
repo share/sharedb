@@ -1,0 +1,24 @@
+{
+  "name": "sharedb-websocket-example",
+  "version": "0.1.0",
+  "description": "Quick start with ShareDB",
+  "author": "Dmitry Kharitonov <geakstr@me.com>",
+  "license": "MIT",
+  "main": "lib/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node lib/server.js",
+    "build": "node_modules/.bin/browserify lib/client.js -o bundle.js",
+    "server": "npm start",
+    "client": "node_modules/.bin/http-server"
+  },
+  "dependencies": {
+    "connect": "^3.4.1",
+    "sharedb": "^0.11.37",
+    "ws": "^1.1.0"
+  },
+  "devDependencies": {
+    "browserify": "^13.0.1",
+    "http-server": "^0.9.0"
+  }
+}
