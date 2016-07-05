@@ -98,6 +98,43 @@ For transports other than WebSockets, expose a duplex
 stream that writes and reads JavaScript objects. Then
 pass that stream directly into `share.listen`.
 
+### Middlewares
+
+Middlewares let you hook into the ShareDB server pipeline. In
+middleware code you can read and also modify objects as they
+flow through ShareDB. For example,
+[sharedb-access](https://github.com/dmapper/sharedb-access) uses middlewares
+to implement access control.
+
+`share.use(action, fn)`  
+Register a new middleware.
+
+__Arguments__
+* `action` _(String)_
+  One of: 
+  * `"connect"`: A new client connected to the server.
+  * `"op"`: An operation was loaded from the database.
+  * `"doc"`: A snapshot was loaded from the database.
+  * `"query"`: A query is about to be sent to the database
+  * `"submit"`: An operation is about to be submited to the database
+  * `"apply"`: An operation is about to be applied to a snapshot
+    before being committed to the database
+  * `"commit"`: An operation was applied to a snapshot; The operation
+    and new snapshot are about to be written to the database.
+  * `"after submit"`: An operation was successfully submitted to
+    the database.
+  * `"receive"`: Received a message from a client
+* `fn` _(Function(request, callback))_
+  Call this function at the time specified by `action`.  
+  `request` contains a subset of the following properties, as relevant for the action:
+  * `action`: The action this middleware is handing
+  * `agent`: An object corresponding to the server agent handing this client
+  * `req`: The HTTP request being handled
+  * `collection`: The collection name being handled
+  * `id`: The document id being handled
+  * `query`: The query object being handled
+  * `op`: The op being handled
+
 ### Shutdown
 
 `share.close(callback)`  
