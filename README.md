@@ -569,6 +569,11 @@ Additional fields may be added to the error object for debugging context dependi
 * 4016 - Document already exists
 * 4017 - Document was deleted
 * 4018 - Document was created remotely
+* 4019 - Invalid protocol version
+* 4020 - Invalid default type
+* 4021 - Invalid client id
+* 4022 - Database adapter does not support queries
+* 4023 - Cannot project snapshots of this type
 
 ### 5000 - Internal error
 
@@ -580,3 +585,15 @@ The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the
 * 5004 - Missing op
 * 5005 - Missing document
 * 5006 - Version mismatch
+* 5007 - Invalid state transition
+* 5008 - Missing version in snapshot
+* 5009 - Cannot ingest snapshot with null version
+* 5010 - No op to send
+* 5011 - Commit DB method unimplemented
+* 5012 - getSnapshot DB method unimplemented
+* 5013 - getOps DB method unimplemented
+* 5014 - queryPollDoc DB method unimplemented
+* 5015 - _subscribe PubSub method unimplemented
+* 5016 - _unsubscribe PubSub method unimplemented
+* 5017 - _publish PubSub method unimplemented
+* 5018 - Required QueryEmitter listener not assigned
