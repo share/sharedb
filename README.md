@@ -154,7 +154,7 @@ xcxc
 
 ### Class: `ShareDB.Doc`
 
-`doc.type` _(String_)  
+`doc.type` _(String)_  
 The [OT type](https://github.com/ottypes/docs) of this document
 
 `doc.id` _(String)_  
