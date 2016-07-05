@@ -64,10 +64,9 @@ var share = new ShareDB(options);
 
 __Options__
 
-* `db` _(instance of `ShareDB.DB`)_  
+* `options.db` _(instance of `ShareDB.DB`)_  
   Store documents and ops with this database adapter. Defaults to `ShareDB.MemoryDB()`.
-
-* `pubsub` _(instance of `ShareDB.PubSub`)_  
+* `options.pubsub` _(instance of `ShareDB.PubSub`)_  
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
 
@@ -130,31 +129,63 @@ the WebSocket specification and pass it into the `ShareDB.Connection` constructo
 `connection.get(collectionName, documentId)`  
 Get a [`ShareDB.Doc`](#class-sharedbdoc) instance on a given collection and document ID.
 
-**TODO**: Document queries
-
 `connection.createFetchQuery(collectionName, query, options, callback)`  
-Get results for a query from the server.
-
-`query` is an object with structure defined by the database adapter.
-
-`options` are passed through to the database adapter, other than
-`options.results`. Use `options.results` to pre-populate query results
-with server-side rendering.
-
-Returns a `Query` instance.
 `connection.createSubscribeQuery(collectionName, query, options, callback)`  
-Get results for a query from the server, and subscribe to changes.
+Get query results from the server. `createSubscribeQuery` also subscribes to
+changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 
-Arguments and return value as in `createFetchQuery`.
+__Arguments__
+* `query` _(Object)_  
+  A descriptor of a database query with structure defined by the database adapter.
+* `callback` _(Function)_  
+  Called with `(err, results)` when server responds, or on error.
+
+__Options__
+* `options.results` _(Array)_  
+  Prior query results if available, such as from server rendering.
+* `options.*`  
+  All other options are passed through to the database adapter.
 
 ### Class: `ShareDB.Query`
 
+`query.ready` _(Boolean)_  
+True if query results are ready and available on `query.results`
+
+`query.results` _(Array)_  
+Query results, as an array of [`ShareDB.Doc`](#class-sharedbdoc) instances.
+
+`query.extra` _(Type depends on database adapter and query)_  
+Extra query results that aren't an array of documents. Available for certain database adapters and queries.
+
+`query.on('ready', function() {...}))`
+The initial query results were loaded from the server. Fires at the same time as
+the callbacks to `createFetchQuery` and `createSubscribeQuery`.
+
+`query.on('error', function(err) {...}))`  
+There was an error receiving updates to a subscription.
+
 `query.destroy()`  
-xcxc
+Unsubscribe and stop firing events.
+
+`query.on('changed', function(results) {...}))`  
+(Only fires on subscription queries) The query results changed. Fires only once
+after a sequence of diffs are handled.
+
+`query.on('insert', function(docs, atIndex) {...}))`  
+(Only fires on subscription queries) A contiguous sequence of documents were added to the query result array.
+
+`query.on('move', function(docs, from, to) {...}))`  
+(Only fires on subscription queries) A contiguous sequence of documents moved position in the query result array.
+
+`query.on('remove', function(docs, atIndex) {...}))`  
+(Only fires on subscription queries) A contiguous sequence of documents were removed from the query result array.
+
+`query.on('extra', function() {...}))`
+(Only fires on subscription queries) `query.extra` changed.
 
 ### Class: `ShareDB.Doc`
 
-`doc.type` _(String)_  
+`doc.type` _(String_)  
 The [OT type](https://github.com/ottypes/docs) of this document
 
 `doc.id` _(String)_  
