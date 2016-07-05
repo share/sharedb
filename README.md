@@ -32,58 +32,6 @@ tracker](https://github.com/share/sharedb/issues).
 - In-memory implementations of database and pub/sub for unit testing
 
 
-## Quick tour
-
-```js
-var ShareDB = require('sharedb');
-var db = require('sharedb-mongo')('localhost:27017/test');
-
-var backend = ShareDB({db: db});
-var connection = backend.connect();
-
-// Subscribe to any database query
-var query = connection.createSubscribeQuery('users', {accountId: 'acme'});
-
-query.once('ready', function() {
-  // Initially matching documents
-  console.log(query.results);
-});
-query.on('insert', function(docs, index) {
-  // Documents that now match the query
-  console.log(docs);
-});
-query.on('remove', function(docs, index) {
-  // Documents that no longer match the query
-  console.log(docs);
-});
-query.on('move', function(docs, from, to) {
-  // Documents that were moved in the results order for sorted queries
-  console.log(docs);
-});
-
-// Create and modify documents with synchronously applied operations
-var doc = connection.get('users', 'jane');
-doc.create({accountId: 'acme', name: 'Jane'});
-doc.submitOp({p: ['email'], oi: 'jane@example.com'});
-
-// Create multiple concurrent connections to the same document for
-// collaborative editing by multiple clients
-var connection2 = backend.connect();
-var doc2 = connection2.get('users', 'jane');
-
-// Subscribe to documents directly as well as through queries
-doc2.subscribe(function(err) {
-  // Current document data
-  console.log(doc2.data);
-});
-doc2.on('op', function(op, source) {
-  // Op that changed the document
-  console.log(op);
-  // truthy if submitted locally and `false` if from another client
-  console.log(source);
-});
-```
-
 ## Data model
 
 In ShareDB's view of the world, every document has 3 properties:
@@ -103,10 +51,157 @@ initial data. Then you can submit editing operations on the document (using
 OT). Finally you can delete the document with a delete operation. By
 default, ShareDB stores all operations forever - nothing is truly deleted.
 
+## Server API
 
-## Operations
+### Initialization
 
-See https://github.com/ottypes/json0 for documentation of the supported operations.
+First, create a ShareDB server instance:
+
+```js
+var ShareDB = require('sharedb');
+var share = new ShareDB(options);
+```
+
+__Options__
+
+* `db` _(instance of `ShareDB.DB`)_  
+  Store documents and ops with this database adapter. Defaults to `ShareDB.MemoryDB()`.
+
+* `pubsub` _(instance of `ShareDB.PubSub`)_  
+  Notify other ShareDB processes when data changes
+  through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
+
+#### Database Adapters
+* `ShareDB.MemoryPubSub`, backed by a non-persistent database with no queries
+* [`ShareDBMongo`](https://github.com/share/sharedb-mongo), backed by a real Mongo database
+  and full query support
+* [`ShareDBMingoMemory`](https://github.com/avital/sharedb-mingo-memory), backed by
+  a non-persistent database supporting most Mongo queries. Useful for faster
+  testing of a Mongo-based app.
+
+#### Pub/Sub Adapters
+* `ShareDB.MemoryPubSub` can be used with a single process
+* [`ShareDBRedisPubSub`](https://github.com/share/sharedb-mongo) can be used
+  with multiple processes using Redis' pub/sub mechanism
+
+### Listening to WebSocket connections
+
+```js
+var WebSocketJSONStream = require('websocket-json-stream');
+
+// 'ws' is a websocket server connection, as passed into
+// new (require('ws').Server).on('connection', ...)
+var stream = new WebSocketJSONStream(ws);
+share.listen(stream);
+```
+
+For transports other than WebSockets, expose a duplex
+stream that writes and reads JavaScript objects. Then
+pass that stream directly into `share.listen`.
+
+### Shutdown
+
+`share.close(callback)`  
+Closes connections to the database and pub/sub adapters.
+
+## Client API
+
+The client API can be used from either Node or a browser. First, get a `ShareDB.Connection` object by connecting to the ShareDB server instance:
+
+From Node:
+```js
+// `share` should be a ShareDB server instance
+var connection = share.connect();
+```
+
+To use ShareDB from a browser, use a client bundler like Browserify or Webpack. The following
+code connects to the ShareDB server instance over WebSockets:
+```js
+var ShareDB = require('sharedb/lib/client');
+var socket = new WebSocket('ws://localhost:8080');
+var connection = new ShareDB.Connection(socket);
+```
+
+For transports other than WebSockets, create an object implementing
+the WebSocket specification and pass it into the `ShareDB.Connection` constructor.
+
+### Class: `ShareDB.Connection`
+
+`connection.get(collectionName, documentId)`  
+Get a [`ShareDB.Doc`](#class-sharedbdoc) instance on a given collection and document ID.
+
+**TODO**: Document queries
+
+`connection.createFetchQuery(collectionName, query, options, callback)`  
+Get results for a query from the server.
+
+`query` is an object with structure defined by the database adapter.
+
+`options` are passed through to the database adapter, other than
+`options.results`. Use `options.results` to pre-populate query results
+with server-side rendering.
+
+Returns a `Query` instance.
+`connection.createSubscribeQuery(collectionName, query, options, callback)`  
+Get results for a query from the server, and subscribe to changes.
+
+Arguments and return value as in `createFetchQuery`.
+
+### Class: `ShareDB.Query`
+
+`query.destroy()`  
+xcxc
+
+### Class: `ShareDB.Doc`
+
+`doc.type` _(String_)  
+The [OT type](https://github.com/ottypes/docs) of this document
+
+`doc.id` _(String)_  
+Unique document ID
+
+`doc.data` _(Object)_  
+Document contents. Available after document is fetched or subscribed to.
+
+`doc.fetch(function(err) {...})`  
+Populate the fields on `doc` with a snapshot of the document from the server.
+
+`doc.subscribe(function(err) {...})`  
+Populate the fields on `doc` with a snapshot of the document from the server, and
+fire events on subsequent changes.
+
+`doc.on('load', function() {...})`  
+The initial snapshot of the document was loaded from the server. Fires at the
+same time as callbacks to `fetch` and `subscribe`.
+
+`doc.on('create', function() {...})`  
+The document was created. Technically, this means it has a type.
+
+`doc.on('before op'), function(op) {...})`  
+An operation is about to be applied to the data.
+
+`doc.on('op', function(op) {...})`  
+An operation was applied to the data.
+
+`doc.on('del', function(data) {...})`  
+The document was deleted. Document contents before deletion are passed in as an argument.
+
+`doc.on('error', function(err) {...})`  
+There was an error fetching the document or applying an operation.
+
+`doc.create(data[, type][, options][, function(err) {...}])`  
+Create the document locally and send create operation to the server.
+* `data` Initial document contents
+* `type` _([OT type](https://github.com/ottypes/docs))_  
+  Defaults to `'ot-json0'`, for which `data` is an Object
+
+`doc.submitOp(op, [, options][, function(err) {...}])`  
+Apply operation to document and send it to the server.
+`op` structure depends on the document type. See the
+[operations for the default `'ot-json0'` type](https://github.com/ottypes/json0#summary-of-operations).
+
+`doc.del([options][, function(err) {...}])`  
+Delete the document locally and send delete operation to the server.
 
 
 <!-- Old docs from LiveDB:

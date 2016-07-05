@@ -13,7 +13,6 @@ var Leaderboard = React.createClass({
 
   componentDidMount: function() {
     var comp = this;
-
     var query = connection.createSubscribeQuery('players', {$sort: {score: -1}});
     query.on('ready', update);
     query.on('changed', update);
