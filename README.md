@@ -157,7 +157,7 @@ Query results, as an array of [`ShareDB.Doc`](#class-sharedbdoc) instances.
 `query.extra` _(Type depends on database adapter and query)_  
 Extra query results that aren't an array of documents. Available for certain database adapters and queries.
 
-`query.on('ready', function() {...}))`
+`query.on('ready', function() {...}))`  
 The initial query results were loaded from the server. Fires at the same time as
 the callbacks to `createFetchQuery` and `createSubscribeQuery`.
 
@@ -180,7 +180,7 @@ after a sequence of diffs are handled.
 `query.on('remove', function(docs, atIndex) {...}))`  
 (Only fires on subscription queries) A contiguous sequence of documents were removed from the query result array.
 
-`query.on('extra', function() {...}))`
+`query.on('extra', function() {...}))`  
 (Only fires on subscription queries) `query.extra` changed.
 
 ### Class: `ShareDB.Doc`
