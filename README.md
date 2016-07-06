@@ -112,18 +112,18 @@ Register a new middleware.
 __Arguments__
 * `action` _(String)_
   One of: 
-  * `"connect"`: A new client connected to the server.
-  * `"op"`: An operation was loaded from the database.
-  * `"doc"`: A snapshot was loaded from the database.
-  * `"query"`: A query is about to be sent to the database
-  * `"submit"`: An operation is about to be submited to the database
-  * `"apply"`: An operation is about to be applied to a snapshot
+  * `'connect'`: A new client connected to the server.
+  * `'op'`: An operation was loaded from the database.
+  * `'doc'`: A snapshot was loaded from the database.
+  * `'query'`: A query is about to be sent to the database
+  * `'submit'`: An operation is about to be submited to the database
+  * `'apply'`: An operation is about to be applied to a snapshot
     before being committed to the database
-  * `"commit"`: An operation was applied to a snapshot; The operation
+  * `'commit'`: An operation was applied to a snapshot; The operation
     and new snapshot are about to be written to the database.
-  * `"after submit"`: An operation was successfully submitted to
+  * `'after submit'`: An operation was successfully submitted to
     the database.
-  * `"receive"`: Received a message from a client
+  * `'receive'`: Received a message from a client
 * `fn` _(Function(request, callback))_
   Call this function at the time specified by `action`.  
   `request` contains a subset of the following properties, as relevant for the action:
