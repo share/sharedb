@@ -37,4 +37,46 @@ describe('middleware', function() {
 
   });
 
+  describe('doc options', function() {
+    it('on create', function(done) {
+      this.backend.use('submit', function(req) {
+        expect(req.op.options).eql({hairy: true});
+        done();
+      });
+
+      var connection = this.backend.connect();
+      connection.get('dogs', 'fido').create({}, Backend.types.defaultType.uri, {hairy: true});
+    });
+
+    it('on op', function(done) {
+      var backend = this.backend;
+      var connection = this.backend.connect();
+      var doc = connection.get('dogs', 'fido');
+      doc.create({}, function(err) {
+        if (err) return done(err);
+
+        backend.use('submit', function(req) {
+          expect(req.op.options).eql({hairy: true});
+          done();
+        });
+        doc.submitOp({p: ['age'], oi: 1}, {hairy: true});
+      });
+    });
+
+    it('on del', function(done) {
+      var backend = this.backend;
+      var connection = this.backend.connect();
+      var doc = connection.get('dogs', 'fido');
+      doc.create({}, function(err) {
+        if (err) return done(err);
+
+        backend.use('submit', function(req) {
+          expect(req.op.options).eql({hairy: true});
+          done();
+        });
+        doc.del({hairy: true});
+      });
+    });
+  });
+
 });
