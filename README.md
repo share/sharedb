@@ -238,6 +238,9 @@ Populate the fields on `doc` with a snapshot of the document from the server.
 Populate the fields on `doc` with a snapshot of the document from the server, and
 fire events on subsequent changes.
 
+`doc.destroy()`  
+Unsubscribe and stop firing events.
+
 `doc.on('load', function() {...})`  
 The initial snapshot of the document was loaded from the server. Fires at the
 same time as callbacks to `fetch` and `subscribe`.
