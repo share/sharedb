@@ -183,43 +183,6 @@ __Options__
 * `options.*`  
   All other options are passed through to the database adapter.
 
-### Class: `ShareDB.Query`
-
-`query.ready` _(Boolean)_  
-True if query results are ready and available on `query.results`
-
-`query.results` _(Array)_  
-Query results, as an array of [`ShareDB.Doc`](#class-sharedbdoc) instances.
-
-`query.extra` _(Type depends on database adapter and query)_  
-Extra query results that aren't an array of documents. Available for certain database adapters and queries.
-
-`query.on('ready', function() {...}))`  
-The initial query results were loaded from the server. Fires at the same time as
-the callbacks to `createFetchQuery` and `createSubscribeQuery`.
-
-`query.on('error', function(err) {...}))`  
-There was an error receiving updates to a subscription.
-
-`query.destroy()`  
-Unsubscribe and stop firing events.
-
-`query.on('changed', function(results) {...}))`  
-(Only fires on subscription queries) The query results changed. Fires only once
-after a sequence of diffs are handled.
-
-`query.on('insert', function(docs, atIndex) {...}))`  
-(Only fires on subscription queries) A contiguous sequence of documents were added to the query result array.
-
-`query.on('move', function(docs, from, to) {...}))`  
-(Only fires on subscription queries) A contiguous sequence of documents moved position in the query result array.
-
-`query.on('remove', function(docs, atIndex) {...}))`  
-(Only fires on subscription queries) A contiguous sequence of documents were removed from the query result array.
-
-`query.on('extra', function() {...}))`  
-(Only fires on subscription queries) `query.extra` changed.
-
 ### Class: `ShareDB.Doc`
 
 `doc.type` _(String_)  
@@ -273,6 +236,44 @@ Apply operation to document and send it to the server.
 
 `doc.del([options][, function(err) {...}])`  
 Delete the document locally and send delete operation to the server.
+
+### Class: `ShareDB.Query`
+
+`query.ready` _(Boolean)_  
+True if query results are ready and available on `query.results`
+
+`query.results` _(Array)_  
+Query results, as an array of [`ShareDB.Doc`](#class-sharedbdoc) instances.
+
+`query.extra` _(Type depends on database adapter and query)_  
+Extra query results that aren't an array of documents. Available for certain database adapters and queries.
+
+`query.on('ready', function() {...}))`  
+The initial query results were loaded from the server. Fires at the same time as
+the callbacks to `createFetchQuery` and `createSubscribeQuery`.
+
+`query.on('error', function(err) {...}))`  
+There was an error receiving updates to a subscription.
+
+`query.destroy()`  
+Unsubscribe and stop firing events.
+
+`query.on('changed', function(results) {...}))`  
+(Only fires on subscription queries) The query results changed. Fires only once
+after a sequence of diffs are handled.
+
+`query.on('insert', function(docs, atIndex) {...}))`  
+(Only fires on subscription queries) A contiguous sequence of documents were added to the query result array.
+
+`query.on('move', function(docs, from, to) {...}))`  
+(Only fires on subscription queries) A contiguous sequence of documents moved position in the query result array.
+
+`query.on('remove', function(docs, atIndex) {...}))`  
+(Only fires on subscription queries) A contiguous sequence of documents were removed from the query result array.
+
+`query.on('extra', function() {...}))`  
+(Only fires on subscription queries) `query.extra` changed.
+
 
 
 <!-- Old docs from LiveDB:
