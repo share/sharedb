@@ -109,7 +109,6 @@ to implement access control.
 `share.use(action, fn)`  
 Register a new middleware.
 
-__Arguments__
 * `action` _(String)_
   One of: 
   * `'connect'`: A new client connected to the server.
@@ -171,13 +170,10 @@ Get a [`ShareDB.Doc`](#class-sharedbdoc) instance on a given collection and docu
 Get query results from the server. `createSubscribeQuery` also subscribes to
 changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 
-__Arguments__
 * `query` _(Object)_  
   A descriptor of a database query with structure defined by the database adapter.
 * `callback` _(Function)_  
   Called with `(err, results)` when server responds, or on error.
-
-__Options__
 * `options.results` _(Array)_  
   Prior query results if available, such as from server rendering.
 * `options.*`  
