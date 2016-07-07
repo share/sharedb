@@ -71,7 +71,7 @@ __Options__
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
 
 #### Database Adapters
-* `ShareDB.MemoryPubSub`, backed by a non-persistent database with no queries
+* `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
 * [`ShareDBMongo`](https://github.com/share/sharedb-mongo), backed by a real Mongo database
   and full query support
 * [`ShareDBMingoMemory`](https://github.com/avital/sharedb-mingo-memory), backed by
