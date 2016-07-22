@@ -37,4 +37,21 @@ describe('middleware', function() {
     });
 
   });
+
+  describe('submit', function() {
+
+    it('gets options passed to backend.submit', function(done) {
+      this.backend.use('submit', function(request, next) {
+        expect(request.options).eql({testOption: true});
+        done();
+      });
+      var op = {create: {type: types.defaultType.uri}};
+      var options = {testOption: true};
+      this.backend.submit(null, 'dogs', 'fido', op, options, function(err) {
+        if (err) throw err;
+      });
+    });
+
+  });
+
 });
