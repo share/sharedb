@@ -217,6 +217,14 @@ module.exports = function(options) {
       });
     });
 
+    function commitSnapshotWithMetadata(db, cb) {
+      var data = {x: 5, y: 6};
+      var metadata = {test: 3};
+      var op = {v: 0, create: {type: 'http://sharejs.org/types/JSONv0', data: data}};
+      var snapshot = {v: 1, type: 'http://sharejs.org/types/JSONv0', data: data, m: metadata};
+      db.commit('testcollection', 'test', op, snapshot, null, cb);
+    }
+
     describe('getSnapshot', function() {
       it('getSnapshot returns v0 snapshot', function(done) {
         this.db.getSnapshot('testcollection', 'test', null, null, function(err, result) {
@@ -239,6 +247,28 @@ module.exports = function(options) {
           });
         });
       });
+
+      it('getSnapshot does not return committed metadata by default', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.getSnapshot('testcollection', 'test', null, null, function(err, result) {
+            if (err) return done(err);
+            expect(result.m).equal(undefined);
+            done();
+          });
+        });
+      });
+
+      it('getSnapshot returns metadata when option is true', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.getSnapshot('testcollection', 'test', null, {metadata: true}, function(err, result) {
+            if (err) return done(err);
+            expect(result.m).eql({test: 3});
+            done();
+          });
+        });
+      });
     });
 
     describe('getSnapshotBulk', function() {
@@ -254,6 +284,28 @@ module.exports = function(options) {
               test: {id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data},
               test2: {id: 'test2', type: null, v: 0, data: undefined}
             });
+            done();
+          });
+        });
+      });
+
+      it('getSnapshotBulk does not return committed metadata by default', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.getSnapshotBulk('testcollection', ['test2', 'test'], null, null, function(err, resultMap) {
+            if (err) return done(err);
+            expect(resultMap.test.m).equal(undefined);
+            done();
+          });
+        });
+      });
+
+      it('getSnapshotBulk returns metadata when option is true', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.getSnapshotBulk('testcollection', ['test2', 'test'], null, {metadata: true}, function(err, resultMap) {
+            if (err) return done(err);
+            expect(resultMap.test.m).eql({test: 3});
             done();
           });
         });
@@ -346,6 +398,32 @@ module.exports = function(options) {
               expect(ops).eql([op0]);
               done();
             });
+          });
+        });
+      });
+
+      it('getOps does not return committed metadata by default', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}, m: {test: 3}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          db.getOps('testcollection', 'test', null, null, null, function(err, ops) {
+            if (err) return done(err);
+            expect(ops[0].m).eql(undefined);
+            done();
+          });
+        });
+      });
+
+      it('getOps returns metadata when option is true', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}, m: {test: 3}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          db.getOps('testcollection', 'test', null, null, {metadata: true}, function(err, ops) {
+            if (err) return done(err);
+            expect(ops[0].m).eql({test: 3});
+            done();
           });
         });
       });
@@ -452,6 +530,32 @@ module.exports = function(options) {
           });
         });
       });
+
+      it('getOpsBulk does not return committed metadata by default', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}, m: {test: 3}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          db.getOpsBulk('testcollection', {test: null}, null, null, function(err, opsMap) {
+            if (err) return done(err);
+            expect(opsMap.test[0].m).equal(undefined);
+            done();
+          });
+        });
+      });
+
+      it('getOpsBulk returns metadata when option is true', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}, m: {test: 3}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          db.getOpsBulk('testcollection', {test: null}, null, {metadata: true}, function(err, opsMap) {
+            if (err) return done(err);
+            expect(opsMap.test[0].m).eql({test: 3});
+            done();
+          });
+        });
+      });
     });
 
     describe('getOpsToSnapshot', function() {
@@ -470,10 +574,42 @@ module.exports = function(options) {
           });
         });
       });
+
+      it('getOpsToSnapshot does not return committed metadata by default', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}, m: {test: 3}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          db.getSnapshot('testcollection', 'test', {$submit: true}, null, function(err, snapshot) {
+            if (err) return done(err);
+            db.getOpsToSnapshot('testcollection', 'test', 0, snapshot, null, function(err, ops) {
+              if (err) return done(err);
+              expect(ops[0].m).equal(undefined);
+              done();
+            });
+          });
+        });
+      });
+
+      it('getOpsToSnapshot returns metadata when option is true', function(done) {
+        var op = {v: 0, create: {type: 'json0', data: {x: 5, y: 6}}, m: {test: 3}};
+        var db = this.db;
+        submit(db, 'testcollection', 'test', op, function(err, succeeded) {
+          if (err) return done(err);
+          db.getSnapshot('testcollection', 'test', {$submit: true}, null, function(err, snapshot) {
+            if (err) return done(err);
+            db.getOpsToSnapshot('testcollection', 'test', 0, snapshot, {metadata: true}, function(err, ops) {
+              if (err) return done(err);
+              expect(ops[0].m).eql({test: 3});
+              done();
+            });
+          });
+        });
+      });
     });
 
     describe('query', function() {
-      it('returns data in the collection', function(done) {
+      it('query returns data in the collection', function(done) {
         var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
         var db = this.db;
         db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err, succeeded) {
@@ -487,11 +623,33 @@ module.exports = function(options) {
         });
       });
 
-      it('returns nothing when there is no data', function(done) {
+      it('query returns nothing when there is no data', function(done) {
         this.db.query('testcollection', {x: 5}, null, null, function(err, results) {
           if (err) return done(err);
           expect(results).eql([]);
           done();
+        });
+      });
+
+      it('query does not return committed metadata by default', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.query('testcollection', {x: 5}, null, null, function(err, results) {
+            if (err) return done(err);
+            expect(results[0].m).equal(undefined);
+            done();
+          });
+        });
+      });
+
+      it('query returns metadata when option is true', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.query('testcollection', {x: 5}, null, {metadata: true}, function(err, results) {
+            if (err) return done(err);
+            expect(results[0].m).eql({test: 3});
+            done();
+          });
         });
       });
     });
@@ -520,6 +678,28 @@ module.exports = function(options) {
           db.query('testcollection', {x: 5}, {}, null, function(err, results) {
             if (err) return done(err);
             expect(results).eql([{type: 'json0', v: 1, data: {}, id: 'test'}]);
+            done();
+          });
+        });
+      });
+
+      it('query does not return committed metadata by default with projection', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.query('testcollection', {x: 5}, {x: true}, null, function(err, results) {
+            if (err) return done(err);
+            expect(results[0].m).equal(undefined);
+            done();
+          });
+        });
+      });
+
+      it('query returns metadata when option is true with projection', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.query('testcollection', {x: 5}, {x: true}, {metadata: true}, function(err, results) {
+            if (err) return done(err);
+            expect(results[0].m).eql({test: 3});
             done();
           });
         });
