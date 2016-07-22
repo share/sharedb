@@ -245,7 +245,7 @@ describe('client submit', function() {
   });
 
   it('submit fails if the server is missing ops required for transforming', function(done) {
-    this.backend.db.getOpsToSnapshot = function(collection, id, from, snapshot, callback) {
+    this.backend.db.getOpsToSnapshot = function(collection, id, from, snapshot, options, callback) {
       callback(null, []);
     };
     var doc = this.backend.connect().get('dogs', 'fido');
@@ -267,8 +267,8 @@ describe('client submit', function() {
 
   it('submit fails if ops returned are not the expected version', function(done) {
     var getOpsToSnapshot = this.backend.db.getOpsToSnapshot;
-    this.backend.db.getOpsToSnapshot = function(collection, id, from, snapshot, callback) {
-      getOpsToSnapshot.call(this, collection, id, from, snapshot, function(err, ops) {
+    this.backend.db.getOpsToSnapshot = function(collection, id, from, snapshot, options, callback) {
+      getOpsToSnapshot.call(this, collection, id, from, snapshot, options, function(err, ops) {
         ops[0].v++;
         callback(null, ops);
       });

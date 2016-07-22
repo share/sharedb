@@ -20,7 +20,7 @@ describe('DB base class', function() {
 
   it('returns an error if db.commit() is unimplemented', function(done) {
     var db = new DB();
-    db.commit('testcollection', 'test', {}, {}, function(err) {
+    db.commit('testcollection', 'test', {}, {}, null, function(err) {
       expect(err).an(Error);
       done();
     });
@@ -28,7 +28,7 @@ describe('DB base class', function() {
 
   it('returns an error if db.getSnapshot() is unimplemented', function(done) {
     var db = new DB();
-    db.getSnapshot('testcollection', 'foo', null, function(err) {
+    db.getSnapshot('testcollection', 'foo', null, null, function(err) {
       expect(err).an(Error);
       done();
     });
@@ -36,7 +36,7 @@ describe('DB base class', function() {
 
   it('returns an error if db.getOps() is unimplemented', function(done) {
     var db = new DB();
-    db.getOps('testcollection', 'foo', 0, null, function(err) {
+    db.getOps('testcollection', 'foo', 0, null, null, function(err) {
       expect(err).an(Error);
       done();
     });
