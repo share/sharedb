@@ -20,7 +20,7 @@
     "react": "^15.1.0",
     "react-dom": "^15.1.0",
     "serve-static": "^1.11.1",
-    "sharedb": "share/sharedb",
+    "sharedb": "^1.0.0-beta",
     "through2": "^2.0.1",
     "underscore": "^1.8.3",
     "websocket-json-stream": "^0.0.3",
