@@ -682,6 +682,28 @@ module.exports = function(options) {
           });
         });
       });
+
+      it('query does not return committed metadata by default with projection', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.query('testcollection', {x: 5}, {x: true}, null, function(err, results) {
+            if (err) return done(err);
+            expect(results[0].m).equal(undefined);
+            done();
+          });
+        });
+      });
+
+      it('query returns metadata when option is true with projection', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.query('testcollection', {x: 5}, {x: true}, {metadata: true}, function(err, results) {
+            if (err) return done(err);
+            expect(results[0].m).eql({test: 3});
+            done();
+          });
+        });
+      });
     });
 
     describe('queryPoll', function() {
