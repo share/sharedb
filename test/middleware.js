@@ -1,5 +1,6 @@
 var Backend = require('../lib/backend');
 var expect = require('expect.js');
+var types = require('../lib/types');
 
 describe('middleware', function() {
 
@@ -45,7 +46,7 @@ describe('middleware', function() {
       });
 
       var connection = this.backend.connect();
-      connection.get('dogs', 'fido').create({}, Backend.types.defaultType.uri, {hairy: true});
+      connection.get('dogs', 'fido').create({}, types.defaultType.uri, {hairy: true});
     });
 
     it('on op', function(done) {
