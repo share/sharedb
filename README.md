@@ -229,9 +229,11 @@ Create the document locally and send create operation to the server.
 Apply operation to document and send it to the server.
 `op` structure depends on the document type. See the
 [operations for the default `'ot-json0'` type](https://github.com/ottypes/json0#summary-of-operations).
+Call this after you've either fetched or subscribed to the document.
 
 `doc.del([options][, function(err) {...}])`  
 Delete the document locally and send delete operation to the server.
+Call this after you've either fetched or subscribed to the document.
 
 ### Class: `ShareDB.Query`
 
