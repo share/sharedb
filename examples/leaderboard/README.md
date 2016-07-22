@@ -9,6 +9,11 @@ server and initialize ShareDB with the
 
 ## Build client JavaScript file
 ```
+npm run build
+```
+
+## Run server
+```
 num run build
 ```
 
