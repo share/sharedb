@@ -1,4 +1,4 @@
-# Simple client/server sync with ShareDB
+# Simple realtime client/server sync with ShareDB
 
 ![Demo](demo.gif)
 
