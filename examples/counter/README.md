@@ -8,15 +8,15 @@ In this demo, data is not persisted. To persiste data, run a Mongo
 server and initialize ShareDB with the
 [ShareDBMongo](https://github.com/share/sharedb-mongo) database adapter.
 
+## Build client JavaScript file
+```
+npm run build
+```
+
 ## Run server
 ```
 npm install
 npm start
-```
-
-## Build client JavaScript file
-```
-num run build
 ```
 
 ## Run app in browser
