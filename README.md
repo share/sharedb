@@ -31,6 +31,11 @@ tracker](https://github.com/share/sharedb/issues).
 - Offline change syncing upon reconnection
 - In-memory implementations of database and pub/sub for unit testing
 
+## Example apps
+
+[![Demo](examples/counter/demo.gif)  
+Simple app demonstrating realtime sync](examples/counter)
+
 
 ## Data model
 
