@@ -1,4 +1,4 @@
-## v1.0-beta.0
+## v1.0-beta
 
 ### Breaking changes
 
