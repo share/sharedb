@@ -33,9 +33,11 @@ tracker](https://github.com/share/sharedb/issues).
 
 ## Example apps
 
-[![Demo](examples/counter/demo.gif)  
+[![counter app demo](examples/counter/demo.gif)  
 Simple app demonstrating realtime sync](examples/counter)
 
+[![leaderboard app demo](examples/leaderboard/demo.gif)  
+Leaderboard app demonstrating live queries](examples/leaderboard)
 
 ## Data model
 

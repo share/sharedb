@@ -1,5 +1,7 @@
 # Leaderboard
 
+![Demo](demo.gif)
+
 This is a port of [https://github.com/percolatestudio/react-leaderboard](Leaderboard) to
 ShareDB.
 
