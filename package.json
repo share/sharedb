@@ -20,7 +20,7 @@
     "sharedb-mingo-memory": "^1.0.0-beta"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha; ./node_modules/.bin/jshint lib/*.js test/*.js",
+    "test": "./node_modules/.bin/mocha",
     "test-cover": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha",
     "jshint": "./node_modules/.bin/jshint lib/*.js test/*.js"
   },
