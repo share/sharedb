@@ -1,5 +1,27 @@
+# OS X
 *.swp
 *.DS_Store
-node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
 coverage
-\#*\#
+
+# nyc test coverage
+.nyc_output
+
+# node-waf configuration
+.lock-wscript
+
+# Dependency directories
+node_modules
+jspm_packages

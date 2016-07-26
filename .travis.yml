@@ -4,6 +4,6 @@ node_js:
   - 5
   - 4
   - 0.10
-script: "npm run test-cover"
+script: "npm run jshint && npm run test-cover"
 # Send coverage data to Coveralls
 after_script: "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js"
