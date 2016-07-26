@@ -337,7 +337,7 @@ describe('projection utility methods', function() {
       );
       test(
         {x: true},
-        {create: {type: "something else"}}
+        {create: {type: 'something else'}}
       );
 
       test(

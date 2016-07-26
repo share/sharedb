@@ -28,7 +28,7 @@ describe('ot', function() {
     });
 
     it('fails if the type is missing', function() {
-      expect(ot.checkOp({create:{type: "something that does not exist"}})).ok();
+      expect(ot.checkOp({create:{type: 'something that does not exist'}})).ok();
     });
 
     it('accepts valid create operations', function() {
@@ -172,7 +172,7 @@ describe('ot', function() {
       expect(op).eql({del: true, v: 7});
 
       // And with no version specified should work, too
-      var op = {del: true}
+      var op = {del: true};
       expect(ot.transform(type.uri, op, {del: true, v: 6})).equal();
       expect(op).eql({del: true});
     });
@@ -213,8 +213,8 @@ describe('ot', function() {
       expect(op1).eql({v: 7, op: [{p: [15], si: 'hi'}]});
 
       // No version specified
-      var op1 = {op: [{p: [10], si: 'hi'}]}
-      var op2 = {v: 6, op: [{p: [5], si: 'abcde'}]}
+      var op1 = {op: [{p: [10], si: 'hi'}]};
+      var op2 = {v: 6, op: [{p: [5], si: 'abcde'}]};
       expect(ot.transform(type.uri, op1, op2)).equal();
       expect(op1).eql({op: [{p: [15], si: 'hi'}]});
     });

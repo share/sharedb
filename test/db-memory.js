@@ -61,7 +61,7 @@ describe('DB base class', function() {
 
 require('./db')({
   create: function(callback) {
-    var db = new ShareDbMingo;
+    var db = new ShareDbMingo();
     callback(null, db);
   },
   getQuery: getQuery
