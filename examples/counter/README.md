@@ -6,22 +6,19 @@ This is a simple websocket server that exposes the ShareDB protocol,
 with a client showing an incrementing number that is sychronized
 across all open browser tabs.
 
-In this demo, data is not persisted. To persiste data, run a Mongo
+In this demo, data is not persisted. To persist data, run a Mongo
 server and initialize ShareDB with the
 [ShareDBMongo](https://github.com/share/sharedb-mongo) database adapter.
 
-## Build client JavaScript file
-```
-npm run build
-```
-
-## Run server
+## Install dependencies
 ```
 npm install
-npm start
+```
+
+## Build JavaScript bundle and run server
+```
+npm run build && npm start
 ```
 
 ## Run app in browser
 Load [http://localhost:8080](http://localhost:8080)
-
-

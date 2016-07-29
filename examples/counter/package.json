@@ -1,10 +1,10 @@
 {
-  "name": "counters",
+  "name": "sharedb-example-counter",
   "version": "0.0.1",
   "description": "A simple client/server app using ShareDB and WebSockets",
   "main": "server.js",
   "scripts": {
-    "build": "mkdir -p dist/ && ./node_modules/.bin/browserify client.js -o dist/bundle.js",
+    "build": "mkdir -p static/dist/ && ./node_modules/.bin/browserify client.js -o static/dist/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
@@ -15,8 +15,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "connect": "^3.4.1",
-    "serve-static": "^1.11.1",
+    "express": "^4.14.0",
     "sharedb": "^1.0.0-beta",
     "websocket-json-stream": "^0.0.1",
     "ws": "^1.1.0"

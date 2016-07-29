@@ -1,10 +1,11 @@
 var sharedb = require('sharedb/lib/client');
 
 // Open WebSocket connection to ShareDB server
-var connection = new sharedb.Connection(new WebSocket('ws://localhost:8080'));
+var socket = new WebSocket('ws://' + window.location.host);
+var connection = new sharedb.Connection(socket);
 
-// Create local Doc instance mapped to 'dummy' collection document with id 'counters'
-var doc = connection.get('dummy', 'counters');
+// Create local Doc instance mapped to 'examples' collection document with id 'counter'
+var doc = connection.get('examples', 'counter');
 
 // Get initial value of document and subscribe to changes
 doc.subscribe(showNumbers);
