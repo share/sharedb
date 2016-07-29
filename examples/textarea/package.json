@@ -1,0 +1,26 @@
+{
+  "name": "sharedb-example-textarea",
+  "version": "0.0.1",
+  "description": "A simple client/server app using ShareDB and WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "build": "mkdir -p static/dist/ && ./node_modules/.bin/browserify client.js -o static/dist/bundle.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Nate Smith",
+  "contributors": [
+    "Avital Oliver <avital@aoliver.org> (https://aoliver.org/)"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.14.0",
+    "sharedb": "^1.0.0-beta",
+    "sharedb-string-binding": "^1.0.0",
+    "websocket-json-stream": "^0.0.1",
+    "ws": "^1.1.0"
+  },
+  "devDependencies": {
+    "browserify": "^13.0.1"
+  }
+}
