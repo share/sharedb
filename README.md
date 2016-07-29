@@ -33,10 +33,10 @@ tracker](https://github.com/share/sharedb/issues).
 
 ## Example apps
 
-[<img src="examples/counter/demo.gif" height="300">  
+[<img src="examples/counter/demo.gif" height="300">
 Simple app demonstrating realtime sync](examples/counter)
 
-[<img src="examples/leaderboard/demo.gif" height="436">  
+[<img src="examples/leaderboard/demo.gif" height="436">
 Leaderboard app demonstrating live queries](examples/leaderboard)
 
 ## Data model
@@ -71,9 +71,9 @@ var share = new ShareDB(options);
 
 __Options__
 
-* `options.db` _(instance of `ShareDB.DB`)_  
+* `options.db` _(instance of `ShareDB.DB`)_
   Store documents and ops with this database adapter. Defaults to `ShareDB.MemoryDB()`.
-* `options.pubsub` _(instance of `ShareDB.PubSub`)_  
+* `options.pubsub` _(instance of `ShareDB.PubSub`)_
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
 
@@ -113,11 +113,11 @@ flow through ShareDB. For example,
 [sharedb-access](https://github.com/dmapper/sharedb-access) uses middlewares
 to implement access control.
 
-`share.use(action, fn)`  
+`share.use(action, fn)`
 Register a new middleware.
 
 * `action` _(String)_
-  One of: 
+  One of:
   * `'connect'`: A new client connected to the server.
   * `'op'`: An operation was loaded from the database.
   * `'doc'`: A snapshot was loaded from the database.
@@ -131,7 +131,7 @@ Register a new middleware.
     the database.
   * `'receive'`: Received a message from a client
 * `fn` _(Function(request, callback))_
-  Call this function at the time specified by `action`.  
+  Call this function at the time specified by `action`.
   `request` contains a subset of the following properties, as relevant for the action:
   * `action`: The action this middleware is handing
   * `agent`: An object corresponding to the server agent handing this client
@@ -143,7 +143,7 @@ Register a new middleware.
 
 ### Shutdown
 
-`share.close(callback)`  
+`share.close(callback)`
 Closes connections to the database and pub/sub adapters.
 
 ## Client API
@@ -169,114 +169,114 @@ the WebSocket specification and pass it into the `ShareDB.Connection` constructo
 
 ### Class: `ShareDB.Connection`
 
-`connection.get(collectionName, documentId)`  
+`connection.get(collectionName, documentId)`
 Get a [`ShareDB.Doc`](#class-sharedbdoc) instance on a given collection and document ID.
 
-`connection.createFetchQuery(collectionName, query, options, callback)`  
-`connection.createSubscribeQuery(collectionName, query, options, callback)`  
+`connection.createFetchQuery(collectionName, query, options, callback)`
+`connection.createSubscribeQuery(collectionName, query, options, callback)`
 Get query results from the server. `createSubscribeQuery` also subscribes to
 changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 
-* `query` _(Object)_  
+* `query` _(Object)_
   A descriptor of a database query with structure defined by the database adapter.
-* `callback` _(Function)_  
+* `callback` _(Function)_
   Called with `(err, results)` when server responds, or on error.
-* `options.results` _(Array)_  
+* `options.results` _(Array)_
   Prior query results if available, such as from server rendering.
-* `options.*`  
+* `options.*`
   All other options are passed through to the database adapter.
 
 ### Class: `ShareDB.Doc`
 
-`doc.type` _(String_)  
+`doc.type` _(String_)
 The [OT type](https://github.com/ottypes/docs) of this document
 
-`doc.id` _(String)_  
+`doc.id` _(String)_
 Unique document ID
 
-`doc.data` _(Object)_  
+`doc.data` _(Object)_
 Document contents. Available after document is fetched or subscribed to.
 
-`doc.fetch(function(err) {...})`  
+`doc.fetch(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server.
 
-`doc.subscribe(function(err) {...})`  
+`doc.subscribe(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server, and
 fire events on subsequent changes.
 
-`doc.destroy()`  
+`doc.destroy()`
 Unsubscribe and stop firing events.
 
-`doc.on('load', function() {...})`  
+`doc.on('load', function() {...})`
 The initial snapshot of the document was loaded from the server. Fires at the
 same time as callbacks to `fetch` and `subscribe`.
 
-`doc.on('create', function() {...})`  
+`doc.on('create', function() {...})`
 The document was created. Technically, this means it has a type.
 
-`doc.on('before op'), function(op) {...})`  
+`doc.on('before op'), function(op) {...})`
 An operation is about to be applied to the data.
 
-`doc.on('op', function(op) {...})`  
+`doc.on('op', function(op) {...})`
 An operation was applied to the data.
 
-`doc.on('del', function(data) {...})`  
+`doc.on('del', function(data) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument.
 
-`doc.on('error', function(err) {...})`  
+`doc.on('error', function(err) {...})`
 There was an error fetching the document or applying an operation.
 
-`doc.create(data[, type][, options][, function(err) {...}])`  
+`doc.create(data[, type][, options][, function(err) {...}])`
 Create the document locally and send create operation to the server.
 * `data` Initial document contents
-* `type` _([OT type](https://github.com/ottypes/docs))_  
+* `type` _([OT type](https://github.com/ottypes/docs))_
   Defaults to `'ot-json0'`, for which `data` is an Object
 
-`doc.submitOp(op, [, options][, function(err) {...}])`  
+`doc.submitOp(op, [, options][, function(err) {...}])`
 Apply operation to document and send it to the server.
 `op` structure depends on the document type. See the
 [operations for the default `'ot-json0'` type](https://github.com/ottypes/json0#summary-of-operations).
 Call this after you've either fetched or subscribed to the document.
 
-`doc.del([options][, function(err) {...}])`  
+`doc.del([options][, function(err) {...}])`
 Delete the document locally and send delete operation to the server.
 Call this after you've either fetched or subscribed to the document.
 
 ### Class: `ShareDB.Query`
 
-`query.ready` _(Boolean)_  
+`query.ready` _(Boolean)_
 True if query results are ready and available on `query.results`
 
-`query.results` _(Array)_  
+`query.results` _(Array)_
 Query results, as an array of [`ShareDB.Doc`](#class-sharedbdoc) instances.
 
-`query.extra` _(Type depends on database adapter and query)_  
+`query.extra` _(Type depends on database adapter and query)_
 Extra query results that aren't an array of documents. Available for certain database adapters and queries.
 
-`query.on('ready', function() {...}))`  
+`query.on('ready', function() {...}))`
 The initial query results were loaded from the server. Fires at the same time as
 the callbacks to `createFetchQuery` and `createSubscribeQuery`.
 
-`query.on('error', function(err) {...}))`  
+`query.on('error', function(err) {...}))`
 There was an error receiving updates to a subscription.
 
-`query.destroy()`  
+`query.destroy()`
 Unsubscribe and stop firing events.
 
-`query.on('changed', function(results) {...}))`  
+`query.on('changed', function(results) {...}))`
 (Only fires on subscription queries) The query results changed. Fires only once
 after a sequence of diffs are handled.
 
-`query.on('insert', function(docs, atIndex) {...}))`  
+`query.on('insert', function(docs, atIndex) {...}))`
 (Only fires on subscription queries) A contiguous sequence of documents were added to the query result array.
 
-`query.on('move', function(docs, from, to) {...}))`  
+`query.on('move', function(docs, from, to) {...}))`
 (Only fires on subscription queries) A contiguous sequence of documents moved position in the query result array.
 
-`query.on('remove', function(docs, atIndex) {...}))`  
+`query.on('remove', function(docs, atIndex) {...}))`
 (Only fires on subscription queries) A contiguous sequence of documents were removed from the query result array.
 
-`query.on('extra', function() {...}))`  
+`query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
 
 
