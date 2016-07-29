@@ -1,5 +1,5 @@
 {
-  "name": "leaderboard",
+  "name": "sharedb-example-leaderboard",
   "version": "0.0.1",
   "description": "React Leaderboard backed by ShareDB",
   "main": "server.js",
