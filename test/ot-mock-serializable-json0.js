@@ -1,8 +1,8 @@
 var ot_json0 = require('ot-json0').type;
 
 // ot-mock-serializable-json0 is an ot type identical in
-//  behavior to the ot-json0 type when it is serialized
-//  but will fail if deserialized. 
+//  behavior to the ot-json0 type when it is deserialized
+//  but will fail if serialized. 
 //  For example calling ot-json.apply() on a serialized
 //  snapshot will fail.
 var ot_mock_serializable_json0 = {
