@@ -1,6 +1,10 @@
 var expect = require('expect.js');
 var ot = require('../lib/ot');
-var type = require('../lib/types').defaultType;
+var types = require('../lib/types');
+var mock_type = require('./ot-mock-serializable-json0').type;
+var type = types.defaultType;
+
+types.register(mock_type);
 
 describe('ot', function() {
 
@@ -237,6 +241,65 @@ describe('ot', function() {
       expect(ot.transform(null, op, {})).equal();
       expect(op).eql({});
     });
+  });
+
+  describe('serialize', function() {
+    it('fails if the document does not exist', function() {
+      expect(ot.serialize({v: 6})).ok();
+    });
+
+    it('fails if the type is missing', function() {
+      expect(ot.serialize({v: 6, type: 'some non existant type'})).ok();
+    });
+
+    it('it returns the document unchanged if serialize is not defined for the type', function() {
+      var doc = {v: 6, type: type.uri, data: 'Hi'};
+      var expected_data = doc.data;
+      expect(ot.serialize(doc)).to.equal();
+      expect(doc.data).to.equal(expected_data);
+    });
+
+    it('fails if the document data is already serialized', function() {
+      var doc = {v:6, type: mock_type.uri, data: mock_type.serialize('Hi')};
+      expect(ot.serialize(doc)).ok();
+    });
+
+    it('serializes the document data', function() {
+      var doc = {v: 6, type: mock_type.uri, data: 'Hi'};
+      var expected_doc = {v:6, type: mock_type.uri, data: mock_type.serialize('Hi')};
+      expect(ot.serialize(doc)).to.equal();
+      expect(doc).to.eql(expected_doc);
+    });
+  });
+
+  describe('deserialize', function() {
+    it('fails if the document does not exist', function() {
+      expect(ot.deserialize({v: 6})).ok();
+    });
+
+    it('fails if the type is missing', function() {
+      expect(ot.deserialize({v: 6, type: 'some non existant type'})).ok();
+    });
+
+    it('it returns the document unchanged if deserialize is not defined for the type', function() {
+      var doc = {v: 6, type: type.uri, data: 'Hi'};
+      var expected_data = doc.data;
+      expect(ot.deserialize(doc)).to.equal();
+      expect(doc.data).to.equal(expected_data);
+    });
+
+    it('fails if the document data is not serialized', function() {
+      var doc = {v: 6, type: mock_type.uri, data: 'Hi'};
+      expect(ot.deserialize(doc)).ok();
+    });
+
+    it('deserializes the document data', function() {
+      var doc = {v:6, type: mock_type.uri, data: mock_type.serialize('Hi')};
+      var expected_doc = {v: 6, type: mock_type.uri, data: 'Hi'};
+      expect(ot.deserialize(doc)).to.equal();
+      expect(doc).to.eql(expected_doc);
+    });
+
   });
 
 });
