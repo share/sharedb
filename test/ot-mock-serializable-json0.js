@@ -1,4 +1,5 @@
 var ot_json0 = require('ot-json0').type;
+var HEADER = '!HEADER!';
 
 // ot-mock-serializable-json0 is an ot type identical in
 //  behavior to the ot-json0 type when it is deserialized
@@ -10,14 +11,16 @@ var ot_mock_serializable_json0 = {
   uri: 'http://sharejs.org/types/ot_mock_serializable_json0',
 
   create: function( initialData ) {
-    if( initialData ) {
-      initialData = ot_mock_serializable_json0.deserialize( initialData );
-    }
+    //if( initialData ) {
+    //  initialData = ot_mock_serializable_json0.deserialize( initialData );
+    //}
     return ot_json0.create( initialData );
   },
 
   apply: function( data, op ) {
-    if(ot_mock_serializable_json0.isSerialized(data)) throw new Error('cannot call apply on a serialized ot type instance');
+    if(isSerialized(data)) {
+      throw new Error('cannot call apply on a serialized ot type instance');
+    }
 
     return ot_json0.apply(data, op);
   },
@@ -28,23 +31,23 @@ var ot_mock_serializable_json0 = {
   normalize: ot_json0.normalize,
 
   serialize: function( data ) {
-    if(ot_mock_serializable_json0.isSerialized(data)) throw new Error('cannot serialize an already serialized ot type instance');
-
-    return {
-      encode: JSON.stringify( data )
-    };
+    if(isSerialized(data)) {
+      throw new Error('cannot serialize an already serialized ot type instance');
+    }
+    return HEADER + JSON.stringify(data);
   },
 
   deserialize: function( data ) {
-    if(!ot_mock_serializable_json0.isSerialized(data)) throw new Error('cannot deserialize an already deserialized ot type instance');
-
-    return JSON.parse( data.encode );
+    if(!isSerialized(data)) {
+      throw new Error('cannot deserialize an already deserialized ot type instance');
+    }
+    return JSON.parse( data.substring(HEADER.length) );
   },
-
-  isSerialized: function( data ) {
-    return !!data.encode;
-  }
 
 };
 
 exports.type = ot_mock_serializable_json0;
+
+function isSerialized( data ) {
+  return typeof data == 'string' && data.startsWith(HEADER);
+}
