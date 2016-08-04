@@ -11,9 +11,9 @@ var ot_mock_serializable_json0 = {
   uri: 'http://sharejs.org/types/ot_mock_serializable_json0',
 
   create: function( initialData ) {
-    //if( initialData ) {
-    //  initialData = ot_mock_serializable_json0.deserialize( initialData );
-    //}
+    if( isSerialized(initialData) ) {
+      throw new Error('cannot create an ot type instance with serialized initial data');
+    }
     return ot_json0.create( initialData );
   },
 
@@ -49,5 +49,5 @@ var ot_mock_serializable_json0 = {
 exports.type = ot_mock_serializable_json0;
 
 function isSerialized( data ) {
-  return typeof data == 'string' && data.startsWith(HEADER);
+  return typeof data == 'string' && data.substring(0, HEADER.length) === HEADER;
 }
