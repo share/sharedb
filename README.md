@@ -87,7 +87,7 @@ __Options__
 
 #### Pub/Sub Adapters
 * `ShareDB.MemoryPubSub` can be used with a single process
-* [`ShareDBRedisPubSub`](https://github.com/share/sharedb-mongo) can be used
+* [`ShareDBRedisPubSub`](https://github.com/share/sharedb-redis-pubsub) can be used
   with multiple processes using Redis' pub/sub mechanism
 
 ### Listening to WebSocket connections
