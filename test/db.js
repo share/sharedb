@@ -269,6 +269,17 @@ module.exports = function(options) {
           });
         });
       });
+
+      it('getSnapshot returns metadata when fields is {$submit: true}', function(done) {
+        var db = this.db;
+        commitSnapshotWithMetadata(db, function(err) {
+          db.getSnapshot('testcollection', 'test', {$submit: true}, null, function(err, result) {
+            if (err) return done(err);
+            expect(result.m).eql({test: 3});
+            done();
+          });
+        });
+      });
     });
 
     describe('getSnapshotBulk', function() {
