@@ -8,9 +8,18 @@ describe('middleware', function() {
     this.backend = new Backend();
   });
 
+  describe('use', function() {
+
+    it('returns itself to allow chaining', function() {
+      var response = this.backend.use('submit', function(request, next) {});
+      expect(response).equal(this.backend);
+    });
+
+  });
+
   describe('connect', function() {
 
-    it('passes the agent on connect', function() {
+    it('passes the agent on connect', function(done) {
       var clientId;
       this.backend.use('connect', function(request, next) {
         clientId = request.agent.clientId;

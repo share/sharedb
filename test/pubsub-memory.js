@@ -3,10 +3,10 @@ var PubSub = require('../lib/pubsub');
 var expect = require('expect.js');
 
 require('./pubsub')(function(callback) {
-  callback(null, MemoryPubSub());
+  callback(null, new MemoryPubSub());
 });
 require('./pubsub')(function(callback) {
-  callback(null, MemoryPubSub({prefix: 'foo'}));
+  callback(null, new MemoryPubSub({prefix: 'foo'}));
 });
 
 describe('PubSub base class', function() {

@@ -81,13 +81,13 @@ __Options__
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
 * [`ShareDBMongo`](https://github.com/share/sharedb-mongo), backed by a real Mongo database
   and full query support
-* [`ShareDBMingoMemory`](https://github.com/avital/sharedb-mingo-memory), backed by
+* [`ShareDBMingoMemory`](https://github.com/share/sharedb-mingo-memory), backed by
   a non-persistent database supporting most Mongo queries. Useful for faster
   testing of a Mongo-based app.
 
 #### Pub/Sub Adapters
 * `ShareDB.MemoryPubSub` can be used with a single process
-* [`ShareDBRedisPubSub`](https://github.com/share/sharedb-mongo) can be used
+* [`ShareDBRedisPubSub`](https://github.com/share/sharedb-redis-pubsub) can be used
   with multiple processes using Redis' pub/sub mechanism
 
 ### Listening to WebSocket connections
@@ -211,17 +211,17 @@ Unsubscribe and stop firing events.
 The initial snapshot of the document was loaded from the server. Fires at the
 same time as callbacks to `fetch` and `subscribe`.
 
-`doc.on('create', function() {...})`
-The document was created. Technically, this means it has a type.
+`doc.on('create', function(source) {...})`
+The document was created. Technically, this means it has a type. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('before op'), function(op) {...})`
-An operation is about to be applied to the data.
+`doc.on('before op'), function(op, source) {...})`
+An operation is about to be applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('op', function(op) {...})`
-An operation was applied to the data.
+`doc.on('op', function(op, source) {...})`
+An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('del', function(data) {...})`
-The document was deleted. Document contents before deletion are passed in as an argument.
+`doc.on('del', function(data, source) {...})`
+The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
 `doc.on('error', function(err) {...})`
 There was an error fetching the document or applying an operation.
@@ -231,16 +231,19 @@ Create the document locally and send create operation to the server.
 * `data` Initial document contents
 * `type` _([OT type](https://github.com/ottypes/docs))_
   Defaults to `'ot-json0'`, for which `data` is an Object
+* `options.source` Argument passed to the `'create'` event locally. This is not sent to the server or other clients. Defaults to `true`.
 
 `doc.submitOp(op, [, options][, function(err) {...}])`
 Apply operation to document and send it to the server.
 `op` structure depends on the document type. See the
 [operations for the default `'ot-json0'` type](https://github.com/ottypes/json0#summary-of-operations).
 Call this after you've either fetched or subscribed to the document.
+* `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
 
 `doc.del([options][, function(err) {...}])`
 Delete the document locally and send delete operation to the server.
 Call this after you've either fetched or subscribed to the document.
+* `options.source` Argument passed to the `'del'` event locally. This is not sent to the server or other clients. Defaults to `true`.
 
 ### Class: `ShareDB.Query`
 
