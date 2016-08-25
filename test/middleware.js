@@ -19,7 +19,7 @@ describe('middleware', function() {
 
   describe('connect', function() {
 
-    it('passes the agent on connect', function() {
+    it('passes the agent on connect', function(done) {
       var clientId;
       this.backend.use('connect', function(request, next) {
         clientId = request.agent.clientId;

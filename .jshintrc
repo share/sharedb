@@ -1,0 +1,18 @@
+{
+  "node": true,
+  "laxcomma": true,
+  "eqnull": true,
+  "eqeqeq": true,
+  "indent": 2,
+  "newcap": true,
+  "quotmark": "single",
+  "undef": true,
+  "trailing": true,
+  "shadow": true,
+  "expr": true,
+  "boss": true,
+  "globals": {
+    "window": false,
+    "document": false
+  }
+}
