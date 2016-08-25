@@ -1,9 +1,6 @@
-# Collaborative Textarea with ShareDB
+# Collaborative Rich Text Editor with ShareDB
 
-![Demo](demo.gif)
-
-This is a collaborative plain textarea using the default ShareDB JSON document
-type and the `sharedb-string-binding` module.
+This is a collaborative rich text editor using [Quill](https://github.com/quilljs/quill) and the [rich-text OT type](https://github.com/ottypes/rich-text).
 
 In this demo, data is not persisted. To persist data, run a Mongo
 server and initialize ShareDB with the
