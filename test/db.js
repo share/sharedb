@@ -742,7 +742,7 @@ module.exports = function(options) {
 
     describe('queryPollDoc', function() {
       it('returns false when the document does not exist', function(done) {
-        var query = {}
+        var query = {};
         if (!this.db.canPollDoc('testcollection', query)) return done();
 
         var db = this.db;
@@ -789,10 +789,10 @@ module.exports = function(options) {
         // test that getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]})
         // sorts by foo first, then bar
         var snapshots = [
-          {type: 'json0', id: "0", v: 1, data: {foo: 1, bar: 1}},
-          {type: 'json0', id: "1", v: 1, data: {foo: 2, bar: 1}},
-          {type: 'json0', id: "2", v: 1, data: {foo: 1, bar: 2}},
-          {type: 'json0', id: "3", v: 1, data: {foo: 2, bar: 2}}
+          {type: 'json0', id: '0', v: 1, data: {foo: 1, bar: 1}},
+          {type: 'json0', id: '1', v: 1, data: {foo: 2, bar: 1}},
+          {type: 'json0', id: '2', v: 1, data: {foo: 1, bar: 2}},
+          {type: 'json0', id: '3', v: 1, data: {foo: 2, bar: 2}}
         ];
         var db = this.db;
         var dbQuery = getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]});
