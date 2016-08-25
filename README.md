@@ -81,7 +81,7 @@ __Options__
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
 * [`ShareDBMongo`](https://github.com/share/sharedb-mongo), backed by a real Mongo database
   and full query support
-* [`ShareDBMingoMemory`](https://github.com/avital/sharedb-mingo-memory), backed by
+* [`ShareDBMingoMemory`](https://github.com/share/sharedb-mingo-memory), backed by
   a non-persistent database supporting most Mongo queries. Useful for faster
   testing of a Mongo-based app.
 
