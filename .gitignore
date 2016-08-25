@@ -2,6 +2,9 @@
 *.swp
 *.DS_Store
 
+# Emacs
+\#*\#
+
 # Logs
 logs
 *.log
