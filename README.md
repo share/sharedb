@@ -204,6 +204,9 @@ Populate the fields on `doc` with a snapshot of the document from the server.
 Populate the fields on `doc` with a snapshot of the document from the server, and
 fire events on subsequent changes.
 
+`doc.ingestSnapshot(snapshot, callback)`
+Ingest snapshot data. This data must include a version, snapshot and type. This is used both to ingest data that was exported with a webpage and data that was received from the server during a fetch.
+
 `doc.destroy()`
 Unsubscribe and stop firing events.
 
