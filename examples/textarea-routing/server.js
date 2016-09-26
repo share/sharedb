@@ -1,3 +1,4 @@
+// Derived from https://github.com/share/sharedb/blob/master/examples/textarea/server.js
 var http = require('http');
 var express = require('express');
 var ShareDB = require('sharedb');
