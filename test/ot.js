@@ -1,6 +1,10 @@
 var expect = require('expect.js');
 var ot = require('../lib/ot');
-var type = require('../lib/types').defaultType;
+var types = require('../lib/types');
+var serializable_type = require('./ot-mock-serializable-json0').type;
+var type = types.defaultType;
+
+types.register(serializable_type);
 
 describe('ot', function() {
 
@@ -88,6 +92,14 @@ describe('ot', function() {
       expect(ot.apply(doc, {v: 5, create: {type: type.uri, data: 'Hi there'}})).equal();
       expect(doc).eql({v: 6, type: type.uri, data: 'Hi there'});
     });
+
+    it('creates doc data when it is given initial data for a serializable type', function() {
+      var doc = {v: 5};
+      var serialized_intial_data = serializable_type.serialize('Hi there');
+      expect(ot.apply(doc, {v: 5, create: {type: serializable_type.uri, data: serialized_intial_data}})).equal();
+      expect(doc).eql({v: 6, type: serializable_type.uri, data: serialized_intial_data});
+    });
+
   });
 
   describe('del', function() {
@@ -118,6 +130,13 @@ describe('ot', function() {
       expect(ot.apply(doc, {v: 6, op: [{p: [2], si: ' there'}]})).equal();
       expect(doc).eql({v: 7, type: type.uri, data: 'Hi there'});
     });
+
+    it('applies the operation to the document data of a serializable type', function() {
+      var doc = {v: 6, type: serializable_type.uri, data: serializable_type.serialize('Hi')};
+      expect(ot.apply(doc, {v: 6, op: [{p: [2], si: ' there'}]})).equal();
+      expect(doc).eql({v: 7, type: serializable_type.uri, data: serializable_type.serialize('Hi there')});
+    });
+
   });
 
   describe('no-op', function() {
