@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom';
 
 import sharedb from 'sharedb/lib/client';
 import StringBinding from 'sharedb-string-binding';
+import connection from './connection';
 
 class TextPad extends Component {
 
@@ -12,10 +13,6 @@ class TextPad extends Component {
 
     // Get a reference to the textArea DOM node.
     const textArea = ReactDOM.findDOMNode(this.refs.textArea);
-
-    // Open WebSocket connection to ShareDB server
-    const socket = new WebSocket('ws://' + window.location.host);
-    const connection = new sharedb.Connection(socket);
 
     // Create local Doc instance mapped to 'examples' collection document with id 'textarea'
     const doc = connection.get('examples', 'textarea');
