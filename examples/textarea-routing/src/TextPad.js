@@ -7,6 +7,10 @@ import sharedb from 'sharedb/lib/client';
 import StringBinding from 'sharedb-string-binding';
 import connection from './connection';
 
+function createDocumentIfRequired(doc, callback){
+  (doc.type === null) ? doc.create('', callback) : callback();
+}
+
 class TextPad extends Component {
 
   componentDidMount() {
@@ -14,19 +18,28 @@ class TextPad extends Component {
     // Get a reference to the textArea DOM node.
     const textArea = ReactDOM.findDOMNode(this.refs.textArea);
 
-    // Create local Doc instance mapped to 'examples' collection document with id 'textarea'
-    const doc = connection.get('examples', 'textarea');
-    doc.subscribe(function(err) {
+    // Create local Doc instance mapped to 'examples' collection document
+    // with id derived from this.props.docId
+    const doc = connection.get('examples', this.props.docId);
+    this.doc = doc;
+
+    doc.subscribe((err) => {
       if (err) throw err;
-      const binding = new StringBinding(textArea, doc);
-      binding.setup();
+      createDocumentIfRequired(doc, () => {
+        const binding = new StringBinding(textArea, doc);
+        binding.setup();
+      });
     });
+  }
+
+  componentWillUnmount() {
+    this.doc.destroy();
   }
 
   render() {
     return (
       <div>
-        <textarea ref="textArea"></textarea>
+        <textarea ref="textArea" />
       </div>
     );
   }
