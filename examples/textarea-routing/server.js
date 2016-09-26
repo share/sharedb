@@ -6,21 +6,6 @@ var WebSocket = require('ws');
 var WebSocketJSONStream = require('websocket-json-stream');
 
 var backend = new ShareDB();
-createDoc(startServer);
-
-// Create initial document then fire callback
-function createDoc(callback) {
-  var connection = backend.connect();
-  var doc = connection.get('examples', 'textarea');
-  doc.fetch(function(err) {
-    if (err) throw err;
-    if (doc.type === null) {
-      doc.create('', callback);
-      return;
-    }
-    callback();
-  });
-}
 
 function startServer() {
 
@@ -39,3 +24,5 @@ function startServer() {
   server.listen(8080);
   console.log('Listening on http://localhost:8080');
 }
+
+startServer();
