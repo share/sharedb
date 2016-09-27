@@ -1,15 +1,22 @@
-import React, { Component } from 'react';
+import React from 'react';
+import { Router, Route, browserHistory } from 'react-router';
 import TextPad from './TextPad';
 import './App.css';
 
-class App extends Component {
-  render() {
-    return (
-      <div className="App">
-        <TextPad docId="textarea" />
-      </div>
-    );
-  }
-}
+const App = ({ params }) => {
+  return (
+    <div className="App">
+      <TextPad docId={params.docId} />
+    </div>
+  );
+};
 
-export default App;
+const AppRouter = () => {
+  return (
+    <Router history={browserHistory}>
+      <Route path="/:docId" component={App} />
+    </Router>
+  );
+};
+
+export default AppRouter;
