@@ -3,12 +3,15 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 
-import sharedb from 'sharedb/lib/client';
 import StringBinding from 'sharedb-string-binding';
 import connection from './connection';
 
-function createDocumentIfRequired(doc, callback){
-  (doc.type === null) ? doc.create('', callback) : callback();
+function createIfNeeded(doc, callback){
+  if(doc.type === null){
+    doc.create('', callback);
+  } else {
+    callback();
+  }
 }
 
 class TextPad extends Component {
@@ -21,15 +24,16 @@ class TextPad extends Component {
     // Create local Doc instance mapped to 'examples' collection document
     // with id derived from this.props.docId
     const doc = connection.get('examples', this.props.docId);
-    this.doc = doc;
 
     doc.subscribe((err) => {
       if (err) throw err;
-      createDocumentIfRequired(doc, () => {
+      createIfNeeded(doc, () => {
         const binding = new StringBinding(textArea, doc);
         binding.setup();
       });
     });
+
+    this.doc = doc;
   }
 
   componentWillUnmount() {
