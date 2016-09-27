@@ -9,18 +9,19 @@ var WebSocketJSONStream = require('websocket-json-stream');
 var path = require('path');
 
 var buildDir = 'build';
+var port = '8080';
 
 var backend = new ShareDB();
-var app = express();
+var app = express()
 
-// Serve static assets bundled by `npm run build`.
-app.use(express.static(buildDir));
+  // Serve static assets bundled by `npm run build`.
+  .use(express.static(buildDir))
 
-// Serve index.html for any route that doesn't match static assets,
-// for compatibility with react-router browserHistory.
-app.get('*', function (req, res) {
-  res.sendFile(path.join(__dirname, buildDir, 'index.html'))
-})
+  // Serve index.html for any route that doesn't match static assets,
+  // for compatibility with react-router browserHistory.
+  .get('*', function (req, res) {
+    res.sendFile(path.join(__dirname, buildDir, 'index.html'))
+  });
 
 var server = http.createServer(app);
 
@@ -30,5 +31,5 @@ new WebSocket.Server({server: server})
     backend.listen(stream);
   });
 
-server.listen(8080);
-console.log('Listening on http://localhost:8080');
+server.listen(port);
+console.log('Listening on http://localhost:' + port);
