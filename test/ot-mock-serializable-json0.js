@@ -19,11 +19,15 @@ var ot_mock_serializable_json0 = {
     },
 
     apply: function( data, op ) {
+        var serialized = false;
         if(isSerialized(data)) {
-            throw new Error('cannot call apply on a serialized ot type instance');
+            serialized = true;
+            data = ot_mock_serializable_json0.deserialize(data);
         }
 
-        return ot_json0.apply(data, op);
+        data = ot_json0.apply(data, op)
+
+        return (serialized) ?  ot_mock_serializable_json0.serialize(data) : data;
     },
 
     transform: ot_json0.transform,

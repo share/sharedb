@@ -45,7 +45,7 @@ describe('client submit', function() {
 
   it('can create a new doc with a serializable type', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create({age: 3}, serializable_type.uri, function(err) {
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       expect(doc.data).eql({age: 3});
       expect(doc.version).eql(1);
@@ -90,7 +90,7 @@ describe('client submit', function() {
 
   it('can create then submit an op on a serializable type', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create({age: 3}, serializable_type.uri, function(err) {
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
@@ -169,7 +169,7 @@ describe('client submit', function() {
 
   it('ops submitted sync get composed with a serializable type', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create({age: 3}, serializable_type.uri);
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri);
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
       if (err) return done(err);
@@ -437,7 +437,7 @@ describe('client submit', function() {
   it('can commit then fetch in a new connection to get the same data with a serializable type', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
-    doc.create({age: 3}, serializable_type.uri, function(err) {
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
