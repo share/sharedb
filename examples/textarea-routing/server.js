@@ -11,7 +11,6 @@ var path = require('path');
 var buildDir = 'build';
 var port = '8080';
 
-var backend = new ShareDB();
 var app = express()
 
   // Serve static assets bundled by `npm run build`.
@@ -25,11 +24,13 @@ var app = express()
 
 var server = http.createServer(app);
 
+var backend = new ShareDB();
+
 new WebSocket.Server({server: server})
-  .on('connection', function(ws, req) {
-    var stream = new WebSocketJSONStream(ws);
-    backend.listen(stream);
+  .on('connection', function(ws) {
+    backend.listen(new WebSocketJSONStream(ws));
   });
 
 server.listen(port);
+
 console.log('Listening on http://localhost:' + port);
