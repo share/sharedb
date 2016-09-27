@@ -7,7 +7,6 @@ class App extends Component {
     return (
       <div className="App">
         <TextPad docId="textarea" />
-        <TextPad docId="textarea2" />
       </div>
     );
   }

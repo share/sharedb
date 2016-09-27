@@ -1,10 +1,9 @@
 // Derived from https://github.com/share/sharedb/blob/master/examples/textarea/client.js
-
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-
 import StringBinding from 'sharedb-string-binding';
 import connection from './connection';
+import './TextPad.css';
 
 function createIfNeeded(doc, callback){
   if(doc.type === null){
@@ -41,11 +40,7 @@ class TextPad extends Component {
   }
 
   render() {
-    return (
-      <div>
-        <textarea ref="textArea" />
-      </div>
-    );
+    return <textarea className="TextPad" ref="textArea" />
   }
 }
 

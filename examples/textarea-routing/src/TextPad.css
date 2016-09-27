@@ -1,0 +1,8 @@
+.TextPad {
+  font-size: 2em;
+  height: 100%;
+  width: 100%;
+  box-shadow: 2px 2px 18px gray;
+  border-radius: 7px;
+  outline: none;
+}
