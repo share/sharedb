@@ -1,4 +1,8 @@
-// Derived from https://github.com/share/sharedb/blob/master/examples/textarea/client.js
+// This component encapsulates sharedb-string-binding as a React component.
+//
+// Derived from the original ShareDB textarea example found at
+// https://github.com/share/sharedb/blob/master/examples/textarea/client.js
+
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import StringBinding from 'sharedb-string-binding';
