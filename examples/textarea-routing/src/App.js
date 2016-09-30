@@ -6,7 +6,7 @@ import './App.css';
 const App = ({ params }) => {
   return (
     <div className="App">
-      <TextPad docId={params.docId} />
+      <TextPad id={params.id} />
     </div>
   );
 };
@@ -14,7 +14,7 @@ const App = ({ params }) => {
 const AppRouter = () => {
   return (
     <Router history={browserHistory}>
-      <Route path="/:docId" component={App} />
+      <Route path="/:id" component={App} />
     </Router>
   );
 };
