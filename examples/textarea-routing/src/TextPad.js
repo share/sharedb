@@ -16,6 +16,7 @@ export default class TextPad extends Component {
     const collection = 'textPads';
     const doc = connection.get(collection, this.props.id);
     doc.subscribe((err) => {
+      if (err) throw err;
       createIfNeeded(doc, () => {
       });
     });
