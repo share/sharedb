@@ -1,9 +1,9 @@
 var async = require('async');
 var expect = require('expect.js');
 var types = require('../../lib/types');
-var serializable_type = require('../ot-mock-serializable-json0').type;
-
-types.register(serializable_type);
+var deserializedType = require('./deserialized-type');
+types.register(deserializedType.type);
+types.register(deserializedType.type2);
 
 module.exports = function() {
 describe('client submit', function() {
@@ -43,16 +43,6 @@ describe('client submit', function() {
     });
   });
 
-  it('can create a new doc with a serializable type', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
-      if (err) return done(err);
-      expect(doc.data).eql({age: 3});
-      expect(doc.version).eql(1);
-      done();
-    });
-  });
-
   it('can create then delete then create a doc', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -78,19 +68,6 @@ describe('client submit', function() {
   it('can create then submit an op', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
-      if (err) return done(err);
-      doc.submitOp({p: ['age'], na: 2}, function(err) {
-        if (err) return done(err);
-        expect(doc.data).eql({age: 5});
-        expect(doc.version).eql(2);
-        done();
-      });
-    });
-  });
-
-  it('can create then submit an op on a serializable type', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
@@ -143,33 +120,6 @@ describe('client submit', function() {
   it('ops submitted sync get composed', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3});
-    doc.submitOp({p: ['age'], na: 2});
-    doc.submitOp({p: ['age'], na: 2}, function(err) {
-      if (err) return done(err);
-      expect(doc.data).eql({age: 7});
-      // Version is 1 instead of 3, because the create and ops got composed
-      expect(doc.version).eql(1);
-      doc.submitOp({p: ['age'], na: 2});
-      doc.submitOp({p: ['age'], na: 2}, function(err) {
-        if (err) return done(err);
-        expect(doc.data).eql({age: 11});
-        // Ops get composed
-        expect(doc.version).eql(2);
-        doc.submitOp({p: ['age'], na: 2});
-        doc.del(function(err) {
-          if (err) return done(err);
-          expect(doc.data).eql(undefined);
-          // del DOES NOT get composed
-          expect(doc.version).eql(4);
-          done();
-        });
-      });
-    });
-  });
-
-  it('ops submitted sync get composed with a serializable type', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri);
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
       if (err) return done(err);
@@ -421,23 +371,6 @@ describe('client submit', function() {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
-      if (err) return done(err);
-      doc2.fetch(function(err) {
-        if (err) return done(err);
-        expect(doc.data).eql({age: 3});
-        expect(doc2.data).eql({age: 3});
-        expect(doc.version).eql(1);
-        expect(doc2.version).eql(1);
-        expect(doc.data).not.equal(doc2.data);
-        done();
-      });
-    });
-  });
-
-  it('can commit then fetch in a new connection to get the same data with a serializable type', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    var doc2 = this.backend.connect().get('dogs', 'fido');
-    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
@@ -1106,6 +1039,100 @@ describe('client submit', function() {
       if (err) return done(err);
       doc._submit({}, null, function(err) {
         expect(err).ok();
+        done();
+      });
+    });
+  });
+
+  describe('type.deserialize', function() {
+    it('can create a new doc', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.create([3], deserializedType.type.uri, function(err) {
+        if (err) return done(err);
+        expect(doc.data).a(deserializedType.Node);
+        expect(doc.data).eql({value: 3, next: null});
+        done();
+      });
+    });
+
+    it('is stored serialized in backend', function() {
+      var db = this.backend.db;
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.create([3], deserializedType.type.uri, function(err) {
+        if (err) return done(err);
+        db.getSnapshot('dogs', fido, null, null, function(err, snapshot) {
+          if (err) return done(err);
+          expect(snapshot.data).eql([3]);
+          done();
+        });
+      });
+    });
+
+    it('deserializes on fetch', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      var backend = this.backend;
+      doc.create([3], deserializedType.type.uri, function(err) {
+        if (err) return done(err);
+        doc2.fetch(function(err) {
+          if (err) return done(err);
+          expect(doc2.data).a(deserializedType.Node);
+          expect(doc2.data).eql({value: 3, next: null});
+          done();
+        });
+      });
+    });
+
+    it('can create then submit an op', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.create([3], deserializedType.type.uri, function(err) {
+        if (err) return done(err);
+        doc.submitOp({insert: 0, value: 2}, function(err) {
+          if (err) return done(err);
+          expect(doc.data).eql({value: 2, next: {value: 3, next: null}});
+          done();
+        });
+      });
+    });
+
+    it('server fetches and transforms by already committed op', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      var backend = this.backend;
+      doc.create([3], deserializedType.type.uri, function(err) {
+        if (err) return done(err);
+        doc2.fetch(function(err) {
+          if (err) return done(err);
+          doc.submitOp({insert: 0, value: 2}, function(err) {
+            if (err) return done(err);
+            doc2.submitOp({insert: 1, value: 4}, function(err) {
+              if (err) return done(err);
+              expect(doc2.data).eql({value: 2, next: {value: 3, next: {value: 4, next: null}}});
+              done();
+            });
+          });
+        });
+      });
+    });
+  });
+
+  describe('type.createDeserialized', function() {
+    it('can create a new doc', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.create([3], deserializedType.type2.uri, function(err) {
+        if (err) return done(err);
+        expect(doc.data).a(deserializedType.Node);
+        expect(doc.data).eql({value: 3, next: null});
+        done();
+      });
+    });
+
+    it('can create a new doc from deserialized form', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.create(new deserializedType.Node(3), deserializedType.type2.uri, function(err) {
+        if (err) return done(err);
+        expect(doc.data).a(deserializedType.Node);
+        expect(doc.data).eql({value: 3, next: null});
         done();
       });
     });
