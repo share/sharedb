@@ -1,5 +1,9 @@
 var async = require('async');
 var expect = require('expect.js');
+var types = require('../../lib/types');
+var serializable_type = require('../ot-mock-serializable-json0').type;
+
+types.register(serializable_type);
 
 module.exports = function() {
 describe('client submit', function() {
@@ -39,6 +43,16 @@ describe('client submit', function() {
     });
   });
 
+  it('can create a new doc with a serializable type', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
+      if (err) return done(err);
+      expect(doc.data).eql({age: 3});
+      expect(doc.version).eql(1);
+      done();
+    });
+  });
+
   it('can create then delete then create a doc', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -64,6 +78,19 @@ describe('client submit', function() {
   it('can create then submit an op', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc.submitOp({p: ['age'], na: 2}, function(err) {
+        if (err) return done(err);
+        expect(doc.data).eql({age: 5});
+        expect(doc.version).eql(2);
+        done();
+      });
+    });
+  });
+
+  it('can create then submit an op on a serializable type', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
@@ -116,6 +143,33 @@ describe('client submit', function() {
   it('ops submitted sync get composed', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3});
+    doc.submitOp({p: ['age'], na: 2});
+    doc.submitOp({p: ['age'], na: 2}, function(err) {
+      if (err) return done(err);
+      expect(doc.data).eql({age: 7});
+      // Version is 1 instead of 3, because the create and ops got composed
+      expect(doc.version).eql(1);
+      doc.submitOp({p: ['age'], na: 2});
+      doc.submitOp({p: ['age'], na: 2}, function(err) {
+        if (err) return done(err);
+        expect(doc.data).eql({age: 11});
+        // Ops get composed
+        expect(doc.version).eql(2);
+        doc.submitOp({p: ['age'], na: 2});
+        doc.del(function(err) {
+          if (err) return done(err);
+          expect(doc.data).eql(undefined);
+          // del DOES NOT get composed
+          expect(doc.version).eql(4);
+          done();
+        });
+      });
+    });
+  });
+
+  it('ops submitted sync get composed with a serializable type', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri);
     doc.submitOp({p: ['age'], na: 2});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
       if (err) return done(err);
@@ -367,6 +421,23 @@ describe('client submit', function() {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
+      if (err) return done(err);
+      doc2.fetch(function(err) {
+        if (err) return done(err);
+        expect(doc.data).eql({age: 3});
+        expect(doc2.data).eql({age: 3});
+        expect(doc.version).eql(1);
+        expect(doc2.version).eql(1);
+        expect(doc.data).not.equal(doc2.data);
+        done();
+      });
+    });
+  });
+
+  it('can commit then fetch in a new connection to get the same data with a serializable type', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc.create(serializable_type.serialize({age: 3}), serializable_type.uri, function(err) {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
