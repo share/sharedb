@@ -2,6 +2,7 @@ var PlayerList = require('./PlayerList.jsx');
 var PlayerSelector = require('./PlayerSelector.jsx');
 var React = require('react');
 var _ = require('underscore');
+var connection = require('./connection');
 
 var Leaderboard = React.createClass({
   getInitialState: function() {
