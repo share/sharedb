@@ -67,7 +67,7 @@ describe('client query subscribe', function() {
       });
     }
 
-    it('single component ops emit an `op` event', function(done) {
+    it('single component ops emit an `after component` event', function(done) {
       var doc = this.doc;
       var doc2 = this.doc2;
       var doc3 = this.doc3;
@@ -92,7 +92,7 @@ describe('client query subscribe', function() {
           expect(doc.data).eql({color: 'black'});
         }
       ];
-      doc.on('op', function(op, source) {
+      doc.on('after component', function(op, source) {
         var handler = handlers.shift();
         handler(op, source);
       });
@@ -104,7 +104,7 @@ describe('client query subscribe', function() {
       });
     });
 
-    it('remote multi component ops emit individual `op` events', function(done) {
+    it('remote multi component ops emit multiple `after component` events', function(done) {
       var doc = this.doc;
       var doc2 = this.doc2;
       var doc3 = this.doc3;
@@ -141,7 +141,7 @@ describe('client query subscribe', function() {
           expect(doc.data).eql({color: 'black', weight: 40, age: 5, owner: 'sue'});
         }
       ];
-      doc.on('op', function(op, source) {
+      doc.on('after component', function(op, source) {
         var handler = handlers.shift();
         handler(op, source);
       });
@@ -153,7 +153,7 @@ describe('client query subscribe', function() {
       });
     });
 
-    it('remote multi component ops are transformed by ops submitted in `op` event handlers', function(done) {
+    it('remote multi component ops are transformed by ops submitted in `after component` event handlers', function(done) {
       var doc = this.doc;
       var doc2 = this.doc2;
       var doc3 = this.doc3;
@@ -192,7 +192,7 @@ describe('client query subscribe', function() {
           expect(doc.data).eql({tricks: ['shake', 'tug stick']});
         }
       ];
-      doc.on('op', function(op, source) {
+      doc.on('after component', function(op, source) {
         var handler = handlers.shift();
         handler(op, source);
       });
@@ -206,6 +206,85 @@ describe('client query subscribe', function() {
       doc2.submitOp(remoteOp, function(err) {
         if (err) return done(err);
         doc.fetch();
+        verifyConsistency(doc, doc2, doc3, handlers, done);
+      });
+    });
+
+
+    it('ops emit all lifecycle events', function(done) {
+      var doc = this.doc;
+      var doc2 = this.doc2;
+      var doc3 = this.doc3;
+      var handlers = [
+        // doc submit before op
+        function(op, source) {
+          expect(source).equal(true);
+          expect(op).eql([{p: ['make'], oi: 'bmw'}, {p: ['speed'], oi: 160}]);
+          expect(doc.data).eql({});
+        // doc submit before component 1
+        }, function(op, source) {
+          expect(source).equal(true);
+          expect(op).eql([{p: ['make'], oi: 'bmw'}]);
+          expect(doc.data).eql({});
+        // doc submit after component 1
+        }, function(op, source) {
+          expect(source).equal(true);
+          expect(op).eql([{p: ['make'], oi: 'bmw'}]);
+          expect(doc.data).eql({make: 'bmw'});
+        // doc submit before component 2
+        }, function(op, source) {
+          expect(source).equal(true);
+          expect(op).eql([{p: ['speed'], oi: 160}]);
+          expect(doc.data).eql({make: 'bmw'});
+        // doc submit after component 2
+        }, function(op, source) {
+          expect(source).equal(true);
+          expect(op).eql([{p: ['speed'], oi: 160}]);
+          expect(doc.data).eql({make: 'bmw', speed: 160});
+        // doc submit after op
+        }, function(op, source) {
+          expect(source).equal(true);
+          expect(op).eql([{p: ['make'], oi: 'bmw'}, {p: ['speed'], oi: 160}]);
+          expect(doc.data).eql({make: 'bmw', speed: 160});
+        // doc2 submit before op
+        }, function(op, source) {
+          expect(source).equal(false);
+          expect(op).eql([{p: ['model'], oi: '260e'}]);
+          expect(doc.data).eql({make: 'bmw', speed: 160});
+        // doc2 submit before component 1
+        }, function(op, source) {
+          expect(source).equal(false);
+          expect(op).eql([{p: ['model'], oi: '260e'}]);
+          expect(doc.data).eql({make: 'bmw', speed: 160});
+        // doc2 submit after component 1
+        }, function(op, source) {
+          expect(source).equal(false);
+          expect(op).eql([{p: ['model'], oi: '260e'}]);
+          expect(doc.data).eql({make: 'bmw', model: '260e', speed: 160});
+        // doc2 submit after op
+        }, function(op, source) {
+          expect(source).equal(false);
+          expect(op).eql([{p: ['model'], oi: '260e'}]);
+          expect(doc.data).eql({make: 'bmw', model: '260e', speed: 160});
+        }
+      ];
+
+      doc.applyLocalOpsIncremental = true;
+      doc.applyRemoteOpsIncremental = true;
+
+      var handleOpEvent = function(op, source) {
+        var handler = handlers.shift();
+        handler(op, source);
+      };
+      doc.on('before op', handleOpEvent);
+      doc.on('before component', handleOpEvent);
+      doc.on('after component', handleOpEvent);
+      doc.on('after op', handleOpEvent);
+
+      doc2.submitOp([{p: ['make'], oi: 'mercedes'}, {p: ['model'], oi: '260e'}], function(err) {
+        if (err) return done(err);
+        doc.submitOp([{p: ['make'], oi: 'bmw'}, {p: ['speed'], oi: 160}]);
+        expect(doc.data).eql({make: 'bmw', speed: 160});
         verifyConsistency(doc, doc2, doc3, handlers, done);
       });
     });

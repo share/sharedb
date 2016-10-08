@@ -220,8 +220,14 @@ The document was created. Technically, this means it has a type. `source` will b
 `doc.on('before op'), function(op, source) {...})`
 An operation is about to be applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('op', function(op, source) {...})`
-An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+`doc.on('after op', function(op, source) {...})`
+An operation was entirely applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+
+`doc.on('before component', function(op, source) {...})`
+An operation component is about to be applied to the data. `op` will be part of a shattered operation consisting of an operation with only a single component to be applied. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally. If incremental apply is disabled or the doc ot type doesn't support shatter(), this event will still emit but with `op` being the entire operation.
+
+`doc.on('after component', function(op, source) {...})`
+An operation component was applied to the data. `op` will be part of a shattered operation consisting of an operation with only a single component that has been applied. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally. If incremental apply is disabled or the doc ot type doesn't support shatter(), this event will still emit but with `op` being the entire operation.
 
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.

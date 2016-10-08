@@ -174,7 +174,7 @@ describe('client subscribe', function() {
           if (err) return done(err);
           doc.submitOp({p: ['age'], na: 1}, function(err) {
             if (err) return done(err);
-            doc2.on('op', function(op, context) {
+            doc2.on('after op', function(op, context) {
               done();
             });
             doc2[method]();
@@ -343,7 +343,7 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           expect(doc2.version).eql(2);
           expect(doc2.data).eql({age: 4});
           done();
@@ -360,7 +360,7 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           done();
         });
         doc2.connection.close();
@@ -377,7 +377,7 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           done();
         });
         backend.suppressPublish = true;
@@ -393,7 +393,7 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           done();
         });
         doc2.unsubscribe(function(err) {
@@ -411,7 +411,7 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           done();
         });
         doc2.destroy(function(err) {
@@ -441,7 +441,7 @@ describe('client subscribe', function() {
           function(cb) { spot.unsubscribe(cb); }
         ], function(err) {
           if (err) return done(err);
-          fido.on('op', function(op, context) {
+          fido.on('after op', function(op, context) {
             done();
           });
           doc.submitOp({p: ['age'], na: 1}, done);
@@ -459,7 +459,7 @@ describe('client subscribe', function() {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           expect(doc2.version).eql(2);
           expect(doc2.data).eql({age: 4});
           done();
@@ -483,7 +483,7 @@ describe('client subscribe', function() {
       doc2.unsubscribe();
       doc2.subscribe(function(err) {
         if (err) return done(err);
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           done();
         });
         doc.submitOp({p: ['age'], na: 1});
@@ -503,7 +503,7 @@ describe('client subscribe', function() {
           [{p: ['age'], na: 1}],
           [{p: ['age'], na: 5}],
         ];
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           var item = expected.shift();
           expect(op).eql(item);
           if (expected.length) return;
@@ -535,7 +535,7 @@ describe('client subscribe', function() {
       doc2.subscribe(function(err) {
         if (err) return done(err);
         var wait = 4;
-        doc2.on('op', function(op, context) {
+        doc2.on('after op', function(op, context) {
           if (--wait) return;
           expect(doc2.version).eql(5);
           expect(doc2.data).eql({age: 122});
