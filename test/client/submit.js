@@ -1055,7 +1055,7 @@ describe('client submit', function() {
       });
     });
 
-    it('is stored serialized in backend', function() {
+    it('is stored serialized in backend', function(done) {
       var db = this.backend.db;
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create([3], deserializedType.type.uri, function(err) {
