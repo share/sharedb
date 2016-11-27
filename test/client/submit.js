@@ -1060,7 +1060,7 @@ describe('client submit', function() {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create([3], deserializedType.type.uri, function(err) {
         if (err) return done(err);
-        db.getSnapshot('dogs', fido, null, null, function(err, snapshot) {
+        db.getSnapshot('dogs', doc, null, null, function(err, snapshot) {
           if (err) return done(err);
           expect(snapshot.data).eql([3]);
           done();
