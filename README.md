@@ -253,6 +253,8 @@ Invokes the given callback function after
 
  * all ops submitted via `doc.submitOp` have been sent to the server, and
  * all pending fetch, subscribe, and unsubscribe requests have been resolved.
+ 
+Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
 
 ### Class: `ShareDB.Query`
 
