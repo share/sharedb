@@ -248,6 +248,14 @@ Delete the document locally and send delete operation to the server.
 Call this after you've either fetched or subscribed to the document.
 * `options.source` Argument passed to the `'del'` event locally. This is not sent to the server or other clients. Defaults to `true`.
 
+`doc.whenNothingPending(function(err) {...})`
+Invokes the given callback function after
+
+ * all ops submitted via `doc.submitOp` have been sent to the server, and
+ * all pending fetch, subscribe, and unsubscribe requests have been resolved.
+ 
+Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
+
 ### Class: `ShareDB.Query`
 
 `query.ready` _(Boolean)_
