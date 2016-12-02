@@ -1055,12 +1055,12 @@ describe('client submit', function() {
       });
     });
 
-    it('is stored serialized in backend', function() {
+    it('is stored serialized in backend', function(done) {
       var db = this.backend.db;
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create([3], deserializedType.type.uri, function(err) {
         if (err) return done(err);
-        db.getSnapshot('dogs', fido, null, null, function(err, snapshot) {
+        db.getSnapshot('dogs', 'fido', null, null, function(err, snapshot) {
           if (err) return done(err);
           expect(snapshot.data).eql([3]);
           done();
