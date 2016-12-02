@@ -44,7 +44,7 @@ describe('client query subscribe', function() {
       this.doc = this.connection.get('dogs', 'fido');
       this.doc2 = this.backend.connect().get('dogs', 'fido');
       this.doc3 = this.backend.connect().get('dogs', 'fido');
-      doc2 = this.doc2;
+      var doc2 = this.doc2;
       this.doc.create({}, function(err) {
         if (err) return done(err);
         doc2.fetch(done);
