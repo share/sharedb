@@ -27,9 +27,25 @@ tracker](https://github.com/share/sharedb/issues).
 - Projections to select desired fields from documents and operations
 - Middleware for implementing access control and custom extensions
 - Ideal for use in browsers or on the server
-- Reconnection of document and query subscriptions
 - Offline change syncing upon reconnection
 - In-memory implementations of database and pub/sub for unit testing
+
+### Reconnection
+
+**TLDR**
+```javascript
+const WebSocket = require('reconnecting-websocket');
+var socket = new WebSocket('ws://' + window.location.host);
+var connection = new sharedb.Connection(socket);
+```
+
+The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections. 
+
+The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
+
+In the "textarea" example we show this off using a Reconnecting Websocket implementation from [https://github.com/pladaria/reconnecting-websocket](reconnecting-websocket).
+
+
 
 ## Example apps
 
