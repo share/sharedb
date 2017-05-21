@@ -1,7 +1,5 @@
 # Collaborative Textarea with ShareDB
 
-![Demo](demo.gif)
-
 This is a collaborative plain textarea using the default ShareDB JSON document
 type and the `sharedb-string-binding` module.
 
