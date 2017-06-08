@@ -141,6 +141,27 @@ Register a new middleware.
   * `query`: The query object being handled
   * `op`: The op being handled
 
+### Projections
+
+ShareDB supports exposing a *projection* of a real collection, with a specified (limited) set of allowed fields. Once configured, the projected collection looks just like a real collection - except documents only have the fields you've requested. Operations (gets, queries, sets, etc) on the fake collection work, but you only see a small portion of the data.
+
+`addProjection(projectedCollectionName, realCollectionName, fields)`
+Configure a projection.
+
+ * `projectedCollectionName` The name of the projected collection.
+ * `realCollectionName` The name of the existing collection.
+ * `fields` A map (object) of the allowed fields in documents.
+   * Keys are field names.
+   * Values should be `true`.
+
+For example, you could make a `users_limited` projection which lets users view each other's names and profile pictures, but not password hashes. You would configure this by calling:
+
+```javascript
+sharedb.addProjection('users_limited', 'users', 'json0', {name:true, profileUrl:true});
+```
+
+Note that only the JSON0 OT type is supported for projections.
+
 ### Shutdown
 
 `share.close(callback)`
