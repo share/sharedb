@@ -6,7 +6,6 @@ var ShareDBMingoMemory = require('sharedb-mingo-memory');
 var WebSocketJSONStream = require('websocket-json-stream');
 var WebSocket = require('ws');
 var util = require('util');
-var Duplex = require('stream').Duplex;
 
 // Start ShareDB
 var share = ShareDB({db: new ShareDBMingoMemory()});
