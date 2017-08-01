@@ -160,7 +160,7 @@ For example, you could make a `users_limited` projection which lets users view e
 share.addProjection('users_limited', 'users', { name:true, profileUrl:true });
 ```
 
-Note that only the JSON0 OT type is supported for projections.
+Note that only the [JSON0 OT type](https://github.com/ottypes/json0) is supported for projections.
 
 ### Shutdown
 
