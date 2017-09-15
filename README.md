@@ -229,6 +229,9 @@ The document was deleted. Document contents before deletion are passed in as an 
 `doc.on('error', function(err) {...})`
 There was an error fetching the document or applying an operation.
 
+`doc.removeListener(eventName, listener)`
+Removes any listener you added with `doc.on`. `eventName` should be one of `'load'`, `'create'`, `'before op'`, `'op'`, `'del'`, or `'error'`. `listener` should be the function you passed in as the second argument to `on`. Note that both `on` and `removeListener` are inherited from [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).
+
 `doc.create(data[, type][, options][, function(err) {...}])`
 Create the document locally and send create operation to the server.
 * `data` Initial document contents
