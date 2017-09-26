@@ -22,7 +22,7 @@ tracker](https://github.com/share/sharedb/issues).
 - Concurrent multi-user collaboration
 - Synchronous editing API with asynchronous eventual consistency
 - Realtime query subscriptions
-- Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo)
+- Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo), [PostgresQL](https://github.com/share/sharedb-postgres) (experimental)
 - Horizontally scalable with pub/sub integration - [Redis](https://github.com/share/sharedb-redis-pubsub)
 - Projections to select desired fields from documents and operations
 - Middleware for implementing access control and custom extensions
