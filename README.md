@@ -84,6 +84,7 @@ __Options__
 * [`ShareDBMingoMemory`](https://github.com/share/sharedb-mingo-memory), backed by
   a non-persistent database supporting most Mongo queries. Useful for faster
   testing of a Mongo-based app.
+* [`ShareDBPostgres`](https://github.com/share/sharedb-postgres), backed by PostgresQL. No query support.
 
 #### Pub/Sub Adapters
 * `ShareDB.MemoryPubSub` can be used with a single process
