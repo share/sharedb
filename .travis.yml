@@ -3,7 +3,15 @@ node_js:
   - 6
   - 5
   - 4
-  - 0.10
-script: "npm run jshint && npm run test-cover"
-# Send coverage data to Coveralls
-after_script: "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js"
+  - 0.1
+script: 'npm run jshint && npm run test-cover'
+after_script: 'cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js'
+notifications:
+  webhooks:
+    urls:
+      - 'https://www.travisbuddy.com/'
+    on_success: never
+    on_failure: always
+    on_start: never
+    on_cancel: never
+    on_error: never
