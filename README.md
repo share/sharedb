@@ -23,7 +23,7 @@ tracker](https://github.com/share/sharedb/issues).
 - Synchronous editing API with asynchronous eventual consistency
 - Realtime query subscriptions
 - Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo), [PostgresQL](https://github.com/share/sharedb-postgres) (experimental)
-- Horizontally scalable with pub/sub integration - [Redis](https://github.com/share/sharedb-redis-pubsub), [wsbus](https://github.com/dmapper/sharedb-wsbus-pubsub)
+- Horizontally scalable with [pub/sub integration](#pubsub-adapters)
 - Projections to select desired fields from documents and operations
 - Middleware for implementing access control and custom extensions
 - Ideal for use in browsers or on the server
@@ -90,6 +90,9 @@ __Options__
 * `ShareDB.MemoryPubSub` can be used with a single process
 * [`ShareDBRedisPubSub`](https://github.com/share/sharedb-redis-pubsub) can be used
   with multiple processes using Redis' pub/sub mechanism
+
+Community Provided Pub/Sub Adapters
+* [wsbus](https://github.com/dmapper/sharedb-wsbus-pubsub)
 
 ### Listening to WebSocket connections
 
@@ -278,7 +281,7 @@ Invokes the given callback function after
 
  * all ops submitted via `doc.submitOp` have been sent to the server, and
  * all pending fetch, subscribe, and unsubscribe requests have been resolved.
- 
+
 Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
 
 ### Class: `ShareDB.Query`
