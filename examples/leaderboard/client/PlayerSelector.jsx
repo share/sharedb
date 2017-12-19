@@ -10,7 +10,7 @@ var PlayerSelector = React.createClass({
 
     if (this.props.selectedPlayer) {
       node = <div className="details">
-        <div className="name">{this.props.selectedPlayer.name}</div>
+        <div className="name">{this.props.selectedPlayer.data.name}</div>
         <button className="inc" onClick={this.props.onAddPoints}>Add 5 points</button>
       </div>;
     } else {
