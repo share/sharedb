@@ -90,4 +90,43 @@ describe('client connection', function() {
     });
   });
 
+  describe('state management using setSocket', function() {
+    it('initial state is connecting', function() {
+      var connection = this.backend.connect();
+      expect(connection.state).equal('connecting');
+    });
+
+    it('after connected event is emitted, state is connected', function(done) {
+      var connection = this.backend.connect();
+      connection.on('connected', function() {
+        expect(connection.state).equal('connected');
+        done();
+      });
+    });
+
+    it('when connection is manually closed, state is closed', function(done) {
+      var connection = this.backend.connect();
+      connection.on('connected', function() {
+        connection.close();
+      });
+      connection.on('closed', function() {
+        expect(connection.state).equal('closed');
+        done();
+      });
+    });
+
+    it('when connection is disconnected, state is disconnected', function(done) {
+      var connection = this.backend.connect();
+      connection.on('connected', function() {
+        // Mock a disconnection by providing a reason
+        connection.socket.close('foo');
+      });
+      connection.on('disconnected', function() {
+        expect(connection.state).equal('disconnected');
+        done();
+      });
+    });
+
+  });
+
 });
