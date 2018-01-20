@@ -92,6 +92,7 @@ describe('client connection', function() {
   });
 
   describe('state management using setSocket', function() {
+
     it('initial connection.state is connecting, if socket.readyState is CONNECTING', function () {
         // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-connecting
         var socket = {readyState: 0};
