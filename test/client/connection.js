@@ -94,29 +94,29 @@ describe('client connection', function() {
   describe('state management using setSocket', function() {
     it('initial connection.state is connecting, if socket.readyState is CONNECTING', function () {
         // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-connecting
-        var socket = { readyState: 0 }
-        var connection = new Connection(socket)
+        var socket = {readyState: 0};
+        var connection = new Connection(socket);
         expect(connection.state).equal('connecting');
     });
 
     it('initial connection.state is connecting, if socket.readyState is OPEN', function () {
         // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-open
-        var socket = { readyState: 1 }
-        var connection = new Connection(socket)
+        var socket = {readyState: 1};
+        var connection = new Connection(socket);
         expect(connection.state).equal('connecting');
     });
 
     it('initial connection.state is disconnected, if socket.readyState is CLOSING', function () {
         // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-closing
-        var socket = { readyState: 2 }
-        var connection = new Connection(socket)
+        var socket = {readyState: 2};
+        var connection = new Connection(socket);
         expect(connection.state).equal('disconnected');
     });
 
     it('initial connection.state is disconnected, if socket.readyState is CLOSED', function () {
         // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-closed
-        var socket = { readyState: 3 }
-        var connection = new Connection(socket)
+        var socket = {readyState: 3};
+        var connection = new Connection(socket);
         expect(connection.state).equal('disconnected');
     });
 
