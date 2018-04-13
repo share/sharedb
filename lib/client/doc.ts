@@ -1,18 +1,7 @@
-"use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-var events_1 = require("events");
+import { EventEmitter} from "events";
 var ShareDBError = require('../error');
 var types = require('../types');
+
 /**
  * A Doc is a client's view on a sharejs document.
  *
@@ -54,143 +43,138 @@ var types = require('../types');
  *   arguments
  * - `load ()` Fired when a new snapshot is ingested from a fetch, subscribe, or query
  */
-var Doc = /** @class */ (function (_super) {
-    __extends(Doc, _super);
-    function Doc(connection, collection, id) {
-        var _this = _super.call(this) || this;
-        // ***** Sending operations
-        // Actually send op to the server.
-        _this._sendOp = function () {
-            // Wait until we have a src id from the server
-            var src = this.connection.id;
-            if (!src)
-                return;
-            // When there is no inflightOp, send the first item in pendingOps. If
-            // there is inflightOp, try sending it again
-            if (!this.inflightOp) {
-                // Send first pending op
-                this.inflightOp = this.pendingOps.shift();
-            }
-            var op = this.inflightOp;
-            if (!op) {
-                var err = new ShareDBError(5010, 'No op to send on call to _sendOp');
-                return this.emit('error', err);
-            }
-            // Track data for retrying ops
-            op.sentAt = Date.now();
-            op.retries = (op.retries == null) ? 0 : op.retries + 1;
-            // The src + seq number is a unique ID representing this operation. This tuple
-            // is used on the server to detect when ops have been sent multiple times and
-            // on the client to match acknowledgement of an op back to the inflightOp.
-            // Note that the src could be different from this.connection.id after a
-            // reconnect, since an op may still be pending after the reconnection and
-            // this.connection.id will change. In case an op is sent multiple times, we
-            // also need to be careful not to override the original seq value.
-            if (op.seq == null)
-                op.seq = this.connection.seq++;
-            this.connection.sendOp(this, op);
-            // src isn't needed on the first try, since the server session will have the
-            // same id, but it must be set on the inflightOp in case it is sent again
-            // after a reconnect and the connection's id has changed by then
-            if (op.src == null)
-                op.src = src;
-        };
-        _this.connection = connection;
-        _this.collection = collection;
-        _this.id = id;
-        _this.version = null;
-        _this.type = null;
-        _this.data = undefined;
+
+export class Doc extends EventEmitter {
+
+    public connection:any;
+    public collection:any;
+    public id:any;
+    public version:any;
+    public type:any;
+    public data:any;
+    public inflightFetch:any;
+    public inflightSubscribe:any;
+    public inflightUnsubscribe:any;
+    public pendingFetch:any;
+    public subscribed:any;
+    public wantSubscribe:any;
+    public inflightOp:any;
+    public pendingOps:any;
+    public paused:any;
+    public applyStack:any;
+    public preventCompose:any;
+
+    constructor(connection, collection, id) {
+        super();
+
+        this.connection = connection;
+
+        this.collection = collection;
+        this.id = id;
+
+        this.version = null;
+        this.type = null;
+        this.data = undefined;
+
         // Array of callbacks or nulls as placeholders
-        _this.inflightFetch = [];
-        _this.inflightSubscribe = [];
-        _this.inflightUnsubscribe = [];
-        _this.pendingFetch = [];
+        this.inflightFetch = [];
+        this.inflightSubscribe = [];
+        this.inflightUnsubscribe = [];
+        this.pendingFetch = [];
+
         // Whether we think we are subscribed on the server. Synchronously set to
         // false on calls to unsubscribe and disconnect. Should never be true when
         // this.wantSubscribe is false
-        _this.subscribed = false;
+        this.subscribed = false;
         // Whether to re-establish the subscription on reconnect
-        _this.wantSubscribe = false;
+        this.wantSubscribe = false;
+
         // The op that is currently roundtripping to the server, or null.
         //
         // When the connection reconnects, the inflight op is resubmitted.
         //
         // This has the same format as an entry in pendingOps
-        _this.inflightOp = null;
+        this.inflightOp = null;
+
         // All ops that are waiting for the server to acknowledge this.inflightOp
         // This used to just be a single operation, but creates & deletes can't be
         // composed with regular operations.
         //
         // This is a list of {[create:{...}], [del:true], [op:...], callbacks:[...]}
-        _this.pendingOps = [];
+        this.pendingOps = [];
+
         // The OT type of this document. An uncreated document has type `null`
-        _this.type = null;
+        this.type = null;
+
         // The applyStack enables us to track any ops submitted while we are
         // applying an op incrementally. This value is an array when we are
         // performing an incremental apply and null otherwise. When it is an array,
         // all submitted ops should be pushed onto it. The `_otApply` method will
         // reset it back to null when all incremental apply loops are complete.
-        _this.applyStack = null;
+        this.applyStack = null;
+
         // Disable the default behavior of composing submitted ops. This is read at
         // the time of op submit, so it may be toggled on before submitting a
         // specifc op and toggled off afterward
-        _this.preventCompose = false;
-        return _this;
+        this.preventCompose = false;
     }
-    Doc.prototype.destroy = function (callback) {
+
+
+    public destroy(callback) {
         var doc = this;
         doc.whenNothingPending(function () {
             doc.connection._destroyDoc(doc);
             if (doc.wantSubscribe) {
                 return doc.unsubscribe(callback);
             }
-            if (callback)
-                callback();
+            if (callback) callback();
         });
     };
-    ;
-    // ****** Manipulating the document data, version and type.
-    // Set the document's type, and associated properties. Most of the logic in
-    // this function exists to update the document based on any added & removed API
-    // methods.
-    //
-    // @param newType OT type provided by the ottypes library or its name or uri
-    Doc.prototype._setType = function (newType) {
+
+
+// ****** Manipulating the document data, version and type.
+
+// Set the document's type, and associated properties. Most of the logic in
+// this function exists to update the document based on any added & removed API
+// methods.
+//
+// @param newType OT type provided by the ottypes library or its name or uri
+    private _setType(newType) {
         if (typeof newType === 'string') {
             newType = types.map[newType];
         }
+
         if (newType) {
             this.type = newType;
-        }
-        else if (newType === null) {
+
+        } else if (newType === null) {
             this.type = newType;
             // If we removed the type from the object, also remove its data
             this.data = undefined;
-        }
-        else {
+
+        } else {
             var err = new ShareDBError(4008, 'Missing type ' + newType);
             return this.emit('error', err);
         }
     };
-    ;
-    // Ingest snapshot data. This data must include a version, snapshot and type.
-    // This is used both to ingest data that was exported with a webpage and data
-    // that was received from the server during a fetch.
-    //
-    // @param snapshot.v    version
-    // @param snapshot.data
-    // @param snapshot.type
-    // @param callback
-    Doc.prototype.ingestSnapshot = function (snapshot, callback) {
-        if (!snapshot)
-            return callback && callback();
+
+// Ingest snapshot data. This data must include a version, snapshot and type.
+// This is used both to ingest data that was exported with a webpage and data
+// that was received from the server during a fetch.
+//
+// @param snapshot.v    version
+// @param snapshot.data
+// @param snapshot.type
+// @param callback
+    public ingestSnapshot(snapshot, callback) {
+        if (!snapshot) return callback && callback();
+
         if (typeof snapshot.v !== 'number') {
             var err = new ShareDBError(5008, 'Missing version in ingested snapshot. ' + this.collection + '.' + this.id);
-            if (callback)
-                return callback(err);
+            if (callback) return callback(err);
             return this.emit('error', err);
         }
+
         // If the doc is already created or there are ops pending, we cannot use the
         // ingested snapshot and need ops in order to update the document
         if (this.type || this.hasWritePending()) {
@@ -207,20 +191,19 @@ var Doc = /** @class */ (function (_super) {
                 }
                 // Otherwise, we've encounted an error state
                 var err = new ShareDBError(5009, 'Cannot ingest snapshot in doc with null version. ' + this.collection + '.' + this.id);
-                if (callback)
-                    return callback(err);
+                if (callback) return callback(err);
                 return this.emit('error', err);
             }
             // If we got a snapshot for a version further along than the document is
             // currently, issue a fetch to get the latest ops and catch us up
-            if (snapshot.v > this.version)
-                return this.fetch(callback);
+            if (snapshot.v > this.version) return this.fetch(callback);
             return callback && callback();
         }
+
         // Ignore the snapshot if we are already at a newer version. Under no
         // circumstance should we ever set the current version backward
-        if (this.version > snapshot.v)
-            return callback && callback();
+        if (this.version > snapshot.v) return callback && callback();
+
         this.version = snapshot.v;
         var type = (snapshot.type === undefined) ? types.defaultType : snapshot.type;
         this._setType(type);
@@ -230,39 +213,40 @@ var Doc = /** @class */ (function (_super) {
         this.emit('load');
         callback && callback();
     };
-    ;
-    Doc.prototype.whenNothingPending = function (callback) {
+
+    public whenNothingPending(callback) {
         if (this.hasPending()) {
             this.once('nothing pending', callback);
             return;
         }
         callback();
     };
-    ;
-    Doc.prototype.hasPending = function () {
-        return !!(this.inflightOp ||
+
+    public hasPending() {
+        return !!(
+            this.inflightOp ||
             this.pendingOps.length ||
             this.inflightFetch.length ||
             this.inflightSubscribe.length ||
             this.inflightUnsubscribe.length ||
-            this.pendingFetch.length);
+            this.pendingFetch.length
+        );
     };
-    ;
-    Doc.prototype.hasWritePending = function () {
+
+    public hasWritePending() {
         return !!(this.inflightOp || this.pendingOps.length);
     };
-    ;
-    Doc.prototype._emitNothingPending = function () {
-        if (this.hasWritePending())
-            return;
+
+    private _emitNothingPending() {
+        if (this.hasWritePending()) return;
         this.emit('no write pending');
-        if (this.hasPending())
-            return;
+        if (this.hasPending()) return;
         this.emit('nothing pending');
     };
-    ;
-    // **** Helpers for network messages
-    Doc.prototype._emitResponseError = function (err, callback) {
+
+// **** Helpers for network messages
+
+    private _emitResponseError(err, callback) {
         if (callback) {
             callback(err);
             this._emitNothingPending();
@@ -271,19 +255,17 @@ var Doc = /** @class */ (function (_super) {
         this._emitNothingPending();
         this.emit('error', err);
     };
-    ;
-    Doc.prototype._handleFetch = function (err, snapshot) {
+
+    private _handleFetch(err, snapshot) {
         var callback = this.inflightFetch.shift();
-        if (err)
-            return this._emitResponseError(err, callback);
+        if (err) return this._emitResponseError(err, callback);
         this.ingestSnapshot(snapshot, callback);
         this._emitNothingPending();
     };
-    ;
-    Doc.prototype._handleSubscribe = function (err, snapshot) {
+
+    private _handleSubscribe(err, snapshot) {
         var callback = this.inflightSubscribe.shift();
-        if (err)
-            return this._emitResponseError(err, callback);
+        if (err) return this._emitResponseError(err, callback);
         // Indicate we are subscribed only if the client still wants to be. In the
         // time since calling subscribe and receiving a response from the server,
         // unsubscribe could have been called and we might already be unsubscribed
@@ -291,33 +273,30 @@ var Doc = /** @class */ (function (_super) {
         // client are not serialized and may take different async time to process,
         // it is possible that we could hear responses back in a different order
         // from the order originally sent
-        if (this.wantSubscribe)
-            this.subscribed = true;
+        if (this.wantSubscribe) this.subscribed = true;
         this.ingestSnapshot(snapshot, callback);
         this._emitNothingPending();
     };
-    ;
-    Doc.prototype._handleUnsubscribe = function (err) {
+
+    private _handleUnsubscribe(err) {
         var callback = this.inflightUnsubscribe.shift();
-        if (err)
-            return this._emitResponseError(err, callback);
-        if (callback)
-            callback();
+        if (err) return this._emitResponseError(err, callback);
+        if (callback) callback();
         this._emitNothingPending();
     };
-    ;
-    Doc.prototype._handleOp = function (err, message) {
+
+    private _handleOp(err, message) {
         if (err) {
             if (this.inflightOp) {
                 // The server has rejected submission of the current operation. If we get
                 // an error code 4002 "Op submit rejected", this was done intentionally
                 // and we should roll back but not return an error to the user.
-                if (err.code === 4002)
-                    err = null;
+                if (err.code === 4002) err = null;
                 return this._rollback(err);
             }
             return this.emit('error', err);
         }
+
         if (this.inflightOp &&
             message.src === this.inflightOp.src &&
             message.seq === this.inflightOp.seq) {
@@ -326,6 +305,7 @@ var Doc = /** @class */ (function (_super) {
             this._opAcknowledged(message);
             return;
         }
+
         if (this.version == null || message.v > this.version) {
             // This will happen in normal operation if we become subscribed to a
             // new document via a query. It can also happen if we get an op for
@@ -340,33 +320,34 @@ var Doc = /** @class */ (function (_super) {
             this.fetch();
             return;
         }
+
         if (message.v < this.version) {
             // We can safely ignore the old (duplicate) operation.
             return;
         }
+
         if (this.inflightOp) {
             var transformErr = Doc.transformX(this.inflightOp, message);
-            if (transformErr)
-                return this._hardRollback(transformErr);
+            if (transformErr) return this._hardRollback(transformErr);
         }
+
         for (var i = 0; i < this.pendingOps.length; i++) {
             var transformErr = Doc.transformX(this.pendingOps[i], message);
-            if (transformErr)
-                return this._hardRollback(transformErr);
+            if (transformErr) return this._hardRollback(transformErr);
         }
+
         this.version++;
         this._otApply(message, false);
         return;
     };
-    ;
-    // Called whenever (you guessed it!) the connection state changes. This will
-    // happen when we get disconnected & reconnect.
-    Doc.prototype._onConnectionStateChanged = function () {
+
+// Called whenever (you guessed it!) the connection state changes. This will
+// happen when we get disconnected & reconnect.
+    private _onConnectionStateChanged() {
         if (this.connection.canSend) {
             this.flush();
             this._resubscribe();
-        }
-        else {
+        } else {
             if (this.inflightOp) {
                 this.pendingOps.unshift(this.inflightOp);
                 this.inflightOp = null;
@@ -384,10 +365,11 @@ var Doc = /** @class */ (function (_super) {
             }
         }
     };
-    ;
-    Doc.prototype._resubscribe = function () {
+
+    private _resubscribe() {
         var callbacks = this.pendingFetch;
         this.pendingFetch = [];
+
         if (this.wantSubscribe) {
             if (callbacks.length) {
                 this.subscribe(function (err) {
@@ -398,14 +380,15 @@ var Doc = /** @class */ (function (_super) {
             this.subscribe();
             return;
         }
+
         if (callbacks.length) {
             this.fetch(function (err) {
                 Doc.callEach(callbacks, err);
             });
         }
     };
-    ;
-    Doc.prototype.fetch = function (callback) {
+
+    public fetch(callback?) {
         if (this.connection.canSend) {
             var isDuplicate = this.connection.sendFetch(this);
             Doc.pushActionCallback(this.inflightFetch, isDuplicate, callback);
@@ -413,9 +396,9 @@ var Doc = /** @class */ (function (_super) {
         }
         this.pendingFetch.push(callback);
     };
-    ;
-    // Fetch the initial document and keep receiving updates
-    Doc.prototype.subscribe = function (callback) {
+
+// Fetch the initial document and keep receiving updates
+    public subscribe(callback?) {
         this.wantSubscribe = true;
         if (this.connection.canSend) {
             var isDuplicate = this.connection.sendSubscribe(this);
@@ -424,10 +407,10 @@ var Doc = /** @class */ (function (_super) {
         }
         this.pendingFetch.push(callback);
     };
-    ;
-    // Unsubscribe. The data will stay around in local memory, but we'll stop
-    // receiving updates
-    Doc.prototype.unsubscribe = function (callback) {
+
+// Unsubscribe. The data will stay around in local memory, but we'll stop
+// receiving updates
+    public unsubscribe(callback) {
         this.wantSubscribe = false;
         // The subscribed state should be conservative in indicating when we are
         // subscribed on the server. We'll actually be unsubscribed some time
@@ -439,66 +422,71 @@ var Doc = /** @class */ (function (_super) {
             Doc.pushActionCallback(this.inflightUnsubscribe, isDuplicate, callback);
             return;
         }
-        if (callback)
-            process.nextTick(callback);
+        if (callback) process.nextTick(callback);
     };
-    ;
-    Doc.pushActionCallback = function (inflight, isDuplicate, callback) {
+
+    public static pushActionCallback(inflight, isDuplicate, callback) {
         if (isDuplicate) {
             var lastCallback = inflight.pop();
             inflight.push(function (err) {
                 lastCallback && lastCallback(err);
                 callback && callback(err);
             });
-        }
-        else {
+        } else {
             inflight.push(callback);
         }
-    };
-    // Operations //
-    // Send the next pending op to the server, if we can.
-    //
-    // Only one operation can be in-flight at a time. If an operation is already on
-    // its way, or we're not currently connected, this method does nothing.
-    Doc.prototype.flush = function () {
+    }
+
+
+// Operations //
+
+// Send the next pending op to the server, if we can.
+//
+// Only one operation can be in-flight at a time. If an operation is already on
+// its way, or we're not currently connected, this method does nothing.
+    public flush() {
         // Ignore if we can't send or we are already sending an op
-        if (!this.connection.canSend || this.inflightOp)
-            return;
+        if (!this.connection.canSend || this.inflightOp) return;
+
         // Send first pending op unless paused
         if (!this.paused && this.pendingOps.length) {
             this._sendOp();
         }
     };
-    ;
-    // Helper function to set op to contain a no-op.
-    Doc.setNoOp = function (op) {
+
+// Helper function to set op to contain a no-op.
+    public static setNoOp(op) {
         delete op.op;
         delete op.create;
         delete op.del;
-    };
-    // Transform server op data by a client op, and vice versa. Ops are edited in place.
-    Doc.transformX = function (client, server) {
+    }
+
+// Transform server op data by a client op, and vice versa. Ops are edited in place.
+    public static transformX(client, server) {
         // Order of statements in this function matters. Be especially careful if
         // refactoring this function
+
         // A client delete op should dominate if both the server and the client
         // delete the document. Thus, any ops following the client delete (such as a
         // subsequent create) will be maintained, since the server op is transformed
         // to a no-op
-        if (client.del)
-            return Doc.setNoOp(server);
+        if (client.del) return Doc.setNoOp(server);
+
         if (server.del) {
             return new ShareDBError(4017, 'Document was deleted');
         }
         if (server.create) {
             return new ShareDBError(4018, 'Document alredy created');
         }
+
         // Ignore no-op coming from server
-        if (!server.op)
-            return;
+        if (!server.op) return;
+
         // I believe that this should not occur, but check just in case
         if (client.create) {
             return new ShareDBError(4018, 'Document already created');
         }
+
         // They both edited the document. This is the normal case for this function -
         // as in, most of the time we'll end up down here.
         //
@@ -510,15 +498,14 @@ var Doc = /** @class */ (function (_super) {
             var result = client.type.transformX(client.op, server.op);
             client.op = result[0];
             server.op = result[1];
-        }
-        else {
+        } else {
             var clientOp = client.type.transform(client.op, server.op, 'left');
             var serverOp = client.type.transform(server.op, client.op, 'right');
             client.op = clientOp;
             server.op = serverOp;
         }
     };
-    ;
+
     /**
      * Applies the operation to the snapshot
      *
@@ -531,12 +518,13 @@ var Doc = /** @class */ (function (_super) {
      *
      * @private
      */
-    Doc.prototype._otApply = function (op, source) {
+    private _otApply(op, source) {
         if (op.op) {
             if (!this.type) {
                 var err = new ShareDBError(4015, 'Cannot apply op to uncreated document. ' + this.collection + '.' + this.id);
                 return this.emit('error', err);
             }
+
             // Iteratively apply multi-component remote operations and rollback ops
             // (source === false) for the default JSON0 OT type. It could use
             // type.shatter(), but since this code is so specific to use cases for the
@@ -553,19 +541,17 @@ var Doc = /** @class */ (function (_super) {
             // at the time of emission. Eliminating this would require rethinking how
             // such external bindings are implemented.
             if (!source && this.type === types.defaultType && op.op.length > 1) {
-                if (!this.applyStack)
-                    this.applyStack = [];
+                if (!this.applyStack) this.applyStack = [];
                 var stackLength = this.applyStack.length;
                 for (var i = 0; i < op.op.length; i++) {
                     var component = op.op[i];
-                    var componentOp = { op: [component] };
+                    var componentOp = {op: [component]};
                     // Transform componentOp against any ops that have been submitted
                     // sychronously inside of an op event handler since we began apply of
                     // our operation
                     for (var j = stackLength; j < this.applyStack.length; j++) {
                         var transformErr = Doc.transformX(this.applyStack[j], componentOp);
-                        if (transformErr)
-                            return this._hardRollback(transformErr);
+                        if (transformErr) return this._hardRollback(transformErr);
                     }
                     // Apply the individual op component
                     this.emit('before op', componentOp.op, source);
@@ -576,6 +562,7 @@ var Doc = /** @class */ (function (_super) {
                 this._popApplyStack(stackLength);
                 return;
             }
+
             // The 'before op' event enables clients to pull any necessary data out of
             // the snapshot before it gets changed
             this.emit('before op', op.op, source);
@@ -589,6 +576,7 @@ var Doc = /** @class */ (function (_super) {
             this.emit('op', op.op, source);
             return;
         }
+
         if (op.create) {
             this._setType(op.create.type);
             this.data = (this.type.deserialize) ?
@@ -599,6 +587,7 @@ var Doc = /** @class */ (function (_super) {
             this.emit('create', source);
             return;
         }
+
         if (op.del) {
             var oldData = this.data;
             this._setType(null);
@@ -606,35 +595,78 @@ var Doc = /** @class */ (function (_super) {
             return;
         }
     };
-    ;
-    // Queues the operation for submission to the server and applies it locally.
-    //
-    // Internal method called to do the actual work for submit(), create() and del().
-    // @private
-    //
-    // @param op
-    // @param [op.op]
-    // @param [op.del]
-    // @param [op.create]
-    // @param [callback] called when operation is submitted
-    Doc.prototype._submit = function (op, source, callback) {
+
+
+// ***** Sending operations
+
+// Actually send op to the server.
+    private _sendOp = function () {
+        // Wait until we have a src id from the server
+        var src = this.connection.id;
+        if (!src) return;
+
+        // When there is no inflightOp, send the first item in pendingOps. If
+        // there is inflightOp, try sending it again
+        if (!this.inflightOp) {
+            // Send first pending op
+            this.inflightOp = this.pendingOps.shift();
+        }
+        var op = this.inflightOp;
+        if (!op) {
+            var err = new ShareDBError(5010, 'No op to send on call to _sendOp');
+            return this.emit('error', err);
+        }
+
+        // Track data for retrying ops
+        op.sentAt = Date.now();
+        op.retries = (op.retries == null) ? 0 : op.retries + 1;
+
+        // The src + seq number is a unique ID representing this operation. This tuple
+        // is used on the server to detect when ops have been sent multiple times and
+        // on the client to match acknowledgement of an op back to the inflightOp.
+        // Note that the src could be different from this.connection.id after a
+        // reconnect, since an op may still be pending after the reconnection and
+        // this.connection.id will change. In case an op is sent multiple times, we
+        // also need to be careful not to override the original seq value.
+        if (op.seq == null) op.seq = this.connection.seq++;
+
+        this.connection.sendOp(this, op);
+
+        // src isn't needed on the first try, since the server session will have the
+        // same id, but it must be set on the inflightOp in case it is sent again
+        // after a reconnect and the connection's id has changed by then
+        if (op.src == null) op.src = src;
+    };
+
+
+// Queues the operation for submission to the server and applies it locally.
+//
+// Internal method called to do the actual work for submit(), create() and del().
+// @private
+//
+// @param op
+// @param [op.op]
+// @param [op.del]
+// @param [op.create]
+// @param [callback] called when operation is submitted
+    private _submit(op, source, callback) {
         // Locally submitted ops must always have a truthy source
-        if (!source)
-            source = true;
+        if (!source) source = true;
+
         // The op contains either op, create, delete, or none of the above (a no-op).
         if (op.op) {
             if (!this.type) {
                 var err = new ShareDBError(4015, 'Cannot submit op. Document has not been created. ' + this.collection + '.' + this.id);
-                if (callback)
-                    return callback(err);
+                if (callback) return callback(err);
                 return this.emit('error', err);
             }
             // Try to normalize the op. This removes trailing skip:0's and things like that.
-            if (this.type.normalize)
-                op.op = this.type.normalize(op.op);
+            if (this.type.normalize) op.op = this.type.normalize(op.op);
         }
+
         this._pushOp(op, callback);
         this._otApply(op, source);
+
         // The call to flush is delayed so if submit() is called multiple times
         // synchronously, all the ops are combined before being sent to the server.
         var doc = this;
@@ -642,15 +674,14 @@ var Doc = /** @class */ (function (_super) {
             doc.flush();
         });
     };
-    ;
-    Doc.prototype._pushOp = function (op, callback) {
+
+    private _pushOp(op, callback) {
         if (this.applyStack) {
             // If we are in the process of incrementally applying an operation, don't
             // compose the op and push it onto the applyStack so it can be transformed
             // against other components from the op or ops being applied
             this.applyStack.push(op);
-        }
-        else {
+        } else {
             // If the type supports composes, try to compose the operation onto the
             // end of the last pending operation.
             var composed = this._tryCompose(op);
@@ -664,8 +695,8 @@ var Doc = /** @class */ (function (_super) {
         op.callbacks = [callback];
         this.pendingOps.push(op);
     };
-    ;
-    Doc.prototype._popApplyStack = function (to) {
+
+    private _popApplyStack(to) {
         if (to > 0) {
             this.applyStack.length = to;
             return;
@@ -674,42 +705,40 @@ var Doc = /** @class */ (function (_super) {
         // longer add ops to the applyStack as they are submitted
         var op = this.applyStack[0];
         this.applyStack = null;
-        if (!op)
-            return;
+        if (!op) return;
         // Compose the ops added since the beginning of the apply stack, since we
         // had to skip compose when they were originally pushed
         var i = this.pendingOps.indexOf(op);
-        if (i === -1)
-            return;
+        if (i === -1) return;
         var ops = this.pendingOps.splice(i);
         for (var j = 0; j < ops.length; j++) {
             var op = ops[j];
             var composed = this._tryCompose(op);
             if (composed) {
                 composed.callbacks = composed.callbacks.concat(op.callbacks);
-            }
-            else {
+            } else {
                 this.pendingOps.push(op);
             }
         }
     };
-    ;
-    // Try to compose a submitted op into the last pending op. Returns the
-    // composed op if it succeeds, undefined otherwise
-    Doc.prototype._tryCompose = function (op) {
-        if (this.preventCompose)
-            return;
+
+// Try to compose a submitted op into the last pending op. Returns the
+// composed op if it succeeds, undefined otherwise
+    private _tryCompose(op) {
+        if (this.preventCompose) return;
+
         // We can only compose into the last pending op. Inflight ops have already
         // been sent to the server, so we can't modify them
         var last = this.pendingOps[this.pendingOps.length - 1];
-        if (!last)
-            return;
+        if (!last) return;
+
         // Compose an op into a create by applying it. This effectively makes the op
         // invisible, as if the document were created including the op originally
         if (last.create && op.op) {
             last.create.data = this.type.apply(last.create.data, op.op);
             return last;
         }
+
         // Compose two ops into a single op if supported by the type. Types that
         // support compose must be able to compose any two ops together
         if (last.op && op.op && this.type.compose) {
@@ -717,41 +746,41 @@ var Doc = /** @class */ (function (_super) {
             return last;
         }
     };
-    ;
-    // *** Client OT entrypoints.
-    // Submit an operation to the document.
-    //
-    // @param operation handled by the OT type
-    // @param options  {source: ...}
-    // @param [callback] called after operation submitted
-    //
-    // @fires before op, op, after op
-    Doc.prototype.submitOp = function (component, options, callback) {
+
+// *** Client OT entrypoints.
+
+// Submit an operation to the document.
+//
+// @param operation handled by the OT type
+// @param options  {source: ...}
+// @param [callback] called after operation submitted
+//
+// @fires before op, op, after op
+    public submitOp(component, options, callback) {
         if (typeof options === 'function') {
             callback = options;
             options = null;
         }
-        var op = { op: component };
+        var op = {op: component};
         var source = options && options.source;
         this._submit(op, source, callback);
     };
-    ;
-    // Create the document, which in ShareJS semantics means to set its type. Every
-    // object implicitly exists in the database but has no data and no type. Create
-    // sets the type of the object and can optionally set some initial data on the
-    // object, depending on the type.
-    //
-    // @param data  initial
-    // @param type  OT type
-    // @param options  {source: ...}
-    // @param callback  called when operation submitted
-    Doc.prototype.create = function (data, type, options, callback) {
+
+// Create the document, which in ShareJS semantics means to set its type. Every
+// object implicitly exists in the database but has no data and no type. Create
+// sets the type of the object and can optionally set some initial data on the
+// object, depending on the type.
+//
+// @param data  initial
+// @param type  OT type
+// @param options  {source: ...}
+// @param callback  called when operation submitted
+    public create(data, type, options, callback) {
         if (typeof type === 'function') {
             callback = type;
             options = null;
             type = null;
-        }
-        else if (typeof options === 'function') {
+        } else if (typeof options === 'function') {
             callback = options;
             options = null;
         }
@@ -760,81 +789,87 @@ var Doc = /** @class */ (function (_super) {
         }
         if (this.type) {
             var err = new ShareDBError(4016, 'Document already exists');
-            if (callback)
-                return callback(err);
+            if (callback) return callback(err);
             return this.emit('error', err);
         }
-        var op = { create: { type: type, data: data } };
+        var op = {create: {type: type, data: data}};
         var source = options && options.source;
         this._submit(op, source, callback);
     };
-    ;
-    // Delete the document. This creates and submits a delete operation to the
-    // server. Deleting resets the object's type to null and deletes its data. The
-    // document still exists, and still has the version it used to have before you
-    // deleted it (well, old version +1).
-    //
-    // @param options  {source: ...}
-    // @param callback  called when operation submitted
-    Doc.prototype.del = function (options, callback) {
+
+// Delete the document. This creates and submits a delete operation to the
+// server. Deleting resets the object's type to null and deletes its data. The
+// document still exists, and still has the version it used to have before you
+// deleted it (well, old version +1).
+//
+// @param options  {source: ...}
+// @param callback  called when operation submitted
+    public del(options, callback) {
         if (typeof options === 'function') {
             callback = options;
             options = null;
         }
         if (!this.type) {
             var err = new ShareDBError(4015, 'Document does not exist');
-            if (callback)
-                return callback(err);
+            if (callback) return callback(err);
             return this.emit('error', err);
         }
-        var op = { del: true };
+        var op = {del: true};
         var source = options && options.source;
         this._submit(op, source, callback);
     };
-    ;
-    // Stops the document from sending any operations to the server.
-    Doc.prototype.pause = function () {
+
+
+// Stops the document from sending any operations to the server.
+    public pause() {
         this.paused = true;
     };
-    ;
-    // Continue sending operations to the server
-    Doc.prototype.resume = function () {
+
+// Continue sending operations to the server
+    public resume() {
         this.paused = false;
         this.flush();
     };
-    ;
-    // *** Receiving operations
-    // This is called when the server acknowledges an operation from the client.
-    Doc.prototype._opAcknowledged = function (message) {
+
+
+// *** Receiving operations
+
+// This is called when the server acknowledges an operation from the client.
+    private _opAcknowledged(message) {
         if (this.inflightOp.create) {
             this.version = message.v;
-        }
-        else if (message.v !== this.version) {
+
+        } else if (message.v !== this.version) {
             // We should already be at the same version, because the server should
             // have sent all the ops that have happened before acknowledging our op
             console.warn('Invalid version from server. Expected: ' + this.version + ' Received: ' + message.v, message);
+
             // Fetching should get us back to a working document state
             return this.fetch();
         }
+
         // The op was committed successfully. Increment the version number
         this.version++;
+
         this._clearInflightOp();
     };
-    ;
-    Doc.prototype._rollback = function (err) {
+
+    private _rollback(err) {
         // The server has rejected submission of the current operation. Invert by
         // just the inflight op if possible. If not possible to invert, cancel all
         // pending ops and fetch the latest from the server to get us back into a
         // working state, then call back
         var op = this.inflightOp;
+
         if (op.op && op.type.invert) {
             op.op = op.type.invert(op.op);
+
             // Transform the undo operation by any pending ops.
             for (var i = 0; i < this.pendingOps.length; i++) {
                 var transformErr = Doc.transformX(this.pendingOps[i], op);
-                if (transformErr)
-                    return this._hardRollback(transformErr);
+                if (transformErr) return this._hardRollback(transformErr);
             }
+
             // ... and apply it locally, reverting the changes.
             //
             // This operation is applied to look like it comes from a remote source.
@@ -842,13 +877,15 @@ var Doc = /** @class */ (function (_super) {
             // local op. Basically, the problem is that if the client's op is rejected
             // by the server, the editor window should update to reflect the undo.
             this._otApply(op, false);
+
             this._clearInflightOp(err);
             return;
         }
+
         this._hardRollback(err);
     };
-    ;
-    Doc.prototype._hardRollback = function (err) {
+
+    private _hardRollback(err) {
         // Cancel all pending ops and reset if we can't invert
         var op = this.inflightOp;
         var pending = this.pendingOps;
@@ -856,6 +893,7 @@ var Doc = /** @class */ (function (_super) {
         this.version = null;
         this.inflightOp = null;
         this.pendingOps = [];
+
         // Fetch the latest from the server to get us back into a working state
         var doc = this;
         this.fetch(function () {
@@ -863,21 +901,21 @@ var Doc = /** @class */ (function (_super) {
             for (var i = 0; i < pending.length; i++) {
                 Doc.callEach(pending[i].callbacks, err);
             }
-            if (err && !called)
-                return doc.emit('error', err);
+            if (err && !called) return doc.emit('error', err);
         });
     };
-    ;
-    Doc.prototype._clearInflightOp = function (err) {
+
+    private _clearInflightOp(err?) {
         var called = Doc.callEach(this.inflightOp.callbacks, err);
+
         this.inflightOp = null;
         this.flush();
         this._emitNothingPending();
-        if (err && !called)
-            return this.emit('error', err);
+
+        if (err && !called) return this.emit('error', err);
     };
-    ;
-    Doc.callEach = function (callbacks, err) {
+
+    private static callEach(callbacks, err?) {
         var called = false;
         for (var i = 0; i < callbacks.length; i++) {
             var callback = callbacks[i];
@@ -887,8 +925,7 @@ var Doc = /** @class */ (function (_super) {
             }
         }
         return called;
-    };
-    return Doc;
-}(events_1.EventEmitter));
-exports.Doc = Doc;
-module.exports = Doc;
+    }
+}
+
+module.exports  = Doc;

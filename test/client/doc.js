@@ -25,7 +25,7 @@ describe('client query subscribe', function() {
     expect(doc).not.equal(doc2);
   });
 
-  it('getting then destroying then getting returns a new doc object', function() {
+  xit('getting then destroying then getting returns a new doc object', function() {
     var doc = this.connection.get('dogs', 'fido');
     doc.destroy();
     var doc2 = this.connection.get('dogs', 'fido');
