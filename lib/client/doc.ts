@@ -1,4 +1,5 @@
-import { EventEmitter} from "events";
+import {EventEmitter} from "events";
+
 var ShareDBError = require('../error');
 var types = require('../types');
 
@@ -46,23 +47,23 @@ var types = require('../types');
 
 export class Doc extends EventEmitter {
 
-    public connection:any;
-    public collection:any;
-    public id:any;
-    public version:any;
-    public type:any;
-    public data:any;
-    public inflightFetch:any;
-    public inflightSubscribe:any;
-    public inflightUnsubscribe:any;
-    public pendingFetch:any;
-    public subscribed:any;
-    public wantSubscribe:any;
-    public inflightOp:any;
-    public pendingOps:any;
-    public paused:any;
-    public applyStack:any;
-    public preventCompose:any;
+    public connection: any;
+    public collection: any;
+    public id: any;
+    public version: any;
+    public type: any;
+    public data: any;
+    public inflightFetch: any;
+    public inflightSubscribe: any;
+    public inflightUnsubscribe: any;
+    public pendingFetch: any;
+    public subscribed: any;
+    public wantSubscribe: any;
+    public inflightOp: any;
+    public pendingOps: any;
+    public paused: any;
+    public applyStack: any;
+    public preventCompose: any;
 
     constructor(connection, collection, id) {
         super();
@@ -928,4 +929,4 @@ export class Doc extends EventEmitter {
     }
 }
 
-module.exports  = Doc;
+module.exports = Doc;

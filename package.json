@@ -13,6 +13,7 @@
     "typescript": "^2.8.1"
   },
   "devDependencies": {
+    "@types/mocha": "^5.0.0",
     "@types/node": "^9.6.4",
     "coveralls": "^2.11.8",
     "expect.js": "^0.3.1",
