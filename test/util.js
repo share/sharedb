@@ -14,3 +14,9 @@ exports.pluck = function(docs, key) {
   }
   return values;
 };
+
+exports.errorHandler = function(callback) {
+  return function(err) {
+    if (err) callback(err);
+  };
+};
