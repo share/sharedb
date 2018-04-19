@@ -405,8 +405,10 @@ describe('client subscribe', function() {
   });
 
   it('doc destroy stops op updates', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    var doc2 = this.backend.connect().get('dogs', 'fido');
+    var connection1 = this.backend.connect();
+    var connection2 = this.backend.connect();
+    var doc = connection1.get('dogs', 'fido');
+    var doc2 = connection2.get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe(function(err) {
@@ -416,6 +418,7 @@ describe('client subscribe', function() {
         });
         doc2.destroy(function(err) {
           if (err) return done(err);
+          expect(connection2.getExisting('dogs', 'fido')).equal(undefined);
           doc.submitOp({p: ['age'], na: 1}, done);
         });
       });
