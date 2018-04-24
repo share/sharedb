@@ -39,4 +39,14 @@ describe('PubSub base class', function() {
       done();
     });
   });
+
+  it('can emit events', function(done) {
+      var pubsub = new PubSub();
+      pubsub.on('error', function(err) {
+        expect(err).an(Error);
+        expect(err.message).equal('test error');
+        done();
+      });
+      pubsub.emit('error', new Error('test error'));
+  });
 });
