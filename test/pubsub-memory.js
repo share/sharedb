@@ -58,20 +58,20 @@ describe('PubSub base class', function() {
   it('emits an error if _publish is unimplemented and callback is not provided', function(done) {
     var pubsub = new PubSub();
     pubsub.on('error', function(err) {
-        expect(err).an(Error);
-        expect(err.code).to.equal(5017);
-        done();
+      expect(err).an(Error);
+      expect(err.code).to.equal(5017);
+      done();
     });
     pubsub.publish(['x', 'y'], {test: true});
   });
 
   it('can emit events', function(done) {
-      var pubsub = new PubSub();
-      pubsub.on('error', function(err) {
-        expect(err).an(Error);
-        expect(err.message).equal('test error');
-        done();
-      });
-      pubsub.emit('error', new Error('test error'));
+    var pubsub = new PubSub();
+    pubsub.on('error', function(err) {
+      expect(err).an(Error);
+      expect(err.message).equal('test error');
+      done();
+    });
+    pubsub.emit('error', new Error('test error'));
   });
 });
