@@ -869,6 +869,57 @@ types.register(presenceType.type3);
       ], allDone);
     });
 
+    it('re-synchronizes presence after reconnecting', function(allDone) {
+      async.series([
+        this.doc.create.bind(this.doc, [ 'a' ], typeName),
+        this.doc.subscribe.bind(this.doc),
+        this.doc2.subscribe.bind(this.doc2),
+        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        async.nextTick,
+        function(done) {
+          expect(this.doc.presence['']).to.eql(p(0));
+          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          this.connection.close();
+          expect(this.doc.presence['']).to.eql(p(0));
+          expect(this.doc.presence).to.not.have.key(this.connection2.id);
+          this.backend.connect(this.connection);
+          process.nextTick(done);
+        }.bind(this),
+        setTimeout, // wait for re-sync
+        function(done) {
+          expect(this.doc.presence['']).to.eql(p(0));
+          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          process.nextTick(done);
+        }.bind(this)
+      ], allDone);
+    });
+
+    it('re-synchronizes presence after resubscribing', function(allDone) {
+      async.series([
+        this.doc.create.bind(this.doc, [ 'a' ], typeName),
+        this.doc.subscribe.bind(this.doc),
+        this.doc2.subscribe.bind(this.doc2),
+        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        async.nextTick,
+        function(done) {
+          expect(this.doc.presence['']).to.eql(p(0));
+          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          this.doc.unsubscribe(errorHandler(done));
+          expect(this.doc.presence['']).to.eql(p(0));
+          expect(this.doc.presence).to.not.have.key(this.connection2.id);
+          this.doc.subscribe(done);
+        }.bind(this),
+        setTimeout, // wait for re-sync
+        function(done) {
+          expect(this.doc.presence['']).to.eql(p(0));
+          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          process.nextTick(done);
+        }.bind(this)
+      ], allDone);
+    });
+
     it('transforms received presence against inflight and pending ops (presence.index < op.index)', function(allDone) {
       async.series([
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
