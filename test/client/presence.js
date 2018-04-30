@@ -1060,7 +1060,7 @@ types.register(presenceType.type3);
         function(done) {
           this.doc.on('error', done);
           this.connection.seq--;
-          this.doc.submitPresence(p(0), function(err) {
+          this.doc.submitPresence(p(1), function(err) {
             expect(err).to.be.an(Error);
             expect(err.code).to.equal(4026);
             done();
@@ -1082,7 +1082,60 @@ types.register(presenceType.type3);
             done();
           }.bind(this));
           this.connection.seq--;
+          this.doc.submitPresence(p(1));
+        }.bind(this)
+      ], allDone);
+    });
+
+    it('does not publish presence unnecessarily', function(allDone) {
+      async.series([
+        this.doc.create.bind(this.doc, [ 'c' ], typeName),
+        this.doc.subscribe.bind(this.doc),
+        this.doc.submitPresence.bind(this.doc, p(0)),
+        async.nextTick,
+        function(done) {
+          this.doc.on('error', done);
+          // Decremented sequence number would cause the server to return an error, however,
+          // the message won't be sent to the server at all because the presence data has not changed.
+          this.connection.seq--;
+          this.doc.submitPresence(p(0), function(err) {
+            if (typeName === 'wrapped-presence-no-compare') {
+              // The OT type does not support comparing presence.
+              expect(err).to.be.an(Error);
+              expect(err.code).to.equal(4026);
+            } else {
+              expect(err).to.not.be.ok();
+            }
+            done();
+          }.bind(this));
+        }.bind(this)
+      ], allDone);
+    });
+
+    it('does not publish presence unnecessarily when no callback is provided', function(allDone) {
+      async.series([
+        this.doc.create.bind(this.doc, [ 'c' ], typeName),
+        this.doc.subscribe.bind(this.doc),
+        this.doc.submitPresence.bind(this.doc, p(0)),
+        async.nextTick,
+        function(done) {
+          this.doc.on('error', function(err) {
+            if (typeName === 'wrapped-presence-no-compare') {
+              // The OT type does not support comparing presence.
+              expect(err).to.be.an(Error);
+              expect(err.code).to.equal(4026);
+              done();
+            } else {
+              done(err);
+            }
+          }.bind(this));
+          // Decremented sequence number would cause the server to return an error, however,
+          // the message won't be sent to the server at all because the presence data has not changed.
+          this.connection.seq--;
           this.doc.submitPresence(p(0));
+          if (typeName !== 'wrapped-presence-no-compare') {
+            process.nextTick(done);
+          }
         }.bind(this)
       ], allDone);
     });
