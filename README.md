@@ -258,8 +258,8 @@ An operation was applied to the data. `source` will be `false` for ops received 
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('presence', function(srcList) {...})`
-Presence data has changed. `srcList` is an Array of `doc.presence` property names for which values have changed.
+`doc.on('presence', function(srcList, submitted) {...})`
+Presence data has changed. `srcList` is an Array of `doc.presence` property names for which values have changed. `submitted` is `true`, if the event is the result of new presence data being submitted by the local or remote user, otherwise it is `false` - eg if the presence data was transformed against an operation or was cleared on unsubscribe, disconnect or roll-back.
 
 `doc.on('error', function(err) {...})`
 There was an error fetching the document or applying an operation.
