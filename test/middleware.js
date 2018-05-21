@@ -2,7 +2,6 @@ var async = require('async');
 var Backend = require('../lib/backend');
 var expect = require('expect.js');
 var types = require('../lib/types');
-var pry = require('pryjs');
 
 describe('middleware', function() {
 
@@ -62,7 +61,7 @@ describe('middleware', function() {
           expect(request.collection).to.eql('dogs');
           expect(request.id).to.eql('fido');
           next();
-          return done()
+          return done();
         });
 
         this.backend.fetch({}, 'dogs', 'fido', function(err) {
@@ -79,7 +78,7 @@ describe('middleware', function() {
         this.backend.fetch({}, 'dogs', 'fido', function(err) {
           expect(err).to.eql(expectedError);
           done();
-        })
+        });
       });
 
       it('is triggered when a multiple documents are fetched by ids', function(done) {
@@ -87,7 +86,7 @@ describe('middleware', function() {
           expect(request.collection).to.eql('dogs');
           expect(request.id).to.eql('fido');
           next();
-          return done()
+          return done();
         });
 
         this.backend.fetchBulk({}, 'dogs', ['fido'], function(err) {
@@ -104,7 +103,7 @@ describe('middleware', function() {
         this.backend.fetchBulk({}, 'dogs', ['fido'], function(err) {
           expect(err).to.eql(expectedError);
           done();
-        })
+        });
       });
 
       ['queryFetch', 'querySubscribe'].forEach((function(queryMethod) {
@@ -113,12 +112,12 @@ describe('middleware', function() {
             expect(request.collection).to.eql('dogs');
             expect(request.id).to.eql('fido');
             next();
-            return done()
+            return done();
           });
 
           this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, function(err) {
             if (err) throw(err);
-          })
+          });
         });
 
         it('calls back with an error that is yielded by ' + queryMethod, function(done) {
@@ -193,12 +192,12 @@ describe('middleware', function() {
         expect(request.collection).to.eql('dogs');
         expect(request.id).to.eql('fido');
         next();
-        return done()
+        return done();
       });
 
       this.backend.fetch({}, 'dogs', 'fido', function(err) {
         if (err) throw(err);
-      })
+      });
     });
 
     it('calls back with an error that is yielded by fetch', function(done) {
@@ -210,7 +209,7 @@ describe('middleware', function() {
       this.backend.fetch({}, 'dogs', 'fido', function(err) {
         expect(err).to.eql(expectedError);
         done();
-      })
+      });
     });
   });
 
@@ -222,7 +221,7 @@ describe('middleware', function() {
         expect(request.snapshotMap).to.have.property('fido');
         expect(request.snapshotMap).to.have.property('spot');
         next();
-        return done()
+        return done();
       });
 
       this.backend.fetchBulk({}, 'dogs', ['fido', 'spot'], function(err) {
@@ -239,7 +238,7 @@ describe('middleware', function() {
       this.backend.fetchBulk({}, 'dogs', ['fido', 'spot'], function(err) {
         expect(err).to.eql(expectedError);
         done();
-      })
+      });
     });
 
   });
@@ -263,7 +262,7 @@ describe('middleware', function() {
 
         this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, function(err) {
           if (err) throw(err);
-        })
+        });
       });
 
       it('calls back with an error that is yielded by ' + queryMethod, function(done) {
