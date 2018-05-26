@@ -123,9 +123,12 @@ Register a new middleware.
   One of:
   * `'connect'`: A new client connected to the server.
   * `'op'`: An operation was loaded from the database.
-  * `'doc'`: A snapshot was loaded from the database.
+  * `'doc'`: DEPRECATED: A snapshot was loaded from the database.
+  * `'readDoc'`: A single snapshot was loaded from the database.
+  * `'readDocs'`: Snapshots were loaded from the database as the result of a query
+  * `'readDocBulk'`: Snapshots were loaded from the database in bulk by id
   * `'query'`: A query is about to be sent to the database
-  * `'submit'`: An operation is about to be submited to the database
+  * `'submit'`: An operation is about to be submitted to the database
   * `'apply'`: An operation is about to be applied to a snapshot
     before being committed to the database
   * `'commit'`: An operation was applied to a snapshot; The operation
@@ -141,6 +144,9 @@ Register a new middleware.
   * `req`: The HTTP request being handled
   * `collection`: The collection name being handled
   * `id`: The document id being handled
+  * `snapshot`: The retrieved snapshot for `doc` and `readDoc` actions
+  * `snapshots`: The retrieved snapshots for the `readDocs` action
+  * `snapshotMap`: The map of snapshots by id for the `readDocBulk` action
   * `query`: The query object being handled
   * `op`: The op being handled
 
