@@ -1,6 +1,7 @@
 var async = require('async');
 var Backend = require('../lib/backend');
 var expect = require('expect.js');
+var util = require('./util');
 var types = require('../lib/types');
 
 describe('middleware', function() {
@@ -8,6 +9,17 @@ describe('middleware', function() {
   beforeEach(function() {
     this.backend = new Backend();
   });
+
+  var expectedError = new Error('Bad dog!');
+  function passError(_request, next) {
+    return next(expectedError);
+  }
+  function getErrorTest(done) {
+    return function(err) {
+      expect(err).to.eql(expectedError);
+      done();
+    };
+  }
 
   describe('use', function() {
 
@@ -48,236 +60,182 @@ describe('middleware', function() {
 
   });
 
-  describe('doc', function() {
+  function testReadDoc(expectFidoOnly, expectFidoAndSpot) {
     beforeEach('Add fido to db', function(done) {
       this.snapshot = {v: 1, type: 'json0', data: {age: 3}};
       this.backend.db.commit('dogs', 'fido', {v: 0, create: {}}, this.snapshot, null, done);
     });
 
+    it('is triggered when a document is retrieved with fetch', function(done) {
+      var doneAfter = expectFidoOnly(this.backend, done);
+      this.backend.fetch({}, 'dogs', 'fido', doneAfter);
+    });
+
+    it('calls back with an error that is yielded by fetch', function(done) {
+      this.backend.use('readSnapshots', passError);
+      this.backend.fetch({}, 'dogs', 'fido', getErrorTest(done));
+    });
+
+    it('is triggered when a document is retrieved with subscribe', function(done) {
+      var doneAfter = expectFidoOnly(this.backend, done);
+      this.backend.subscribe({}, 'dogs', 'fido', null, doneAfter);
+    });
+
+    it('calls back with an error that is yielded by subscribe', function(done) {
+      this.backend.use('readSnapshots', passError);
+      this.backend.subscribe({}, 'dogs', 'fido', null, getErrorTest(done));
+    });
+
+    ['queryFetch', 'querySubscribe'].forEach(function(queryMethod) {
+      it('is triggered when multiple documents are retrieved with ' + queryMethod, function(done) {
+        var doneAfter = expectFidoOnly(this.backend, done);
+        this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, doneAfter);
+      });
+
+      it('calls back with an error that is yielded by ' + queryMethod, function(done) {
+        this.backend.use('readSnapshots', passError);
+        this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, getErrorTest(done));
+      });
+    });
+
+    ['fetchBulk', 'subscribeBulk'].forEach(function(bulkMethod) {
+      it('is triggered when a document is retrieved with ' + bulkMethod, function(done) {
+        var doneAfter = expectFidoAndSpot(this.backend, done);
+        this.backend[bulkMethod]({}, 'dogs', ['fido', 'spot'], doneAfter);
+      });
+
+      it('calls back with an error that is yielded by ' + bulkMethod, function(done) {
+        this.backend.use('readSnapshots', passError);
+        this.backend[bulkMethod]({}, 'dogs', ['fido', 'spot'], getErrorTest(done));
+      });
+    });
+  }
+
+  describe('doc', function() {
     describe('with default options for backend constructor', function() {
+      function expectFido(request) {
+        expect(request.collection).to.equal('dogs');
+        expect(request.id).to.equal('fido');
+        expect(request.snapshot).to.have.property('data').eql({age: 3});
+      }
+      function expectSpot(request) {
+        expect(request.collection).to.equal('dogs');
+        expect(request.id).to.equal('spot');
+        expect(request.snapshot).to.have.property('type').equal(null);
+      }
 
-      it('is triggered when a single document is fetched', function(done) {
-        this.backend.use('doc', function(request, next) {
-          expect(request.collection).to.eql('dogs');
-          expect(request.id).to.eql('fido');
-          next();
-          return done();
-        });
-
-        this.backend.fetch({}, 'dogs', 'fido', function(err) {
-          if (err) throw(err);
-        });
-      });
-
-      it('calls back with an error that is yielded by fetch', function(done) {
-        var expectedError = new Error('Bad dog!');
-        this.backend.use('doc', function(_request, next) {
-          return next(expectedError);
-        });
-
-        this.backend.fetch({}, 'dogs', 'fido', function(err) {
-          expect(err).to.eql(expectedError);
-          done();
-        });
-      });
-
-      it('is triggered when a multiple documents are fetched by ids', function(done) {
-        this.backend.use('doc', function(request, next) {
-          expect(request.collection).to.eql('dogs');
-          expect(request.id).to.eql('fido');
+      function expectFidoOnly(backend, done) {
+        var doneAfter = util.callAfter(1, done);
+        backend.use('doc', function(request, next) {
+          expectFido(request);
+          doneAfter();
           next();
         });
+        return doneAfter;
+      }
 
-        this.backend.fetchBulk({}, 'dogs', ['fido'], done);
-      });
-
-      it('calls back with an error that is yielded by fetchBulk', function(done) {
-        var expectedError = new Error('Bad dogs!');
-        this.backend.use('doc', function(_request, next) {
-          return next(expectedError);
+      function expectFidoAndSpot(backend, done) {
+        var doneAfter = util.callAfter(2, done);
+        var i = 0;
+        backend.use('doc', function(request, next) {
+          doneAfter();
+          if (doneAfter.called === 1) {
+            expectFido(request);
+          } else {
+            expectSpot(request);
+          }
+          next();
         });
+        return doneAfter;
+      }
 
-        this.backend.fetchBulk({}, 'dogs', ['fido'], function(err) {
-          expect(err).to.eql(expectedError);
-          done();
-        });
-      });
-
-      ['queryFetch', 'querySubscribe'].forEach((function(queryMethod) {
-        it('is triggered when multiple documents are retrieved with ' + queryMethod, function(done) {
-          this.backend.use('doc', function(request, next) {
-            expect(request.collection).to.eql('dogs');
-            expect(request.id).to.eql('fido');
-            next();
-          });
-
-          this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, done);
-        });
-
-        it('calls back with an error that is yielded by ' + queryMethod, function(done) {
-          var expectedError = new Error('Bad dog!');
-          this.backend.use('doc', function(_request, next) {
-            return next(expectedError);
-          });
-
-          this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, function(err) {
-            expect(err).to.eql(expectedError);
-            done();
-          });
-        });
-
-      }).bind(this));
-
+      testReadDoc(expectFidoOnly, expectFidoAndSpot);
     });
 
     describe('with disableDocAction option set to true for backend constructor', function() {
-
       beforeEach('Create backend with disableDocAction option', function() {
         this.backend = new Backend({disableDocAction: true});
       });
 
-      it('is not triggered when a document is fetched', function(done) {
-        this.backend.use('doc', function(_request, _next) {
-          throw(new Error('doc should not have been triggered'));
-        });
-
+      it('is not triggered when a document is retrieved with fetch', function(done) {
+        this.backend.use('doc', passError);
         this.backend.fetch({}, 'dogs', 'fido', done);
       });
 
-      it('is not triggered when multiple documents are fetched by id', function(done) {
-        this.backend.use('doc', function(_request, _next) {
-          throw(new Error('doc should not have been triggered'));
-        });
-
-        this.backend.fetchBulk({}, 'dogs', ['fido'], done);
+      it('is not triggered when a document is retrieved with subscribe', function(done) {
+        this.backend.use('doc', passError);
+        this.backend.subscribe({}, 'dogs', 'fido', null, done);
       });
 
-      ['queryFetch', 'querySubscribe'].forEach((function(queryMethod) {
+      ['queryFetch', 'querySubscribe'].forEach(function(queryMethod) {
         it('is not triggered when multiple documents are retrieved with ' + queryMethod, function(done) {
-          this.backend.use('doc', function(request, next) {
-            throw(new Error('doc should not have been triggered'));
-          });
-
+          this.backend.use('doc', passError);
           this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, done);
         });
+      });
 
-        it('calls back with an error that is yielded by ' + queryMethod, function(done) {
-          var expectedError = new Error('Bad dog!');
-          this.backend.use('doc', function(_request, next) {
-            throw(new Error('doc should not have been triggered'));
-          });
-
-          this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, done);
+      ['fetchBulk', 'subscribeBulk'].forEach(function(bulkMethod) {
+        it('is not triggered when a document is retrieved with ' + bulkMethod, function(done) {
+          this.backend.use('doc', passError);
+          this.backend[bulkMethod]({}, 'dogs', ['fido', 'spot'], done);
         });
-
-      }).bind(this));
+      });
     });
-
   });
 
-  describe('readDoc', function() {
-    beforeEach('Add fido to db', function(done) {
-      this.snapshot = {v: 1, type: 'json0', data: {age: 3}};
-      this.backend.db.commit('dogs', 'fido', {v: 0, create: {}}, this.snapshot, null, done);
-    });
+  describe('readSnapshots', function() {
+    function expectFido(request) {
+      expect(request.collection).to.equal('dogs');
+      expect(request.snapshots[0]).to.have.property('id', 'fido');
+      expect(request.snapshots[0]).to.have.property('data').eql({age: 3});
+    }
+    function expectSpot(request) {
+      expect(request.collection).to.equal('dogs');
+      expect(request.snapshots[1]).to.have.property('id', 'spot');
+      expect(request.snapshots[1]).to.have.property('type').equal(null);
+    }
 
-    it('is triggered when a single document is fetched', function(done) {
-      this.backend.use('readDoc', function(request, next) {
-        expect(request.collection).to.eql('dogs');
-        expect(request.id).to.eql('fido');
+    function expectFidoOnly(backend, done) {
+      var doneAfter = util.callAfter(1, done);
+      backend.use('readSnapshots', function(request, next) {
+        expect(request.snapshots).to.have.length(1);
+        expectFido(request);
+        doneAfter();
         next();
       });
+      return doneAfter;
+    }
 
-      this.backend.fetch({}, 'dogs', 'fido', done);
-    });
-
-    it('calls back with an error that is yielded by fetch', function(done) {
-      var expectedError = new Error('Bad dog!');
-      this.backend.use('readDoc', function(_request, next) {
-        return next(expectedError);
-      });
-
-      this.backend.fetch({}, 'dogs', 'fido', function(err) {
-        expect(err).to.eql(expectedError);
-        done();
-      });
-    });
-  });
-
-  describe('readDocBulk', function() {
-
-    it('is triggered when multiple documents are fetched by ids', function(done) {
-      this.backend.use('readDocBulk', function(request, next) {
-        expect(request.collection).to.eql('dogs');
-        expect(request.snapshotMap).to.have.property('fido');
-        expect(request.snapshotMap).to.have.property('spot');
+    function expectFidoAndSpot(backend, done) {
+      var doneAfter = util.callAfter(1, done);
+      backend.use('readSnapshots', function(request, next) {
+        expect(request.snapshots).to.have.length(2);
+        expectFido(request);
+        expectSpot(request);
+        doneAfter();
         next();
       });
+      return doneAfter;
+    }
 
-      this.backend.fetchBulk({}, 'dogs', ['fido', 'spot'], done);
-    });
-
-    it('calls back with an error that is yielded by fetchBulk', function(done) {
-      var expectedError = new Error('Bad dogs!');
-      this.backend.use('readDocBulk', function(_request, next) {
-        return next(expectedError);
-      });
-
-      this.backend.fetchBulk({}, 'dogs', ['fido', 'spot'], function(err) {
-        expect(err).to.eql(expectedError);
-        done();
-      });
-    });
-
+    testReadDoc(expectFidoOnly, expectFidoAndSpot);
   });
 
-  describe('readDocs', function() {
-    beforeEach('Add fido to db', function(done) {
-      this.snapshot = {v: 1, type: 'json0', data: {age: 3}};
-      this.backend.db.commit('dogs', 'fido', {v: 0, create: {}}, this.snapshot, null, done);
-    });
-
-    ['queryFetch', 'querySubscribe'].forEach((function(queryMethod) {
-      it('is triggered when multiple documents are retrieved with ' + queryMethod, function(done) {
-        this.backend.use('readDocs', function(request, next) {
-          expect(request.collection).to.eql('dogs');
-          expect(request.snapshots).to.have.length(1);
-          expect(request.snapshots[0]).to.have.property('id', 'fido');
-          expect(request.snapshots[0]).to.have.property('data').eql({age: 3});
+  describe('submit lifecycle', function() {
+    // DEPRECATED: 'after submit' is a synonym for 'afterSubmit'
+    ['submit', 'apply', 'commit', 'afterSubmit', 'after submit'].forEach(function(action) {
+      it(action + ' gets options passed to backend.submit', function(done) {
+        var doneAfter = util.callAfter(1, done);
+        this.backend.use(action, function(request, next) {
+          expect(request.options).eql({testOption: true});
+          doneAfter();
           next();
         });
-
-        this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, done);
+        var op = {create: {type: types.defaultType.uri}};
+        var options = {testOption: true};
+        this.backend.submit(null, 'dogs', 'fido', op, options, doneAfter);
       });
-
-      it('calls back with an error that is yielded by ' + queryMethod, function(done) {
-        var expectedError = new Error('Bad dog!');
-        this.backend.use('readDocs', function(_request, next) {
-          return next(expectedError);
-        });
-
-        this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, function(err) {
-          expect(err).to.eql(expectedError);
-          done();
-        });
-      });
-
-    }).bind(this));
-
-  });
-
-  describe('submit', function() {
-
-    it('gets options passed to backend.submit', function(done) {
-      this.backend.use('submit', function(request, next) {
-        expect(request.options).eql({testOption: true});
-        next();
-      });
-      var op = {create: {type: types.defaultType.uri}};
-      var options = {testOption: true};
-      this.backend.submit(null, 'dogs', 'fido', op, options, done);
     });
-
   });
 
 });

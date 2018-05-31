@@ -123,17 +123,15 @@ Register a new middleware.
   One of:
   * `'connect'`: A new client connected to the server.
   * `'op'`: An operation was loaded from the database.
-  * `'doc'`: DEPRECATED: A snapshot was loaded from the database.
-  * `'readDoc'`: A single snapshot was loaded from the database.
-  * `'readDocs'`: Snapshots were loaded from the database as the result of a query
-  * `'readDocBulk'`: Snapshots were loaded from the database in bulk by id
+  * `'doc'`: DEPRECATED: A snapshot was loaded from the database. Please use 'readSnapshots'
+  * `'readSnapshots'`: Snapshot(s) were loaded from the database for a fetch or subscribe of a query or document
   * `'query'`: A query is about to be sent to the database
   * `'submit'`: An operation is about to be submitted to the database
   * `'apply'`: An operation is about to be applied to a snapshot
     before being committed to the database
   * `'commit'`: An operation was applied to a snapshot; The operation
     and new snapshot are about to be written to the database.
-  * `'after submit'`: An operation was successfully submitted to
+  * `'afterSubmit'`: An operation was successfully submitted to
     the database.
   * `'receive'`: Received a message from a client
 * `fn` _(Function(request, callback))_
@@ -144,9 +142,7 @@ Register a new middleware.
   * `req`: The HTTP request being handled
   * `collection`: The collection name being handled
   * `id`: The document id being handled
-  * `snapshot`: The retrieved snapshot for `doc` and `readDoc` actions
-  * `snapshots`: The retrieved snapshots for the `readDocs` action
-  * `snapshotMap`: The map of snapshots by id for the `readDocBulk` action
+  * `snapshots`: The retrieved snapshots for the `readSnapshots` action
   * `query`: The query object being handled
   * `op`: The op being handled
 
