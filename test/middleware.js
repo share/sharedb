@@ -72,7 +72,7 @@ describe('middleware', function() {
     });
 
     it('calls back with an error that is yielded by fetch', function(done) {
-      this.backend.use('readDocs', passError);
+      this.backend.use('readSnapshots', passError);
       this.backend.fetch({}, 'dogs', 'fido', getErrorTest(done));
     });
 
@@ -82,7 +82,7 @@ describe('middleware', function() {
     });
 
     it('calls back with an error that is yielded by subscribe', function(done) {
-      this.backend.use('readDocs', passError);
+      this.backend.use('readSnapshots', passError);
       this.backend.subscribe({}, 'dogs', 'fido', null, getErrorTest(done));
     });
 
@@ -93,7 +93,7 @@ describe('middleware', function() {
       });
 
       it('calls back with an error that is yielded by ' + queryMethod, function(done) {
-        this.backend.use('readDocs', passError);
+        this.backend.use('readSnapshots', passError);
         this.backend[queryMethod]({}, 'dogs', {age: 3}, {}, getErrorTest(done));
       });
     });
@@ -105,7 +105,7 @@ describe('middleware', function() {
       });
 
       it('calls back with an error that is yielded by ' + bulkMethod, function(done) {
-        this.backend.use('readDocs', passError);
+        this.backend.use('readSnapshots', passError);
         this.backend[bulkMethod]({}, 'dogs', ['fido', 'spot'], getErrorTest(done));
       });
     });
@@ -183,7 +183,7 @@ describe('middleware', function() {
     });
   });
 
-  describe('readDocs', function() {
+  describe('readSnapshots', function() {
     function expectFido(request) {
       expect(request.collection).to.equal('dogs');
       expect(request.snapshots[0]).to.have.property('id', 'fido');
@@ -197,7 +197,7 @@ describe('middleware', function() {
 
     function expectFidoOnly(backend, done) {
       var doneAfter = util.callAfter(1, done);
-      backend.use('readDocs', function(request, next) {
+      backend.use('readSnapshots', function(request, next) {
         expect(request.snapshots).to.have.length(1);
         expectFido(request);
         doneAfter();
@@ -208,7 +208,7 @@ describe('middleware', function() {
 
     function expectFidoAndSpot(backend, done) {
       var doneAfter = util.callAfter(1, done);
-      backend.use('readDocs', function(request, next) {
+      backend.use('readSnapshots', function(request, next) {
         expect(request.snapshots).to.have.length(2);
         expectFido(request);
         expectSpot(request);
