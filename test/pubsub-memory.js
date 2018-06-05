@@ -14,29 +14,64 @@ describe('PubSub base class', function() {
     var pubsub = new PubSub();
     pubsub.subscribe('x', function(err) {
       expect(err).an(Error);
+      expect(err.code).to.equal(5015);
       done();
     });
   });
 
-  it('throws an error if _unsubscribe is unimplemented', function(done) {
+  it('emits an error if _subscribe is unimplemented and callback is not provided', function(done) {
+    var pubsub = new PubSub();
+    pubsub.on('error', function(err) {
+      expect(err).an(Error);
+      expect(err.code).to.equal(5015);
+      done();
+    });
+    pubsub.subscribe('x');
+  });
+
+  it('emits an error if _unsubscribe is unimplemented', function(done) {
     var pubsub = new PubSub();
     pubsub._subscribe = function(channel, callback) {
       callback();
     };
     pubsub.subscribe('x', function(err, stream) {
       if (err) return done(err);
-      expect(function() {
-        stream.destroy();
-      }).throwException();
-      done();
+      pubsub.on('error', function(err) {
+        expect(err).to.be.an(Error);
+        expect(err.code).to.equal(5016);
+        done();
+      });
+      stream.destroy();
     });
   });
 
   it('returns an error if _publish is unimplemented', function(done) {
     var pubsub = new PubSub();
+    pubsub.on('error', done);
     pubsub.publish(['x', 'y'], {test: true}, function(err) {
       expect(err).an(Error);
+      expect(err.code).to.equal(5017);
       done();
     });
+  });
+
+  it('emits an error if _publish is unimplemented and callback is not provided', function(done) {
+    var pubsub = new PubSub();
+    pubsub.on('error', function(err) {
+      expect(err).an(Error);
+      expect(err.code).to.equal(5017);
+      done();
+    });
+    pubsub.publish(['x', 'y'], {test: true});
+  });
+
+  it('can emit events', function(done) {
+    var pubsub = new PubSub();
+    pubsub.on('error', function(err) {
+      expect(err).an(Error);
+      expect(err.message).equal('test error');
+      done();
+    });
+    pubsub.emit('error', new Error('test error'));
   });
 });

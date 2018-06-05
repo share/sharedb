@@ -2,6 +2,9 @@
 *.swp
 *.DS_Store
 
+# WebStorm
+.idea/
+
 # Emacs
 \#*\#
 
