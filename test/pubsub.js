@@ -75,5 +75,14 @@ module.exports = function(create) {
         done();
       });
     });
+
+    it('can emit events', function(done) {
+      this.pubsub.on('error', function(err) {
+        expect(err).an(Error);
+        expect(err.message).equal('test error');
+        done();
+      });
+      this.pubsub.emit('error', new Error('test error'));
+    });
   });
 };
