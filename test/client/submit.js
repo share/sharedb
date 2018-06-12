@@ -119,25 +119,24 @@ describe('client submit', function() {
 
   it('ops submitted sync get composed', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create({age: 3});
-    doc.submitOp({p: ['age'], na: 2});
+    doc.create({age: 5});
     doc.submitOp({p: ['age'], na: 2}, function(err) {
       if (err) return done(err);
       expect(doc.data).eql({age: 7});
-      // Version is 1 instead of 3, because the create and ops got composed
-      expect(doc.version).eql(1);
+      // create DOES NOT get composed
+      expect(doc.version).eql(2);
       doc.submitOp({p: ['age'], na: 2});
       doc.submitOp({p: ['age'], na: 2}, function(err) {
         if (err) return done(err);
         expect(doc.data).eql({age: 11});
-        // Ops get composed
-        expect(doc.version).eql(2);
+        // Version is 3 instead of 4, because the ops got composed
+        expect(doc.version).eql(3);
         doc.submitOp({p: ['age'], na: 2});
         doc.del(function(err) {
           if (err) return done(err);
           expect(doc.data).eql(undefined);
           // del DOES NOT get composed
-          expect(doc.version).eql(4);
+          expect(doc.version).eql(5);
           done();
         });
       });
