@@ -1313,7 +1313,7 @@ types.register(presenceType.type3);
           }.bind(this));
 
           // send an invalid op
-          this.doc._submit({}, true);
+          this.doc._submit({}, null);
         }.bind(this)
       ], allDone);
     });
@@ -1362,7 +1362,7 @@ types.register(presenceType.type3);
               this.doc.on('error', done);
 
               // send an invalid op
-              this.doc._submit({ index: 3, value: 'b' }, true, callback);
+              this.doc._submit({ index: 3, value: 'b' }, null, callback);
             }.bind(this));
           }.bind(this));
         }.bind(this)
