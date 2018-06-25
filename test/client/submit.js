@@ -2,8 +2,10 @@ var async = require('async');
 var expect = require('expect.js');
 var types = require('../../lib/types');
 var deserializedType = require('./deserialized-type');
+var numberType = require('./number-type');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
+types.register(numberType.type);
 
 module.exports = function() {
 describe('client submit', function() {
@@ -1072,6 +1074,19 @@ describe('client submit', function() {
       doc.del(function(err) {
         if (err) return done(err);
         expect(doc.hasWritePending()).equal(false);
+        done();
+      });
+    });
+  });
+
+  it('allows snapshot and op to be a non-object', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create(5, numberType.type.uri, function (err) {
+      if (err) return done(err);
+      expect(doc.data).to.equal(5);
+      doc.submitOp(2, function(err) {
+        if (err) return done(err);
+        expect(doc.data).to.equal(7);
         done();
       });
     });
