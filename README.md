@@ -227,6 +227,29 @@ changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 * `options.*`
   All other options are passed through to the database adapter.
 
+`connection.getSnapshot(collection, id, version, callback): void;`
+Get a read-only snapshot of a document at the requested version.
+
+* `collection` _(String)_
+  Collection name of the snapshot
+* `id` _(String)_
+  ID of the snapshot
+* `version` _(number | Date)_
+  Either the desired snapshot version number, or a `Date` object for the time at which you want the snapshot
+* `callback` _(Function)_
+  Called with `(error, snapshot)`, where `snapshot` takes the following form:
+
+  ```javascript
+  {
+    collection: string; // collection name of the snapshot
+    id: string;         // ID of the snapshot
+    version: number;    // version number of the snapshot
+    timestamp: number;  // the UNIX timestamp of the snapshot
+    deleted: boolean;   // true if the returned version is a deleted snapshot
+    data: any;          // the snapshot
+  }
+  ```
+
 ### Class: `ShareDB.Doc`
 
 `doc.type` _(String_)
@@ -375,6 +398,7 @@ Additional fields may be added to the error object for debugging context dependi
 * 4021 - Invalid client id
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
+* 4024 - Invalid version
 
 ### 5000 - Internal error
 
