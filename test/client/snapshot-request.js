@@ -211,7 +211,7 @@ describe('SnapshotRequest', function () {
         ];
 
         backend.connect().getSnapshot('books', 'don-quixote', 0, function (error, snapshot) {
-          if (error) done(error);
+          if (error) return done(error);
           expect(snapshot.data.title).to.be('Alice in Wonderland');
           done();
         });
@@ -238,7 +238,7 @@ describe('SnapshotRequest', function () {
 
       it('applies the projection to a snapshot', function (done) {
         backend.connect().getSnapshot('bookTitles', 'don-quixote', 2, function (error, snapshot) {
-          if (error) done(error);
+          if (error) return done(error);
 
           expect(snapshot.data.title).to.be('Don Quixote');
           expect(snapshot.data.author).to.be(undefined);
@@ -252,7 +252,7 @@ describe('SnapshotRequest', function () {
     beforeEach(function (done) {
       var doc = backend.connect().get('books', 'catch-22');
       doc.create({ title: 'Catch 22' }, function (error) {
-        if (error) done(error);
+        if (error) return done(error);
         clock.tick(ONE_DAY);
         doc.del(function (error) {
           done(error);
@@ -302,7 +302,7 @@ describe('SnapshotRequest', function () {
         if (error) done(error);
         clock.tick(ONE_DAY);
         doc.del(function (error) {
-          if (error) done (error);
+          if (error) return done (error);
           clock.tick(ONE_DAY);
           doc.create({ title: 'The Restaurant at the End of the Universe' }, function (error) {
             done(error);
