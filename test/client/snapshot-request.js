@@ -157,6 +157,14 @@ describe('SnapshotRequest', function () {
       });
     });
 
+    it('errors if trying to fetch a snapshot at the epoch', function (done) {
+      backend.connect().getSnapshot('books', 'don-quixote', new Date(0), function (error, snapshot) {
+        expect(error.code).to.be(4015);
+        expect(snapshot).to.be(undefined);
+        done();
+      });
+    });
+
     it('fetches the latest version if asking for a time after the last op', function (done) {
       backend.connect().getSnapshot('books', 'don-quixote', DAY4, function (error, snapshot) {
         if (error) done(error);
