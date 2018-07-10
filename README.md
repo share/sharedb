@@ -245,7 +245,7 @@ Get a read-only snapshot of a document at the requested version.
     id: string;         // ID of the snapshot
     version: number;    // version number of the snapshot
     timestamp: number;  // the UNIX timestamp of the snapshot
-    deleted: boolean;   // true if the returned version is a deleted snapshot
+    type: any;          // the OT type of the snapshot, or null if it doesn't exist or is deleted
     data: any;          // the snapshot
   }
   ```
