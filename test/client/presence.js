@@ -473,48 +473,44 @@ types.register(presenceType.type3);
       ], allDone);
     });
 
-    it('removes cached ops', function(allDone) {
-      var op = { index: 1, value: 'b' };
-      this.doc.cachedOpsTimeout = 0;
+    it('expires cached ops', function(allDone) {
+      var op1 = { index: 1, value: 'b' };
+      var op2 = { index: 2, value: 'b' };
+      var op3 = { index: 3, value: 'b' };
+      this.doc.cachedOpsTimeout = 60;
       async.series([
+        // Cache 2 ops.
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
-        this.doc.submitOp.bind(this.doc, op),
-        this.doc.del.bind(this.doc),
+        this.doc.submitOp.bind(this.doc, op1),
         function(done) {
-          expect(this.doc.cachedOps.length).to.equal(3);
+          expect(this.doc.cachedOps.length).to.equal(2);
           expect(this.doc.cachedOps[0].create).to.equal(true);
-          expect(this.doc.cachedOps[1].op).to.equal(op);
-          expect(this.doc.cachedOps[2].del).to.equal(true);
+          expect(this.doc.cachedOps[1].op).to.equal(op1);
           done();
         }.bind(this),
-        setTimeout,
-        function(done) {
-          expect(this.doc.cachedOps.length).to.equal(0);
-          done();
-        }.bind(this)
-      ], allDone);
-    });
 
-    it('removes correct cached ops', function(allDone) {
-      var op = { index: 1, value: 'b' };
-      this.doc.cachedOpsTimeout = 0;
-      async.series([
-        this.doc.create.bind(this.doc, [ 'a' ], typeName),
-        this.doc.submitOp.bind(this.doc, op),
-        this.doc.del.bind(this.doc),
+        // Cache another op before the first 2 expire.
+        function (callback) {
+          setTimeout(callback, 30);
+        },
+        this.doc.submitOp.bind(this.doc, op2),
         function(done) {
           expect(this.doc.cachedOps.length).to.equal(3);
           expect(this.doc.cachedOps[0].create).to.equal(true);
-          expect(this.doc.cachedOps[1].op).to.equal(op);
-          expect(this.doc.cachedOps[2].del).to.equal(true);
-          this.doc.cachedOps.shift();
-          this.doc.cachedOps.push({ op: true });
+          expect(this.doc.cachedOps[1].op).to.equal(op1);
+          expect(this.doc.cachedOps[2].op).to.equal(op2);
           done();
         }.bind(this),
-        setTimeout,
+
+        // Cache another op after the first 2 expire.
+        function (callback) {
+          setTimeout(callback, 31);
+        },
+        this.doc.submitOp.bind(this.doc, op3),
         function(done) {
-          expect(this.doc.cachedOps.length).to.equal(1);
-          expect(this.doc.cachedOps[0].op).to.equal(true);
+          expect(this.doc.cachedOps.length).to.equal(2);
+          expect(this.doc.cachedOps[0].op).to.equal(op2);
+          expect(this.doc.cachedOps[1].op).to.equal(op3);
           done();
         }.bind(this)
       ], allDone);
