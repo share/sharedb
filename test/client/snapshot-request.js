@@ -150,6 +150,14 @@ describe('SnapshotRequest', function () {
       });
     });
 
+    it('fetches the latest version when the optional version is not provided', function (done) {
+      backend.connect().getSnapshot('books', 'don-quixote', function (error, snapshot) {
+        if (error) return done(error);
+        expect(snapshot).to.eql(v2);
+        done();
+      });
+    });
+
     it('returns an empty snapshot if the version is -1', function (done) {
       backend.connect().getSnapshot('books', 'don-quixote', -1, function (error, snapshot) {
         if (error) return done(error);

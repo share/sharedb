@@ -234,7 +234,7 @@ Get a read-only snapshot of a document at the requested version.
   Collection name of the snapshot
 * `id` _(String)_
   ID of the snapshot
-* `version` _(number | Date)_
+* `version` _(number | Date) [optional]_
   Either the desired snapshot version number, or a `Date` object for the time at which you want the snapshot
 * `callback` _(Function)_
   Called with `(error, snapshot)`, where `snapshot` takes the following form:
