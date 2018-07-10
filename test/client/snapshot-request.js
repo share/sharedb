@@ -158,10 +158,14 @@ describe('SnapshotRequest', function () {
       });
     });
 
-    it('returns an empty snapshot if the version is -1', function (done) {
+    it('can call without a callback', function () {
+      backend.connect().getSnapshot('books', 'don-quixote');
+    });
+
+    it('errors if the version is -1', function (done) {
       backend.connect().getSnapshot('books', 'don-quixote', -1, function (error, snapshot) {
-        if (error) return done(error);
-        expect(snapshot).to.eql(emptySnapshot);
+        expect(error.code).to.be(4024);
+        expect(snapshot).to.be(undefined);
         done();
       });
     });
