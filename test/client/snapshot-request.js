@@ -1,10 +1,12 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var lolex = require("lolex");
+var types = require('../../lib/types');
 
 describe('SnapshotRequest', function () {
   var backend;
   var clock;
+  var json0 = types.map['json0'];
 
   var DAY0 = new Date("2018-05-30");
   var DAY1 = new Date("2018-06-01");
@@ -42,10 +44,7 @@ describe('SnapshotRequest', function () {
       collection: 'books',
       version: 0,
       timestamp: DAY1.getTime(),
-      type: {
-        name: 'json0',
-        uri: 'http://sharejs.org/types/JSONv0'
-      },
+      type: json0,
       data: {
         title: 'Don Quixote'
       }
@@ -56,10 +55,7 @@ describe('SnapshotRequest', function () {
       collection: 'books',
       version: 1,
       timestamp: DAY2.getTime(),
-      type: {
-        name: 'json0',
-        uri: 'http://sharejs.org/types/JSONv0'
-      },
+      type: json0,
       data: {
         title: 'Don Quixote',
         author: 'Miguel de Cervante'
@@ -71,10 +67,7 @@ describe('SnapshotRequest', function () {
       collection: 'books',
       version: 2,
       timestamp: DAY3.getTime(),
-      type: {
-        name: 'json0',
-        uri: 'http://sharejs.org/types/JSONv0'
-      },
+      type: json0,
       data: {
         title: 'Don Quixote',
         author: 'Miguel de Cervantes'
@@ -162,8 +155,15 @@ describe('SnapshotRequest', function () {
       backend.connect().getSnapshot('books', 'don-quixote');
     });
 
-    it('errors if the version is -1', function (done) {
+    it('returns an empty snapshot if the version is -1', function (done) {
       backend.connect().getSnapshot('books', 'don-quixote', -1, function (error, snapshot) {
+        expect(snapshot).to.eql(emptySnapshot);
+        done();
+      });
+    });
+
+    it('errors if the version is a string', function (done) {
+      backend.connect().getSnapshot('books', 'don-quixote', 'foo', function (error, snapshot) {
         expect(error.code).to.be(4024);
         expect(snapshot).to.be(undefined);
         done();
@@ -228,6 +228,18 @@ describe('SnapshotRequest', function () {
       expect(connection.hasPending()).to.be(true);
     });
 
+    it('deletes the request from the connection', function (done) {
+      var connection = backend.connect();
+
+      connection.getSnapshot('books', 'don-quixote', function (error) {
+        if (error) return done(error);
+        expect(connection.snapshotRequests).to.eql({});
+        done();
+      });
+
+      expect(connection.snapshotRequests).to.not.eql({});
+    });
+
     describe('readSnapshots middleware', function (done) {
       it('triggers the middleware', function (done) {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
@@ -237,10 +249,7 @@ describe('SnapshotRequest', function () {
             expect(request.version).to.be(2);
             expect(request.timestamp).to.be(DAY3.getTime());
             expect(request.snapshots).to.eql([v2.data]);
-            expect(request.type).to.eql({
-              name: 'json0',
-              uri: 'http://sharejs.org/types/JSONv0'
-            });
+            expect(request.type).to.be('http://sharejs.org/types/JSONv0');
 
             done();
           }
@@ -331,10 +340,7 @@ describe('SnapshotRequest', function () {
           collection: 'books',
           version: 0,
           timestamp: DAY1.getTime(),
-          type: {
-            name: 'json0',
-            uri: 'http://sharejs.org/types/JSONv0'
-          },
+          type: json0,
           data: {
             title: 'Catch 22',
           }
@@ -370,10 +376,7 @@ describe('SnapshotRequest', function () {
           collection: 'books',
           version: 2,
           timestamp: DAY3.getTime(),
-          type: {
-            name: 'json0',
-            uri: 'http://sharejs.org/types/JSONv0'
-          },
+          type: json0,
           data: {
             title: 'The Restaurant at the End of the Universe',
           }
