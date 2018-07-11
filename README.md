@@ -234,8 +234,8 @@ Get a read-only snapshot of a document at the requested version.
   Collection name of the snapshot
 * `id` _(String)_
   ID of the snapshot
-* `version` _(number | Date) [optional]_
-  Either the desired snapshot version number, or a `Date` object for the time at which you want the snapshot
+* `version` _(number) [optional]_
+  The version number of the desired snapshot
 * `callback` _(Function)_
   Called with `(error, snapshot)`, where `snapshot` takes the following form:
 
@@ -249,6 +249,18 @@ Get a read-only snapshot of a document at the requested version.
     data: any;          // the snapshot
   }
   ```
+
+`connection.getSnapshotAtTime(collection, id, timestamp, callback): void;`
+Get a read-only snapshot of a document at the requested timestamp.
+
+* `collection` _(String)_
+  Collection name of the snapshot
+* `id` _(String)_
+  ID of the snapshot
+* `timestamp` _(number) [optional]_
+  The timestamp at which you wish to view the snapshot. If an exact timestamp match is not made, then the next lower version is returned. ie if ops were submitted at 02:00 and 03:00, then asking for a Date at 02:30 will return the 02:00 version.
+* `callback` _(Function)_
+  Called with `(error, snapshot)`, where `snapshot` takes the same form as for `getSnapshot` above.
 
 ### Class: `ShareDB.Doc`
 
@@ -399,6 +411,7 @@ Additional fields may be added to the error object for debugging context dependi
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
 * 4024 - Invalid version
+* 4025 - Invalid timestamp
 
 ### 5000 - Internal error
 
