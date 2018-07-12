@@ -33,8 +33,8 @@ describe('SnapshotRequest', function () {
     var emptySnapshot = {
       id: 'don-quixote',
       collection: 'books',
-      version: undefined,
-      timestamp: undefined,
+      version: 0,
+      timestamp: 0,
       type: null,
       data: undefined
     };
@@ -162,8 +162,8 @@ describe('SnapshotRequest', function () {
           expect(snapshot).to.eql({
             id: 'does-not-exist',
             collection: 'books',
-            version: undefined,
-            timestamp: undefined,
+            version: 0,
+            timestamp: 0,
             type: null,
             data: undefined
           });
