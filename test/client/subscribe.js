@@ -414,7 +414,7 @@ describe('client subscribe', function() {
       doc2.subscribe(function(err) {
         if (err) return done(err);
         doc2.on('op', function(op, context) {
-          done();
+          done(new Error('Should not get op event'));
         });
         doc2.destroy(function(err) {
           if (err) return done(err);
@@ -422,6 +422,17 @@ describe('client subscribe', function() {
           doc.submitOp({p: ['age'], na: 1}, done);
         });
       });
+    });
+  });
+
+  it('doc destroy removes doc from connection when doc is not subscribed', function(done) {
+    var connection = this.backend.connect();
+    var doc = connection.get('dogs', 'fido');
+    expect(connection.getExisting('dogs', 'fido')).equal(doc);
+    doc.destroy(function(err) {
+      if (err) return done(err);
+      expect(connection.getExisting('dogs', 'fido')).equal(undefined);
+      done();
     });
   });
 

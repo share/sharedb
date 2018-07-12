@@ -692,7 +692,7 @@ types.register(presenceType.type3);
       ], allDone);
     });
 
-    it('cancels pending presence on destroy', function(allDone) {
+    it.skip('cancels pending presence on destroy', function(allDone) {
       async.series([
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         function(done) {
@@ -703,7 +703,7 @@ types.register(presenceType.type3);
       ], allDone);
     });
 
-    it('cancels inflight presence on destroy', function(allDone) {
+    it.skip('cancels inflight presence on destroy', function(allDone) {
       async.series([
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
