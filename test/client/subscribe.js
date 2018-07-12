@@ -237,6 +237,29 @@ describe('client subscribe', function() {
       });
     });
 
+    it(method + ' emits error passed to doc read middleware after reconnect', function(done) {
+      this.backend.use('doc', function(request, next) {
+        next({message: 'Reject doc read'});
+      });
+      var backend = this.backend;
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        doc2[method]();
+        doc2.on('error', function(err) {
+          expect(err.message).equal('Reject doc read');
+          expect(doc2.version).eql(null);
+          expect(doc2.data).eql(undefined);
+          done();
+        });
+        doc2.connection.close();
+        process.nextTick(function() {
+          backend.connect(doc2.connection);
+        });
+      });
+    });
+
     it(method + ' will call back when ops are pending', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
