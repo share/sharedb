@@ -246,7 +246,7 @@ describe('client subscribe', function() {
       var doc2 = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
-        doc2[method]()
+        doc2[method]();
         doc2.on('error', function(err) {
           expect(err.message).equal('Reject doc read');
           expect(doc2.version).eql(null);
