@@ -42,7 +42,7 @@ describe('SnapshotRequest', function () {
     var v0 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 0,
+      version: 1,
       timestamp: DAY1.getTime(),
       type: json0,
       data: {
@@ -53,7 +53,7 @@ describe('SnapshotRequest', function () {
     var v1 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 1,
+      version: 2,
       timestamp: DAY2.getTime(),
       type: json0,
       data: {
@@ -65,7 +65,7 @@ describe('SnapshotRequest', function () {
     var v2 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 2,
+      version: 3,
       timestamp: DAY3.getTime(),
       type: json0,
       data: {
@@ -88,18 +88,10 @@ describe('SnapshotRequest', function () {
     });
 
     describe('getSnapshot', () => {
-      it('fetches v0', function (done) {
-        backend.connect().getSnapshot('books', 'don-quixote', 0, function (error, snapshot) {
-          if (error) return done(error);
-          expect(snapshot).to.eql(v0);
-          done();
-        });
-      });
-
       it('fetches v1', function (done) {
         backend.connect().getSnapshot('books', 'don-quixote', 1, function (error, snapshot) {
           if (error) return done(error);
-          expect(snapshot).to.eql(v1);
+          expect(snapshot).to.eql(v0);
           done();
         });
       });
@@ -107,7 +99,23 @@ describe('SnapshotRequest', function () {
       it('fetches v2', function (done) {
         backend.connect().getSnapshot('books', 'don-quixote', 2, function (error, snapshot) {
           if (error) return done(error);
+          expect(snapshot).to.eql(v1);
+          done();
+        });
+      });
+
+      it('fetches v3', function (done) {
+        backend.connect().getSnapshot('books', 'don-quixote', 3, function (error, snapshot) {
+          if (error) return done(error);
           expect(snapshot).to.eql(v2);
+          done();
+        });
+      });
+
+      it('returns an empty snapshot if the version is 0', function (done) {
+        backend.connect().getSnapshot('books', 'don-quixote', 0, function (error, snapshot) {
+          if (error) return done(error);
+          expect(snapshot).to.eql(emptySnapshot);
           done();
         });
       });
@@ -149,7 +157,7 @@ describe('SnapshotRequest', function () {
       });
 
       it('errors if asking for a version that does not exist', function (done) {
-        backend.connect().getSnapshot('books', 'don-quixote', 3, function (error, snapshot) {
+        backend.connect().getSnapshot('books', 'don-quixote', 4, function (error, snapshot) {
           expect(error.code).to.be(4024);
           expect(snapshot).to.be(undefined);
           done();
@@ -279,7 +287,7 @@ describe('SnapshotRequest', function () {
           function (request) {
             expect(request.collection).to.be('books');
             expect(request.id).to.be('don-quixote');
-            expect(request.version).to.be(2);
+            expect(request.version).to.be(3);
             expect(request.timestamp).to.be(DAY3.getTime());
             expect(request.snapshots).to.eql([v2.data]);
             expect(request.type).to.be('http://sharejs.org/types/JSONv0');
@@ -299,7 +307,7 @@ describe('SnapshotRequest', function () {
           },
         ];
 
-        backend.connect().getSnapshot('books', 'don-quixote', 0, function (error, snapshot) {
+        backend.connect().getSnapshot('books', 'don-quixote', function (error, snapshot) {
           if (error) return done(error);
           expect(snapshot.data.title).to.be('Alice in Wonderland');
           done();
@@ -354,7 +362,7 @@ describe('SnapshotRequest', function () {
         expect(snapshot).to.eql({
           id: 'catch-22',
           collection: 'books',
-          version: 1,
+          version: 2,
           timestamp: DAY2.getTime(),
           type: null,
           data: undefined
@@ -364,14 +372,14 @@ describe('SnapshotRequest', function () {
       });
     });
 
-    it('fetches v0', function (done) {
-      backend.connect().getSnapshot('books', 'catch-22', 0, function (error, snapshot) {
+    it('fetches v1', function (done) {
+      backend.connect().getSnapshot('books', 'catch-22', 1, function (error, snapshot) {
         if (error) return done(error);
 
         expect(snapshot).to.eql({
           id: 'catch-22',
           collection: 'books',
-          version: 0,
+          version: 1,
           timestamp: DAY1.getTime(),
           type: json0,
           data: {
@@ -407,7 +415,7 @@ describe('SnapshotRequest', function () {
         expect(snapshot).to.eql({
           id: 'hitchhikers-guide',
           collection: 'books',
-          version: 2,
+          version: 3,
           timestamp: DAY3.getTime(),
           type: json0,
           data: {
