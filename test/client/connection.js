@@ -69,7 +69,7 @@ describe('client connection', function() {
     it('can have a custom client ID suffix specified', function (done) {
       this.backend.use('connect', function (request, next) {
         var idSegments = request.agent.clientId.split(':');
-        expect(idSegments[1]).equal('abc');
+        expect(idSegments[0]).equal('abc');
         done();
       });
 
