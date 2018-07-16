@@ -38,7 +38,7 @@ var socket = new WebSocket('ws://' + window.location.host);
 var connection = new sharedb.Connection(socket);
 ```
 
-The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections. 
+The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections.
 
 The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
 
@@ -123,6 +123,12 @@ share.listen(stream);
 For transports other than WebSockets, expose a duplex
 stream that writes and reads JavaScript objects. Then
 pass that stream directly into `share.listen`.
+
+The `listen` method accepts the following arguments:
+
+  - `stream` - the stream to listen to for messages from the client
+  - `req` (optional) - an initial request which is passed through to any `connect` middleware. This is useful for inspecting cookies; Express session; etc. on the request object in the middleware
+  - `clientId` (optional) - an identifier for the connecting client. This will be prepended to the connection ID, and can be used to identify the source client of an operation. The `src` field will look like `<clientId>:<randomId>`
 
 ### Middlewares
 
