@@ -773,12 +773,30 @@ describe('client undo/redo', function() {
     expect(this.doc.data).to.equal(11111);
   });
 
+  it('does not skip processing when submitting a no-op by default', function(done) {
+    this.doc.on('op', function() {
+      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
+      done();
+    }.bind(this));
+    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    this.doc.submitOp([]);
+  });
+
+  it('does not skip processing when submitting an identical snapshot by default', function(done) {
+    this.doc.on('op', function() {
+      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
+      done();
+    }.bind(this));
+    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ]);
+  });
+
   it('skips processing when submitting a no-op (no callback)', function(done) {
     this.doc.on('op', function() {
       done(new Error('Should not emit `op`'));
     });
     this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitOp([]);
+    this.doc.submitOp([], { skipNoop: true });
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
     done();
   });
@@ -788,7 +806,7 @@ describe('client undo/redo', function() {
       done(new Error('Should not emit `op`'));
     });
     this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitOp([], done);
+    this.doc.submitOp([], { skipNoop: true }, done);
   });
 
   it('skips processing when submitting an identical snapshot (no callback)', function(done) {
@@ -796,7 +814,7 @@ describe('client undo/redo', function() {
       done(new Error('Should not emit `op`'));
     });
     this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ]);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true });
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
     done();
   });
@@ -806,7 +824,7 @@ describe('client undo/redo', function() {
       done(new Error('Should not emit `op`'));
     });
     this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], done);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true }, done);
   });
 
   describe('operationType', function() {

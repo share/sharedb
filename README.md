@@ -279,6 +279,7 @@ Apply operation to document and send it to the server.
 [operations for the default `'ot-json0'` type](https://github.com/ottypes/json0#summary-of-operations).
 Call this after you've either fetched or subscribed to the document.
 * `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
+* `options.skipNoop` Should processing be skipped entirely, if `op` is a no-op. Defaults to `false`.
 * `options.undoable` Should it be possible to undo this operation, default=false.
 * `options.fixUpUndoStack` Determines how a non-undoable operation affects the undo stack. If `false` (default), the operation transforms the undo stack, otherwise it is inverted and composed into the last operation on the undo stack.
 * `options.fixUpRedoStack` Determines how a non-undoable operation affects the redo stack. If `false` (default), the operation transforms the redo stack, otherwise it is inverted and composed into the last operation on the redo stack.
@@ -288,6 +289,7 @@ Diff the current and the provided snapshots to generate an operation, apply the 
 `snapshot` structure depends on the document type.
 Call this after you've either fetched or subscribed to the document.
 * `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
+* `options.skipNoop` Should processing be skipped entirely, if the generated operation is a no-op. Defaults to `false`.
 * `options.undoable` Should it be possible to undo this operation, default=false.
 * `options.fixUpUndoStack` Determines how a non-undoable operation affects the undo stack. If `false` (default), the operation transforms the undo stack, otherwise it is inverted and composed into the last operation on the undo stack.
 * `options.fixUpRedoStack` Determines how a non-undoable operation affects the redo stack. If `false` (default), the operation transforms the redo stack, otherwise it is inverted and composed into the last operation on the redo stack.
