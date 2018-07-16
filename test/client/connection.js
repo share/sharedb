@@ -65,6 +65,38 @@ describe('client connection', function() {
     connection.socket.onerror({message: 'Test'});
   });
 
+  describe('specifying a custom client ID suffix', function () {
+    it('can have a custom client ID suffix specified', function (done) {
+      this.backend.use('connect', function (request, next) {
+        var idSegments = request.agent.clientId.split(':');
+        expect(idSegments[1]).equal('abc');
+        done();
+      });
+
+      this.backend.connect(undefined, undefined, 'abc');
+    });
+
+    it('ignores an empty client ID suffix', function (done) {
+      this.backend.use('connect', function (request, next) {
+        var idSegments = request.agent.clientId.split(':');
+        expect(idSegments.length).equal(1);
+        done();
+      });
+
+      this.backend.connect();
+    });
+
+    it('ignores a non-string client ID suffix', function (done) {
+      this.backend.use('connect', function (request, next) {
+        var idSegments = request.agent.clientId.split(':');
+        expect(idSegments.length).equal(1);
+        done();
+      });
+
+      this.backend.connect(undefined, undefined, 123);
+    });
+  });
+
   describe('backend.agentsCount', function() {
     it('updates after connect and connection.close()', function(done) {
       var backend = this.backend;
