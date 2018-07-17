@@ -7,9 +7,11 @@ var expect = require('expect.js');
 var types = require('../../lib/types');
 var otText = require('ot-text');
 var otRichText = require('@teamwork/ot-rich-text');
+var richText = require('rich-text');
 var invertibleType = require('./invertible-type');
 
 types.register(otText.type);
+types.register(richText.type);
 types.register(otRichText.type);
 types.register(invertibleType.type);
 types.register(invertibleType.typeWithDiff);
@@ -397,16 +399,58 @@ describe('client undo/redo', function() {
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('onetwo') ]);
   });
 
-  it('does not add an undo level, if type is not invertible', function() {
+  it('fails to submit undoable op, if type is not invertible (callback)', function(done) {
     this.doc.create('two', otText.type.uri);
+    this.doc.on('error', done);
+    this.doc.submitOp([ 'one' ], { undoable: true }, function(err) {
+      expect(err.code).to.equal(4025);
+      done();
+    });
+  });
+
+  it('fails to submit undoable op, if type is not invertible (no callback)', function(done) {
+    this.doc.create('two', otText.type.uri);
+    this.doc.on('error', function(err) {
+      expect(err.code).to.equal(4025);
+      done();
+    });
     this.doc.submitOp([ 'one' ], { undoable: true });
-    expect(this.doc.data).to.eql('onetwo');
-    expect(this.doc.canUndo()).to.equal(false);
-    expect(this.doc.canRedo()).to.equal(false);
-    this.doc.undo();
-    expect(this.doc.data).to.eql('onetwo');
-    expect(this.doc.canUndo()).to.equal(false);
-    expect(this.doc.canRedo()).to.equal(false);
+  });
+
+  it('fails to submit undoable snapshot, if type is not invertible (callback)', function(done) {
+    this.doc.create([], richText.type.uri);
+    this.doc.on('error', done);
+    this.doc.submitSnapshot([ { insert: 'abc' } ], { undoable: true }, function(err) {
+      expect(err.code).to.equal(4025);
+      done();
+    });
+  });
+
+  it('fails to submit undoable snapshot, if type is not invertible (no callback)', function(done) {
+    this.doc.create([], richText.type.uri);
+    this.doc.on('error', function(err) {
+      expect(err.code).to.equal(4025);
+      done();
+    });
+    this.doc.submitSnapshot([ { insert: 'abc' } ], { undoable: true });
+  });
+
+  it('fails to submit with fixUpUndoStack, if type is not invertible', function(done) {
+    this.doc.create('two', otText.type.uri);
+    this.doc.on('error', done);
+    this.doc.submitOp([ 'one' ], { fixUpUndoStack: true }, function(err) {
+      expect(err.code).to.equal(4025);
+      done();
+    });
+  });
+
+  it('fails to submit with fixUpRedoStack, if type is not invertible', function(done) {
+    this.doc.create('two', otText.type.uri);
+    this.doc.on('error', done);
+    this.doc.submitOp([ 'one' ], { fixUpRedoStack: true }, function(err) {
+      expect(err.code).to.equal(4025);
+      done();
+    });
   });
 
   it('composes similar operations', function() {
@@ -829,8 +873,15 @@ describe('client undo/redo', function() {
 
   describe('operationType', function() {
     it('reports UNDOABLE operationType', function(done) {
+      var beforeOpCalled = false;
       this.doc.create({ test: 5 });
+      this.doc.on('before op', function(op, source, operationType) {
+        expect(source).to.equal(true);
+        expect(operationType).to.equal('UNDOABLE');
+        beforeOpCalled = true;
+      });
       this.doc.on('op', function(op, source, operationType) {
+        expect(beforeOpCalled).to.equal(true);
         expect(source).to.equal(true);
         expect(operationType).to.equal('UNDOABLE');
         done();
@@ -839,9 +890,16 @@ describe('client undo/redo', function() {
     });
 
     it('reports UNDO operationType', function(done) {
+      var beforeOpCalled = false;
       this.doc.create({ test: 5 });
       this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
+      this.doc.on('before op', function(op, source, operationType) {
+        expect(source).to.equal(true);
+        expect(operationType).to.equal('UNDO');
+        beforeOpCalled = true;
+      });
       this.doc.on('op', function(op, source, operationType) {
+        expect(beforeOpCalled).to.equal(true);
         expect(source).to.equal(true);
         expect(operationType).to.equal('UNDO');
         done();
@@ -850,10 +908,17 @@ describe('client undo/redo', function() {
     });
 
     it('reports REDO operationType', function(done) {
+      var beforeOpCalled = false;
       this.doc.create({ test: 5 });
       this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
       this.doc.undo();
+      this.doc.on('before op', function(op, source, operationType) {
+        expect(source).to.equal(true);
+        expect(operationType).to.equal('REDO');
+        beforeOpCalled = true;
+      });
       this.doc.on('op', function(op, source, operationType) {
+        expect(beforeOpCalled).to.equal(true);
         expect(source).to.equal(true);
         expect(operationType).to.equal('REDO');
         done();
@@ -862,8 +927,15 @@ describe('client undo/redo', function() {
     });
 
     it('reports FIXED operationType (local operation, undoable=false)', function(done) {
+      var beforeOpCalled = false;
       this.doc.create({ test: 5 });
+      this.doc.on('before op', function(op, source, operationType) {
+        expect(source).to.equal(true);
+        expect(operationType).to.equal('FIXED');
+        beforeOpCalled = true;
+      });
       this.doc.on('op', function(op, source, operationType) {
+        expect(beforeOpCalled).to.equal(true);
         expect(source).to.equal(true);
         expect(operationType).to.equal('FIXED');
         done();
@@ -871,19 +943,16 @@ describe('client undo/redo', function() {
       this.doc.submitOp([ { p: [ 'test' ], na: 2 } ]);
     });
 
-    it('reports FIXED operationType (local operation, undoable=true but type is not invertible)', function(done) {
-      this.doc.create('', otText.type.uri);
-      this.doc.on('op', function(op, source, operationType) {
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('FIXED');
-        done();
-      });
-      this.doc.submitOp([ 'test' ], { undoable: true });
-    });
-
     it('reports FIXED operationType (remote operation, undoable=false)', function(done) {
+      var beforeOpCalled = false;
       this.doc.subscribe();
+      this.doc.on('before op', function(op, source, operationType) {
+        expect(source).to.equal(false);
+        expect(operationType).to.equal('FIXED');
+        beforeOpCalled = true;
+      });
       this.doc.on('op', function(op, source, operationType) {
+        expect(beforeOpCalled).to.equal(true);
         expect(source).to.equal(false);
         expect(operationType).to.equal('FIXED');
         done();
@@ -894,8 +963,15 @@ describe('client undo/redo', function() {
     });
 
     it('reports FIXED operationType (remote operation, undoable=true)', function(done) {
+      var beforeOpCalled = false;
       this.doc.subscribe();
+      this.doc.on('before op', function(op, source, operationType) {
+        expect(source).to.equal(false);
+        expect(operationType).to.equal('FIXED');
+        beforeOpCalled = true;
+      });
       this.doc.on('op', function(op, source, operationType) {
+        expect(beforeOpCalled).to.equal(true);
         expect(source).to.equal(false);
         expect(operationType).to.equal('FIXED');
         done();

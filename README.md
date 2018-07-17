@@ -251,8 +251,8 @@ same time as callbacks to `fetch` and `subscribe`.
 `doc.on('create', function(source) {...})`
 The document was created. Technically, this means it has a type. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('before op'), function(op, source) {...})`
-An operation is about to be applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+`doc.on('before op'), function(op, source, operationType) {...})`
+An operation is about to be applied to the data. Params are the same as for the `op` event below.
 
 `doc.on('op', function(op, source, operationType) {...})`
 An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally. `operationType` is one of the following: `"UNDOABLE"` _(local operation that can be undone)_, `"FIXED"` _(local or remote operation that can't be undone nor redone)_, `"UNDO"` _(local undo operation that can be redone)_ and `"REDO"` _(local redo operation that can be undone)_.
@@ -398,6 +398,7 @@ Additional fields may be added to the error object for debugging context dependi
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
 * 4024 - OT Type does not support `diff` nor `diffX`
+* 4025 - OT Type does not support `invert` nor `applyAndInvert`
 
 ### 5000 - Internal error
 
