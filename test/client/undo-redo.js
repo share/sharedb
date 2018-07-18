@@ -847,6 +847,15 @@ describe('client undo/redo', function() {
       expect(undoManager.canRedo()).to.equal(true);
     });
 
+    it('does not fix up anything', function() {
+      var undoManager = this.connection.undoManager();
+      expect(undoManager.canUndo()).to.equal(false);
+      expect(undoManager.canRedo()).to.equal(false);
+      this.submitOp('!', { fixUp: true }).assert('!cd');
+      expect(undoManager.canUndo()).to.equal(false);
+      expect(undoManager.canRedo()).to.equal(false);
+    });
+
     it('submits an op and does not fix up stacks (insert)', function() {
       this.submitOp('!').assert('!cd');
       this.undo().assert('!d');
@@ -925,6 +934,21 @@ describe('client undo/redo', function() {
       this.redo().assert('bcd');
       this.redo().assert('abcd');
       this.redo().assert('abcd');
+    });
+
+    it('submits a op and fixes up stacks (redo up becomes no-op and is removed from the stack)', function() {
+      this.redo().redo().assert('abcd');
+      this.submitOp(-1, { undoable: true }).assert('bcd');
+      this.submitOp(-1, { undoable: true }).assert('cd');
+      this.submitOp(-1, { undoable: true }).assert('d');
+      this.submitOp(-1, { undoable: true }).assert('');
+      this.undo().undo().assert('cd');
+      this.submitOp(-1, { fixUp: true }).assert('d');
+      this.redo().assert('');
+      this.redo().assert('');
+      this.undo().assert('d');
+      this.undo().assert('bcd');
+      this.undo().assert('abcd');
     });
   });
 
