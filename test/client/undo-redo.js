@@ -928,6 +928,34 @@ describe('client undo/redo', function() {
     });
   });
 
+  it('destroys UndoManager', function() {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var doc1 = this.connection.get('dogs', 'fido');
+    var doc2 = this.connection.get('dogs', 'toby');
+    doc1.create({ test: 5 });
+    doc2.create({ test: 11 });
+    doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    undoManager.undo();
+    undoManager.undo();
+    expect(undoManager.canUndo()).to.equal(true);
+    expect(undoManager.canRedo()).to.equal(true);
+    undoManager.destroy();
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+    doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+    expect(doc1.data).to.eql({ test: 11 });
+    undoManager.undo();
+    expect(doc1.data).to.eql({ test: 11 });
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+  });
+
   describe('UndoManager.clear', function() {
     it('clears the stacks', function() {
       var undoManager = this.connection.undoManager({ composeTimeout: -1 });
@@ -941,11 +969,18 @@ describe('client undo/redo', function() {
       doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
       undoManager.undo();
       undoManager.undo();
+      expect(doc1.data).to.eql({ test: 7 });
       expect(undoManager.canUndo()).to.equal(true);
       expect(undoManager.canRedo()).to.equal(true);
       undoManager.clear();
       expect(undoManager.canUndo()).to.equal(false);
       expect(undoManager.canRedo()).to.equal(false);
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      undoManager.undo();
+      expect(doc1.data).to.eql({ test: 9 });
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
     });
 
     it('clears the stacks for a specific document', function() {
