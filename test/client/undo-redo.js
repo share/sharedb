@@ -1,4 +1,5 @@
 var async = require('async');
+var lolex = require("lolex");
 var util = require('../util');
 var errorHandler = util.errorHandler;
 var Backend = require('../../lib/backend');
@@ -21,6 +22,7 @@ types.register(invertibleType.typeWithTransformX);
 
 describe('client undo/redo', function() {
   beforeEach(function() {
+    this.clock = lolex.install();
     this.backend = new Backend();
     this.connection = this.backend.connect();
     this.connection2 = this.backend.connect();
@@ -30,215 +32,226 @@ describe('client undo/redo', function() {
 
   afterEach(function(done) {
     this.backend.close(done);
+    this.clock.uninstall();
   });
 
-  it('submits a fixed operation', function(allDone) {
+  it('submits a non-undoable operation', function(allDone) {
+    var undoManager = this.connection.undoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ]),
       function(done) {
         expect(this.doc.version).to.equal(2);
         expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(false);
         done();
       }.bind(this)
     ], allDone);
   });
 
-  it('receives a remote operation', function(allDone) {
-    async.series([
-      this.doc.subscribe.bind(this.doc),
-      this.doc2.create.bind(this.doc2, { test: 5 }),
-      this.doc2.submitOp.bind(this.doc2, [ { p: [ 'test' ], na: 2 } ]),
-      setTimeout,
-      function(done) {
-        expect(this.doc.version).to.equal(2);
-        expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(false);
-        done();
-      }.bind(this)
-    ], allDone);
+  it('receives a remote operation', function(done) {
+    var undoManager = this.connection.undoManager();
+    this.doc2.preventCompose = true;
+    this.doc.on('op', function() {
+      expect(this.doc.version).to.equal(2);
+      expect(this.doc.data).to.eql({ test: 7 });
+      expect(undoManager.canUndo()).to.equal(false);
+      expect(undoManager.canRedo()).to.equal(false);
+      done();
+    }.bind(this));
+    this.doc.subscribe(function() {
+      this.doc2.create({ test: 5 });
+      this.doc2.submitOp([ { p: [ 'test' ], na: 2 } ]);
+    }.bind(this));
   });
 
   it('submits an undoable operation', function(allDone) {
+    var undoManager = this.connection.undoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
       function(done) {
         expect(this.doc.version).to.equal(2);
         expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(false);
         done();
       }.bind(this)
     ], allDone);
   });
 
   it('undoes an operation', function(allDone) {
+    var undoManager = this.connection.undoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(3);
         expect(this.doc.data).to.eql({ test: 5 });
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(true);
+        expect(undoManager.canUndo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(true);
         done();
       }.bind(this)
     ], allDone);
   });
 
   it('redoes an operation', function(allDone) {
+    var undoManager = this.connection.undoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(4);
         expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(false);
         done();
       }.bind(this)
     ], allDone);
   });
 
   it('performs a series of undo and redo operations', function(allDone) {
+    var undoManager = this.connection.undoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
-      this.doc.undo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
-      this.doc.undo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
+      undoManager.undo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
+      undoManager.undo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(8);
         expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(false);
         done();
       }.bind(this)
     ], allDone);
   });
 
   it('performs a series of undo and redo operations synchronously', function() {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 }),
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }),
     expect(this.doc.data).to.eql({ test: 7 });
-    this.doc.undo(),
+    undoManager.undo(),
     expect(this.doc.data).to.eql({ test: 5 });
-    this.doc.redo(),
+    undoManager.redo(),
     expect(this.doc.data).to.eql({ test: 7 });
-    this.doc.undo(),
+    undoManager.undo(),
     expect(this.doc.data).to.eql({ test: 5 });
-    this.doc.redo(),
+    undoManager.redo(),
     expect(this.doc.data).to.eql({ test: 7 });
-    this.doc.undo(),
+    undoManager.undo(),
     expect(this.doc.data).to.eql({ test: 5 });
-    this.doc.redo(),
+    undoManager.redo(),
     expect(this.doc.data).to.eql({ test: 7 });
-    expect(this.doc.canUndo()).to.equal(true);
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canUndo()).to.equal(true);
+    expect(undoManager.canRedo()).to.equal(false);
   });
 
   it('undoes one of two operations', function(allDone) {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 3 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(4);
         expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(true);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(true);
         done();
       }.bind(this)
     ], allDone);
   });
 
   it('undoes two of two operations', function(allDone) {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 3 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
-      this.doc.undo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
+      undoManager.undo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(5);
         expect(this.doc.data).to.eql({ test: 5 });
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(true);
+        expect(undoManager.canUndo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(true);
         done();
       }.bind(this)
     ], allDone);
   });
 
-  it('reoes one of two operations', function(allDone) {
-    this.doc.undoComposeTimeout = -1;
+  it('redoes one of two operations', function(allDone) {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 3 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
-      this.doc.undo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
+      undoManager.undo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(6);
         expect(this.doc.data).to.eql({ test: 7 });
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(true);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(true);
         done();
       }.bind(this)
     ], allDone);
   });
 
-  it('reoes two of two operations', function(allDone) {
-    this.doc.undoComposeTimeout = -1;
+  it('redoes two of two operations', function(allDone) {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 3 } ], { undoable: true }),
-      this.doc.undo.bind(this.doc),
-      this.doc.undo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
-      this.doc.redo.bind(this.doc),
+      undoManager.undo.bind(undoManager),
+      undoManager.undo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
+      undoManager.redo.bind(undoManager),
       function(done) {
         expect(this.doc.version).to.equal(7);
         expect(this.doc.data).to.eql({ test: 10 });
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(false);
         done();
       }.bind(this)
     ], allDone);
   });
 
   it('calls undo, when canUndo is false', function(done) {
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.undo(done);
+    var undoManager = this.connection.undoManager();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.undo(done);
   });
 
   it('calls undo, when canUndo is false - no callback', function() {
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.undo();
+    var undoManager = this.connection.undoManager();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.undo();
   });
 
   it('calls redo, when canRedo is false', function(done) {
-    expect(this.doc.canRedo()).to.equal(false);
-    this.doc.redo(done);
+    var undoManager = this.connection.undoManager();
+    expect(undoManager.canRedo()).to.equal(false);
+    undoManager.redo(done);
   });
 
   it('calls redo, when canRedo is false - no callback', function() {
-    expect(this.doc.canRedo()).to.equal(false);
-    this.doc.redo();
+    var undoManager = this.connection.undoManager();
+    expect(undoManager.canRedo()).to.equal(false);
+    undoManager.redo();
   });
 
   it('preserves source on create', function(done) {
@@ -268,24 +281,26 @@ describe('client undo/redo', function() {
   });
 
   it('preserves source on undo', function(done) {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.on('op', function(op, source) {
       expect(source).to.equal('test source');
       done();
     });
-    this.doc.undo({ source: 'test source' });
+    undoManager.undo({ source: 'test source' });
   });
 
   it('preserves source on redo', function(done) {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.undo();
+    undoManager.undo();
     this.doc.on('op', function(op, source) {
       expect(source).to.equal('test source');
       done();
     });
-    this.doc.redo({ source: 'test source' });
+    undoManager.redo({ source: 'test source' });
   });
 
   it('has source=false on remote operations', function(done) {
@@ -301,101 +316,106 @@ describe('client undo/redo', function() {
   });
 
   it('composes undoable operations within time limit', function(done) {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     setTimeout(function() {
       this.doc.submitOp([ { p: [ 'test' ], na: 3 } ], { undoable: true });
       expect(this.doc.data).to.eql({ test: 10 });
-      this.doc.undo();
+      undoManager.undo();
       expect(this.doc.data).to.eql({ test: 5 });
-      expect(this.doc.canUndo()).to.equal(false);
+      expect(undoManager.canUndo()).to.equal(false);
       done();
-    }.bind(this), 2);
+    }.bind(this), 1000);
+    this.clock.runAll();
   });
 
   it('composes undoable operations correctly', function() {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ a: 1, b: 2 });
     this.doc.submitOp([ { p: [ 'a' ], od: 1 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'b' ], od: 2 } ], { undoable: true });
     expect(this.doc.data).to.eql({});
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
     var opCalled = false;
     this.doc.once('op', function(op) {
       opCalled = true;
       expect(op).to.eql([ { p: [ 'b' ], oi: 2 }, { p: [ 'a' ], oi: 1 } ]);
     });
-    this.doc.undo();
+    undoManager.undo();
     expect(opCalled).to.equal(true);
     expect(this.doc.data).to.eql({ a: 1, b: 2 });
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.redo();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.redo();
     expect(this.doc.data).to.eql({});
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
   });
 
   it('does not compose undoable operations outside time limit', function(done) {
-    this.doc.undoComposeTimeout = 1;
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     setTimeout(function () {
       this.doc.submitOp([ { p: [ 'test' ], na: 3 } ], { undoable: true });
       expect(this.doc.data).to.eql({ test: 10 });
-      this.doc.undo();
+      undoManager.undo();
       expect(this.doc.data).to.eql({ test: 7 });
-      expect(this.doc.canUndo()).to.equal(true);
-      this.doc.undo();
+      expect(undoManager.canUndo()).to.equal(true);
+      undoManager.undo();
       expect(this.doc.data).to.eql({ test: 5 });
-      expect(this.doc.canUndo()).to.equal(false);
+      expect(undoManager.canUndo()).to.equal(false);
       done();
-    }.bind(this), 3);
+    }.bind(this), 1001);
+    this.clock.runAll();
   });
 
-  it('does not compose undoable operations, if undoComposeTimeout < 0', function() {
-    this.doc.undoComposeTimeout = -1;
+  it('does not compose undoable operations, if composeTimeout < 0', function() {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'test' ], na: 3 } ], { undoable: true });
     expect(this.doc.data).to.eql({ test: 10 });
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 7 });
-    expect(this.doc.canUndo()).to.equal(true);
-    this.doc.undo();
+    expect(undoManager.canUndo()).to.equal(true);
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 5 });
-    expect(this.doc.canUndo()).to.equal(false);
+    expect(undoManager.canUndo()).to.equal(false);
   });
 
   it('does not compose undoable operations, if type does not support compose nor composeSimilar', function() {
+    var undoManager = this.connection.undoManager();
     this.doc.create(5, invertibleType.type.uri);
     this.doc.submitOp(2, { undoable: true });
     expect(this.doc.data).to.equal(7);
     this.doc.submitOp(2, { undoable: true });
     expect(this.doc.data).to.equal(9);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(7);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(5);
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.redo();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.redo();
     expect(this.doc.data).to.equal(7);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(9);
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
   });
 
   it('uses applyAndInvert, if available', function() {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('two') ], { undoable: true });
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('two') ]);
     this.doc.submitOp([ otRichText.Action.createInsertText('one') ], { undoable: true });
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('onetwo') ]);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('two') ]);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql([]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('two') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('onetwo') ]);
   });
 
@@ -435,25 +455,18 @@ describe('client undo/redo', function() {
     this.doc.submitSnapshot([ { insert: 'abc' } ], { undoable: true });
   });
 
-  it('fails to submit with fixUpUndoStack, if type is not invertible', function(done) {
+  it('fails to submit with fixUp, if type is not invertible', function(done) {
+    var undoManager = this.connection.undoManager();
     this.doc.create('two', otText.type.uri);
     this.doc.on('error', done);
-    this.doc.submitOp([ 'one' ], { fixUpUndoStack: true }, function(err) {
-      expect(err.code).to.equal(4025);
-      done();
-    });
-  });
-
-  it('fails to submit with fixUpRedoStack, if type is not invertible', function(done) {
-    this.doc.create('two', otText.type.uri);
-    this.doc.on('error', done);
-    this.doc.submitOp([ 'one' ], { fixUpRedoStack: true }, function(err) {
+    this.doc.submitOp([ 'one' ], { fixUp: true }, function(err) {
       expect(err.code).to.equal(4025);
       done();
     });
   });
 
   it('composes similar operations', function() {
+    var undoManager = this.connection.undoManager();
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([
       otRichText.Action.createInsertText('one')
@@ -463,57 +476,40 @@ describe('client undo/redo', function() {
       otRichText.Action.createInsertText('two')
     ], { undoable: true });
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('onetwo') ]);
-    expect(this.doc.canRedo()).to.equal(false);
-    this.doc.undo();
+    expect(undoManager.canRedo()).to.equal(false);
+    undoManager.undo();
     expect(this.doc.data).to.eql([]);
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.redo();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('onetwo') ]);
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
   });
 
   it('does not compose dissimilar operations', function() {
-    this.doc.create([
-      otRichText.Action.createInsertText(' ')
-    ], otRichText.type.uri);
+    var undoManager = this.connection.undoManager();
+    this.doc.create([ otRichText.Action.createInsertText(' ') ], otRichText.type.uri);
 
-    this.doc.submitOp([
-      otRichText.Action.createRetain(1),
-      otRichText.Action.createInsertText('two')
-    ], { undoable: true });
-    expect(this.doc.data).to.eql([
-      otRichText.Action.createInsertText(' two')
-    ]);
+    this.doc.submitOp([ otRichText.Action.createRetain(1), otRichText.Action.createInsertText('two') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText(' two') ]);
 
-    this.doc.submitOp([
-      otRichText.Action.createInsertText('one')
-    ], { undoable: true });
-    expect(this.doc.data).to.eql([
-      otRichText.Action.createInsertText('one two')
-    ]);
+    this.doc.submitOp([ otRichText.Action.createInsertText('one') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('one two') ]);
 
-    this.doc.undo();
-    expect(this.doc.data).to.eql([
-      otRichText.Action.createInsertText(' two')
-    ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText(' two') ]);
 
-    this.doc.undo();
-    expect(this.doc.data).to.eql([
-      otRichText.Action.createInsertText(' ')
-    ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText(' ') ]);
 
-    this.doc.redo();
-    expect(this.doc.data).to.eql([
-      otRichText.Action.createInsertText(' two')
-    ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText(' two') ]);
 
-    this.doc.redo();
-    expect(this.doc.data).to.eql([
-      otRichText.Action.createInsertText('one two')
-    ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('one two') ]);
   });
 
   it('does not add no-ops to the undo stack on undoable operation', function() {
+    var undoManager = this.connection.undoManager();
     var opCalled = false;
     this.doc.create([ otRichText.Action.createInsertText('test', [ 'key', 'value' ]) ], otRichText.type.uri);
     this.doc.on('op', function(op, source) {
@@ -523,164 +519,114 @@ describe('client undo/redo', function() {
     this.doc.submitOp([ otRichText.Action.createRetain(4, [ 'key', 'value' ]) ], { undoable: true });
     expect(opCalled).to.equal(true);
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test', [ 'key', 'value' ]) ]);
-    expect(this.doc.canUndo()).to.eql(false);
-    expect(this.doc.canRedo()).to.eql(false);
+    expect(undoManager.canUndo()).to.eql(false);
+    expect(undoManager.canRedo()).to.eql(false);
   });
 
   it('limits the size of the undo stack', function() {
-    this.doc.undoLimit = 2;
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ limit: 2, composeTimeout: -1 });
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     expect(this.doc.data).to.eql({ test: 11 });
-    expect(this.doc.canUndo()).to.equal(true);
-    this.doc.undo();
-    expect(this.doc.canUndo()).to.equal(true);
-    this.doc.undo();
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.undo();
+    expect(undoManager.canUndo()).to.equal(true);
+    undoManager.undo();
+    expect(undoManager.canUndo()).to.equal(true);
+    undoManager.undo();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 7 });
-  });
-
-  it('limits the size of the undo stack, after adjusting the limit', function() {
-    this.doc.undoLimit = 100;
-    this.doc.undoComposeTimeout = -1;
-    this.doc.create({ test: 5 });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.undoLimit = 2;
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    expect(this.doc.data).to.eql({ test: 15 });
-    expect(this.doc.canUndo()).to.equal(true);
-    this.doc.undo();
-    expect(this.doc.canUndo()).to.equal(true);
-    this.doc.undo();
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.undo();
-    expect(this.doc.data).to.eql({ test: 11 });
-  });
-
-  it('does not limit the size of the stacks on undo and redo operations', function() {
-    this.doc.undoLimit = 100;
-    this.doc.undoComposeTimeout = -1;
-    this.doc.create({ test: 5 });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.undoLimit = 2;
-    expect(this.doc.data).to.eql({ test: 15 });
-    this.doc.undo();
-    this.doc.undo();
-    this.doc.undo();
-    this.doc.undo();
-    this.doc.undo();
-    expect(this.doc.data).to.eql({ test: 5 });
-    this.doc.redo();
-    this.doc.redo();
-    this.doc.redo();
-    this.doc.redo();
-    this.doc.redo();
-    expect(this.doc.data).to.eql({ test: 15 });
-    this.doc.undo();
-    this.doc.undo();
-    this.doc.undo();
-    this.doc.undo();
-    this.doc.undo();
-    expect(this.doc.data).to.eql({ test: 5 });
   });
 
   it('does not compose the next operation after undo', function() {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 });
-    this.doc.undoComposeTimeout = -1;
+    this.clock.tick(1001);
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
+    this.clock.tick(1001);
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
-    this.doc.undoComposeTimeout = 1000;
-    this.doc.undo();
+    undoManager.undo();
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // composed
     expect(this.doc.data).to.eql({ test: 11 });
-    expect(this.doc.canUndo()).to.equal(true);
+    expect(undoManager.canUndo()).to.equal(true);
 
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 7 });
-    expect(this.doc.canUndo()).to.equal(true);
+    expect(undoManager.canUndo()).to.equal(true);
 
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 5 });
-    expect(this.doc.canUndo()).to.equal(false);
+    expect(undoManager.canUndo()).to.equal(false);
   });
 
   it('does not compose the next operation after undo and redo', function() {
+    var undoManager = this.connection.undoManager();
     this.doc.create({ test: 5 });
-    this.doc.undoComposeTimeout = -1;
+    this.clock.tick(1001);
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
+    this.clock.tick(1001);
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
-    this.doc.undoComposeTimeout = 1000;
-    this.doc.undo();
-    this.doc.redo();
+    undoManager.undo();
+    undoManager.redo();
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // composed
     expect(this.doc.data).to.eql({ test: 13 });
-    expect(this.doc.canUndo()).to.equal(true);
+    expect(undoManager.canUndo()).to.equal(true);
 
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 9 });
-    expect(this.doc.canUndo()).to.equal(true);
+    expect(undoManager.canUndo()).to.equal(true);
 
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 7 });
-    expect(this.doc.canUndo()).to.equal(true);
+    expect(undoManager.canUndo()).to.equal(true);
 
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql({ test: 5 });
-    expect(this.doc.canUndo()).to.equal(false);
+    expect(undoManager.canUndo()).to.equal(false);
   });
 
   it('clears stacks on del', function() {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.undo();
-    expect(this.doc.canUndo()).to.equal(true);
-    expect(this.doc.canRedo()).to.equal(true);
+    undoManager.undo();
+    expect(undoManager.canUndo()).to.equal(true);
+    expect(undoManager.canRedo()).to.equal(true);
     this.doc.del();
-    expect(this.doc.canUndo()).to.equal(false);
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
   });
 
   it('transforms the stacks by remote operations', function(done) {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc2.subscribe();
     this.doc.subscribe();
-    this.doc.undoComposeTimeout = -1;
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true });
-    this.doc.undo();
-    this.doc.undo();
-    setTimeout(function() {
+    undoManager.undo();
+    undoManager.undo();
+    this.doc.whenNothingPending(function() {
       this.doc.once('op', function(op, source) {
         expect(source).to.equal(false);
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC234') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC1234') ]);
         done();
       }.bind(this));
@@ -689,30 +635,30 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks by remote operations and removes no-ops', function(done) {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc2.subscribe();
     this.doc.subscribe();
-    this.doc.undoComposeTimeout = -1;
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true });
-    this.doc.undo();
-    this.doc.undo();
-    setTimeout(function() {
+    undoManager.undo();
+    undoManager.undo();
+    this.doc.whenNothingPending(function() {
       this.doc.once('op', function(op, source) {
         expect(source).to.equal(false);
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('4') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([]);
-        expect(this.doc.canUndo()).to.equal(false);
-        this.doc.redo();
+        expect(undoManager.canUndo()).to.equal(false);
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('4') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('24') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('124') ]);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(false);
         done();
       }.bind(this));
       this.doc2.submitOp([ otRichText.Action.createDelete(1) ]);
@@ -720,100 +666,100 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks by a local FIXED operation', function() {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true });
-    this.doc.undo();
-    this.doc.undo();
+    undoManager.undo();
+    undoManager.undo();
     this.doc.submitOp([ otRichText.Action.createInsertText('ABC') ]);
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC234') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC1234') ]);
   });
 
   it('transforms the stacks by a local FIXED operation and removes no-ops', function() {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true });
-    this.doc.undo();
-    this.doc.undo();
+    undoManager.undo();
+    undoManager.undo();
     this.doc.submitOp([ otRichText.Action.createDelete(1) ]);
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('4') ]);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.eql([]);
-    expect(this.doc.canUndo()).to.equal(false);
-    this.doc.redo();
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('4') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('24') ]);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('124') ]);
-    expect(this.doc.canRedo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
   });
 
   it('transforms the stacks using transform', function() {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create(0, invertibleType.type.uri);
     this.doc.submitOp(1, { undoable: true });
     this.doc.submitOp(10, { undoable: true });
     this.doc.submitOp(100, { undoable: true });
     this.doc.submitOp(1000, { undoable: true });
-    this.doc.undo();
-    this.doc.undo();
+    undoManager.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(11);
     this.doc.submitOp(10000);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(10001);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(10000);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(10001);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(10011);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(10111);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(11111);
   });
 
   it('transforms the stacks using transformX', function() {
-    this.doc.undoComposeTimeout = -1;
+    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create(0, invertibleType.typeWithTransformX.uri);
     this.doc.submitOp(1, { undoable: true });
     this.doc.submitOp(10, { undoable: true });
     this.doc.submitOp(100, { undoable: true });
     this.doc.submitOp(1000, { undoable: true });
-    this.doc.undo();
-    this.doc.undo();
+    undoManager.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(11);
     this.doc.submitOp(10000);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(10001);
-    this.doc.undo();
+    undoManager.undo();
     expect(this.doc.data).to.equal(10000);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(10001);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(10011);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(10111);
-    this.doc.redo();
+    undoManager.redo();
     expect(this.doc.data).to.equal(11111);
   });
 
@@ -871,283 +817,127 @@ describe('client undo/redo', function() {
     this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true }, done);
   });
 
-  describe('operationType', function() {
-    it('reports UNDOABLE operationType', function(done) {
-      var beforeOpCalled = false;
-      this.doc.create({ test: 5 });
-      this.doc.on('before op', function(op, source, operationType) {
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('UNDOABLE');
-        beforeOpCalled = true;
-      });
-      this.doc.on('op', function(op, source, operationType) {
-        expect(beforeOpCalled).to.equal(true);
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('UNDOABLE');
-        done();
-      });
-      this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    });
-
-    it('reports UNDO operationType', function(done) {
-      var beforeOpCalled = false;
-      this.doc.create({ test: 5 });
-      this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-      this.doc.on('before op', function(op, source, operationType) {
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('UNDO');
-        beforeOpCalled = true;
-      });
-      this.doc.on('op', function(op, source, operationType) {
-        expect(beforeOpCalled).to.equal(true);
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('UNDO');
-        done();
-      });
-      this.doc.undo();
-    });
-
-    it('reports REDO operationType', function(done) {
-      var beforeOpCalled = false;
-      this.doc.create({ test: 5 });
-      this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-      this.doc.undo();
-      this.doc.on('before op', function(op, source, operationType) {
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('REDO');
-        beforeOpCalled = true;
-      });
-      this.doc.on('op', function(op, source, operationType) {
-        expect(beforeOpCalled).to.equal(true);
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('REDO');
-        done();
-      });
-      this.doc.redo();
-    });
-
-    it('reports FIXED operationType (local operation, undoable=false)', function(done) {
-      var beforeOpCalled = false;
-      this.doc.create({ test: 5 });
-      this.doc.on('before op', function(op, source, operationType) {
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('FIXED');
-        beforeOpCalled = true;
-      });
-      this.doc.on('op', function(op, source, operationType) {
-        expect(beforeOpCalled).to.equal(true);
-        expect(source).to.equal(true);
-        expect(operationType).to.equal('FIXED');
-        done();
-      });
-      this.doc.submitOp([ { p: [ 'test' ], na: 2 } ]);
-    });
-
-    it('reports FIXED operationType (remote operation, undoable=false)', function(done) {
-      var beforeOpCalled = false;
-      this.doc.subscribe();
-      this.doc.on('before op', function(op, source, operationType) {
-        expect(source).to.equal(false);
-        expect(operationType).to.equal('FIXED');
-        beforeOpCalled = true;
-      });
-      this.doc.on('op', function(op, source, operationType) {
-        expect(beforeOpCalled).to.equal(true);
-        expect(source).to.equal(false);
-        expect(operationType).to.equal('FIXED');
-        done();
-      });
-      this.doc2.preventCompose = true;
-      this.doc2.create({ test: 5 });
-      this.doc2.submitOp([ { p: [ 'test' ], na: 2 } ]);
-    });
-
-    it('reports FIXED operationType (remote operation, undoable=true)', function(done) {
-      var beforeOpCalled = false;
-      this.doc.subscribe();
-      this.doc.on('before op', function(op, source, operationType) {
-        expect(source).to.equal(false);
-        expect(operationType).to.equal('FIXED');
-        beforeOpCalled = true;
-      });
-      this.doc.on('op', function(op, source, operationType) {
-        expect(beforeOpCalled).to.equal(true);
-        expect(source).to.equal(false);
-        expect(operationType).to.equal('FIXED');
-        done();
-      });
-      this.doc2.preventCompose = true;
-      this.doc2.create({ test: 5 });
-      this.doc2.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    });
-  });
-
   describe('fixup operations', function() {
-    describe('basic tests', function() {
-      beforeEach(function() {
-        this.assert = function(text) {
-          var expected = text ? [ otRichText.Action.createInsertText(text) ] : [];
-          expect(this.doc.data).to.eql(expected);
-          return this;
-        };
-        this.submitOp = function(op, options) {
+    beforeEach(function() {
+      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+
+      this.assert = function(text) {
+        var expected = text ? [ otRichText.Action.createInsertText(text) ] : [];
+        expect(this.doc.data).to.eql(expected);
+        return this;
+      };
+      this.submitOp = function(op, options) {
+        if (typeof op === 'string') {
           this.doc.submitOp([ otRichText.Action.createInsertText(op) ], options);
-          return this;
-        };
-        this.submitSnapshot = function(snapshot, options) {
-          this.doc.submitSnapshot([ otRichText.Action.createInsertText(snapshot) ], options);
-          return this;
-        };
-        this.undo = function() {
-          this.doc.undo();
-          return this;
-        };
-        this.redo = function() {
-          this.doc.redo();
-          return this;
-        };
+        } else if (op < 0) {
+          this.doc.submitOp([ otRichText.Action.createDelete(-op) ], options);
+        } else {
+          throw new Error('Invalid op');
+        }
+        return this;
+      };
+      this.submitSnapshot = function(snapshot, options) {
+        this.doc.submitSnapshot([ otRichText.Action.createInsertText(snapshot) ], options);
+        return this;
+      };
+      this.undo = function() {
+        undoManager.undo();
+        return this;
+      };
+      this.redo = function() {
+        undoManager.redo();
+        return this;
+      };
 
-        this.doc.undoComposeTimeout = -1;
-        this.doc.create([], otRichText.type.uri);
-        this.submitOp('d', { undoable: true }).assert('d');
-        this.submitOp('c', { undoable: true }).assert('cd');
-        this.submitOp('b', { undoable: true }).assert('bcd');
-        this.submitOp('a', { undoable: true }).assert('abcd');
-        this.undo().assert('bcd');
-        this.undo().assert('cd');
-        expect(this.doc.canUndo()).to.equal(true);
-        expect(this.doc.canRedo()).to.equal(true);
-      });
-
-      it('submits an operation (transforms undo stack, transforms redo stack)', function() {
-        this.submitOp('!').assert('!cd');
-        this.undo().assert('!d');
-        this.undo().assert('!');
-        this.redo().assert('!d');
-        this.redo().assert('!cd');
-        this.redo().assert('!bcd');
-        this.redo().assert('!abcd');
-      });
-
-      it('submits an operation (fixes up undo stack, transforms redo stack)', function() {
-        this.submitOp('!', { fixUpUndoStack: true }).assert('!cd');
-        this.undo().assert('d');
-        this.undo().assert('');
-        this.redo().assert('d');
-        this.redo().assert('!cd');
-        this.redo().assert('!bcd');
-        this.redo().assert('!abcd');
-      });
-
-      it('submits an operation (transforms undo stack, fixes up redo stack)', function() {
-        this.submitOp('!', { fixUpRedoStack: true }).assert('!cd');
-        this.undo().assert('!d');
-        this.undo().assert('!');
-        this.redo().assert('!d');
-        this.redo().assert('!cd');
-        this.redo().assert('bcd');
-        this.redo().assert('abcd');
-      });
-
-      it('submits an operation (fixes up undo stack, fixes up redo stack)', function() {
-        this.submitOp('!', { fixUpUndoStack: true, fixUpRedoStack: true }).assert('!cd');
-        this.undo().assert('d');
-        this.undo().assert('');
-        this.redo().assert('d');
-        this.redo().assert('!cd');
-        this.redo().assert('bcd');
-        this.redo().assert('abcd');
-      });
-
-      it('submits a snapshot (transforms undo stack, transforms redo stack)', function() {
-        this.submitSnapshot('!cd').assert('!cd');
-        this.undo().assert('!d');
-        this.undo().assert('!');
-        this.redo().assert('!d');
-        this.redo().assert('!cd');
-        this.redo().assert('!bcd');
-        this.redo().assert('!abcd');
-      });
-
-      it('submits a snapshot (fixes up undo stack, transforms redo stack)', function() {
-        this.submitSnapshot('!cd', { fixUpUndoStack: true }).assert('!cd');
-        this.undo().assert('d');
-        this.undo().assert('');
-        this.redo().assert('d');
-        this.redo().assert('!cd');
-        this.redo().assert('!bcd');
-        this.redo().assert('!abcd');
-      });
-
-      it('submits a snapshot (transforms undo stack, fixes up redo stack)', function() {
-        this.submitSnapshot('!cd', { fixUpRedoStack: true }).assert('!cd');
-        this.undo().assert('!d');
-        this.undo().assert('!');
-        this.redo().assert('!d');
-        this.redo().assert('!cd');
-        this.redo().assert('bcd');
-        this.redo().assert('abcd');
-      });
-
-      it('submits a snapshot (fixes up undo stack, fixes up redo stack)', function() {
-        this.submitSnapshot('!cd', { fixUpUndoStack: true, fixUpRedoStack: true }).assert('!cd');
-        this.undo().assert('d');
-        this.undo().assert('');
-        this.redo().assert('d');
-        this.redo().assert('!cd');
-        this.redo().assert('bcd');
-        this.redo().assert('abcd');
-      });
+      this.doc.create([], otRichText.type.uri);
+      this.submitOp('d', { undoable: true }).assert('d');
+      this.submitOp('c', { undoable: true }).assert('cd');
+      this.submitOp('b', { undoable: true }).assert('bcd');
+      this.submitOp('a', { undoable: true }).assert('abcd');
+      this.undo().assert('bcd');
+      this.undo().assert('cd');
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
     });
 
-    describe('no-ops', function() {
-      it('removes a no-op from the undo stack', function() {
-        this.doc.undoComposeTimeout = -1;
-        this.doc.create([], otRichText.type.uri);
-        this.doc.submitOp([ otRichText.Action.createInsertText('d') ], { undoable: true });
-        this.doc.submitOp([ otRichText.Action.createInsertText('c') ], { undoable: true });
-        this.doc.submitOp([ otRichText.Action.createInsertText('b') ], { undoable: true });
-        this.doc.submitOp([ otRichText.Action.createInsertText('a') ], { undoable: true });
-        this.doc.undo();
-        this.doc.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('cd') ]);
-        this.doc.submitOp([ otRichText.Action.createDelete(1) ], { fixUpUndoStack: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('d') ]);
-        this.doc.undo();
-        expect(this.doc.data).to.eql([]);
-        expect(this.doc.canUndo()).to.equal(false);
-        this.doc.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('d') ]);
-        this.doc.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('bd') ]);
-        this.doc.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abd') ]);
-        expect(this.doc.canRedo()).to.equal(false);
-      });
+    it('submits an op and does not fix up stacks (insert)', function() {
+      this.submitOp('!').assert('!cd');
+      this.undo().assert('!d');
+      this.undo().assert('!');
+      this.redo().assert('!d');
+      this.redo().assert('!cd');
+      this.redo().assert('!bcd');
+      this.redo().assert('!abcd');
+    });
 
-      it('removes a no-op from the redo stack', function() {
-        this.doc.undoComposeTimeout = -1;
-        this.doc.create([ otRichText.Action.createInsertText('abcd') ], otRichText.type.uri);
-        this.doc.submitOp([ otRichText.Action.createDelete(1) ], { undoable: true });
-        this.doc.submitOp([ otRichText.Action.createDelete(1) ], { undoable: true });
-        this.doc.submitOp([ otRichText.Action.createDelete(1) ], { undoable: true });
-        this.doc.submitOp([ otRichText.Action.createDelete(1) ], { undoable: true });
-        this.doc.undo();
-        this.doc.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('cd') ]);
-        this.doc.submitOp([ otRichText.Action.createDelete(1) ], { fixUpRedoStack: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('d') ]);
-        this.doc.redo();
-        expect(this.doc.data).to.eql([]);
-        expect(this.doc.canRedo()).to.equal(false);
-        this.doc.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('d') ]);
-        this.doc.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('bd') ]);
-        this.doc.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abd') ]);
-        expect(this.doc.canUndo()).to.equal(false);
-      });
+    it('submits an op and fixes up stacks (insert)', function() {
+      this.submitOp('!', { fixUp: true }).assert('!cd');
+      this.undo().assert('d');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('!cd');
+      this.redo().assert('bcd');
+      this.redo().assert('abcd');
+    });
+
+    it('submits a snapshot and does not fix up stacks (insert)', function() {
+      this.submitSnapshot('!cd').assert('!cd');
+      this.undo().assert('!d');
+      this.undo().assert('!');
+      this.redo().assert('!d');
+      this.redo().assert('!cd');
+      this.redo().assert('!bcd');
+      this.redo().assert('!abcd');
+    });
+
+    it('submits a snapshot and fixes up stacks (insert)', function() {
+      this.submitSnapshot('!cd', { fixUp: true }).assert('!cd');
+      this.undo().assert('d');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('!cd');
+      this.redo().assert('bcd');
+      this.redo().assert('abcd');
+    });
+
+    it('submits an op and does not fix up stacks (delete)', function() {
+      this.submitOp(-1).assert('d');
+      this.undo().assert('');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('bd');
+      this.redo().assert('abd');
+      this.redo().assert('abd');
+    });
+
+    it('submits an op and fixes up stacks (delete)', function() {
+      this.submitOp(-1, { fixUp: true }).assert('d');
+      this.undo().assert('');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('bcd');
+      this.redo().assert('abcd');
+      this.redo().assert('abcd');
+    });
+
+    it('submits a snapshot and does not fix up stacks (delete)', function() {
+      this.submitSnapshot('d').assert('d');
+      this.undo().assert('');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('bd');
+      this.redo().assert('abd');
+      this.redo().assert('abd');
+    });
+
+    it('submits a snapshot and fixes up stacks (delete)', function() {
+      this.submitSnapshot('d', { fixUp: true }).assert('d');
+      this.undo().assert('');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('bcd');
+      this.redo().assert('abcd');
+      this.redo().assert('abcd');
     });
   });
 
@@ -1190,11 +980,12 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot with source (no callback)', function(done) {
+        var undoManager = this.connection.undoManager();
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          expect(this.doc.canUndo()).to.equal(false);
-          expect(this.doc.canRedo()).to.equal(false);
+          expect(undoManager.canUndo()).to.equal(false);
+          expect(undoManager.canRedo()).to.equal(false);
           expect(source).to.equal('test');
           done();
         }.bind(this));
@@ -1203,13 +994,14 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot with source (with callback)', function(done) {
+        var undoManager = this.connection.undoManager();
         var opEmitted = false;
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
           expect(source).to.equal('test');
-          expect(this.doc.canUndo()).to.equal(false);
-          expect(this.doc.canRedo()).to.equal(false);
+          expect(undoManager.canUndo()).to.equal(false);
+          expect(undoManager.canRedo()).to.equal(false);
           opEmitted = true;
         }.bind(this));
         this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
@@ -1220,11 +1012,12 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot without source (no callback)', function(done) {
+        var undoManager = this.connection.undoManager();
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          expect(this.doc.canUndo()).to.equal(false);
-          expect(this.doc.canRedo()).to.equal(false);
+          expect(undoManager.canUndo()).to.equal(false);
+          expect(undoManager.canRedo()).to.equal(false);
           expect(source).to.equal(true);
           done();
         }.bind(this));
@@ -1233,13 +1026,14 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot without source (with callback)', function(done) {
+        var undoManager = this.connection.undoManager();
         var opEmitted = false;
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
           expect(source).to.equal(true);
-          expect(this.doc.canUndo()).to.equal(false);
-          expect(this.doc.canRedo()).to.equal(false);
+          expect(undoManager.canUndo()).to.equal(false);
+          expect(undoManager.canRedo()).to.equal(false);
           opEmitted = true;
         }.bind(this));
         this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
@@ -1250,44 +1044,45 @@ describe('client undo/redo', function() {
       });
 
       it('submits snapshots and supports undo and redo', function() {
-        this.doc.undoComposeTimeout = -1;
+        var undoManager = this.connection.undoManager({ composeTimeout: -1 });
         this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdefghi') ], { undoable: true });
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(this.doc.canUndo()).to.equal(false);
-        this.doc.redo();
+        expect(undoManager.canUndo()).to.equal(false);
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        expect(this.doc.canRedo()).to.equal(false);
-        this.doc.undo();
+        expect(undoManager.canRedo()).to.equal(false);
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(this.doc.canUndo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(false);
       });
 
       it('submits snapshots and composes operations', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdefghi') ], { undoable: true });
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(this.doc.canUndo()).to.equal(false);
-        this.doc.redo();
+        expect(undoManager.canUndo()).to.equal(false);
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        expect(this.doc.canRedo()).to.equal(false);
-        this.doc.undo();
+        expect(undoManager.canRedo()).to.equal(false);
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(this.doc.canUndo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(false);
       });
 
       it('submits a snapshot and syncs it', function(done) {
@@ -1306,7 +1101,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits undoable and fixed operations', function() {
-        this.doc.undoComposeTimeout = -1;
+        var undoManager = this.connection.undoManager({ composeTimeout: -1 });
         this.doc.create([], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('a') ], { undoable: true });
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('ab') ], { undoable: true });
@@ -1314,34 +1109,35 @@ describe('client undo/redo', function() {
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcd') ], { undoable: true });
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcde') ], { undoable: true });
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { undoable: true });
-        this.doc.undo();
-        this.doc.undo();
+        undoManager.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcd') ]);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('abc123d') ]);
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123d') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ab123') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('a123') ]);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('123') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('a123') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ab123') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123d') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123de') ]);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123def') ]);
       });
 
       it('submits a snapshot without a diffHint', function() {
+        var undoManager = this.connection.undoManager();
         var opCalled = 0;
         this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true });
@@ -1352,19 +1148,20 @@ describe('client undo/redo', function() {
           expect(op).to.eql([ otRichText.Action.createDelete(1) ]);
           opCalled++;
         }.bind(this));
-        this.doc.undo();
+        undoManager.undo();
 
         this.doc.once('op', function(op) {
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
           expect(op).to.eql([ otRichText.Action.createInsertText('a') ]);
           opCalled++;
         }.bind(this));
-        this.doc.redo();
+        undoManager.redo();
 
         expect(opCalled).to.equal(2);
       });
 
       it('submits a snapshot with a diffHint', function() {
+        var undoManager = this.connection.undoManager();
         var opCalled = 0;
         this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true, diffHint: 2 });
@@ -1375,14 +1172,14 @@ describe('client undo/redo', function() {
           expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createDelete(1) ]);
           opCalled++;
         }.bind(this));
-        this.doc.undo();
+        undoManager.undo();
 
         this.doc.once('op', function(op) {
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
           expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createInsertText('a') ]);
           opCalled++;
         }.bind(this));
-        this.doc.redo();
+        undoManager.redo();
 
         expect(opCalled).to.equal(2);
       });
@@ -1412,57 +1209,63 @@ describe('client undo/redo', function() {
 
     describe('with diff', function () {
       it('submits a snapshot (non-undoable)', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create(5, invertibleType.typeWithDiff.uri);
         this.doc.submitSnapshot(7);
         expect(this.doc.data).to.equal(7);
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(false);
       });
       it('submits a snapshot (undoable)', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create(5, invertibleType.typeWithDiff.uri);
         this.doc.submitSnapshot(7, { undoable: true });
         expect(this.doc.data).to.equal(7);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.equal(5);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.equal(7);
       });
     });
 
     describe('with diffX', function () {
       it('submits a snapshot (non-undoable)', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create(5, invertibleType.typeWithDiffX.uri);
         this.doc.submitSnapshot(7);
         expect(this.doc.data).to.equal(7);
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(false);
       });
       it('submits a snapshot (undoable)', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create(5, invertibleType.typeWithDiffX.uri);
         this.doc.submitSnapshot(7, { undoable: true });
         expect(this.doc.data).to.equal(7);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.equal(5);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.equal(7);
       });
     });
 
     describe('with diff and diffX', function () {
       it('submits a snapshot (non-undoable)', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
         this.doc.submitSnapshot(7);
         expect(this.doc.data).to.equal(7);
-        expect(this.doc.canUndo()).to.equal(false);
-        expect(this.doc.canRedo()).to.equal(false);
+        expect(undoManager.canUndo()).to.equal(false);
+        expect(undoManager.canRedo()).to.equal(false);
       });
       it('submits a snapshot (undoable)', function() {
+        var undoManager = this.connection.undoManager();
         this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
         this.doc.submitSnapshot(7, { undoable: true });
         expect(this.doc.data).to.equal(7);
-        this.doc.undo();
+        undoManager.undo();
         expect(this.doc.data).to.equal(5);
-        this.doc.redo();
+        undoManager.redo();
         expect(this.doc.data).to.equal(7);
       });
     });

@@ -598,7 +598,7 @@ describe('client submit', function() {
     });
   });
 
-  it('transforming pending op by server delete returns error', function(done) {
+  it('transforming pending op by server delete emits error', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -608,19 +608,21 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           doc.pause();
-          doc.submitOp({p: ['age'], na: 1}, function(err) {
+          doc.on('error', function(err) {
             expect(err).ok();
+            expect(err.code).to.equal(4017);
             expect(doc.version).equal(2);
             expect(doc.data).eql(undefined);
             done();
           });
+          doc.submitOp({p: ['age'], na: 1});
           doc.fetch();
         });
       });
     });
   });
 
-  it('transforming pending op by server create returns error', function(done) {
+  it('transforming pending op by server create emits error', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -632,12 +634,13 @@ describe('client submit', function() {
           doc2.create({age: 5}, function(err) {
             if (err) return done(err);
             doc.pause();
-            doc.create({age: 9}, function(err) {
+            doc.on('error', function(err) {
               expect(err).ok();
               expect(doc.version).equal(3);
               expect(doc.data).eql({age: 5});
               done();
             });
+            doc.create({age: 9});
             doc.fetch();
           });
         });
