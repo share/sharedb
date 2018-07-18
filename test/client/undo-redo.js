@@ -588,19 +588,6 @@ describe('client undo/redo', function() {
     expect(undoManager.canUndo()).to.equal(false);
   });
 
-  it('clears stacks on del', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
-    this.doc.create({ test: 5 });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
-    undoManager.undo();
-    expect(undoManager.canUndo()).to.equal(true);
-    expect(undoManager.canRedo()).to.equal(true);
-    this.doc.del();
-    expect(undoManager.canUndo()).to.equal(false);
-    expect(undoManager.canRedo()).to.equal(false);
-  });
-
   it('transforms the stacks by remote operations', function(done) {
     var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc2.subscribe();
@@ -938,6 +925,168 @@ describe('client undo/redo', function() {
       this.redo().assert('bcd');
       this.redo().assert('abcd');
       this.redo().assert('abcd');
+    });
+  });
+
+  describe('UndoManager.clear', function() {
+    it('clears the stacks', function() {
+      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var doc1 = this.connection.get('dogs', 'fido');
+      var doc2 = this.connection.get('dogs', 'toby');
+      doc1.create({ test: 5 });
+      doc2.create({ test: 11 });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      undoManager.undo();
+      undoManager.undo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+      undoManager.clear();
+      expect(undoManager.canUndo()).to.equal(false);
+      expect(undoManager.canRedo()).to.equal(false);
+    });
+
+    it('clears the stacks for a specific document', function() {
+      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var doc1 = this.connection.get('dogs', 'fido');
+      var doc2 = this.connection.get('dogs', 'toby');
+      doc1.create({ test: 5 });
+      doc2.create({ test: 11 });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      undoManager.undo();
+      undoManager.undo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+
+      undoManager.clear(doc1);
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+
+      undoManager.undo();
+      expect(undoManager.canUndo()).to.equal(false);
+      expect(undoManager.canRedo()).to.equal(true);
+      expect(doc1.data).to.eql({ test: 7 });
+      expect(doc2.data).to.eql({ test: 11 });
+
+      undoManager.redo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+      expect(doc1.data).to.eql({ test: 7 });
+      expect(doc2.data).to.eql({ test: 13 });
+
+      undoManager.redo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(false);
+      expect(doc1.data).to.eql({ test: 7 });
+      expect(doc2.data).to.eql({ test: 15 });
+    });
+
+    it('clears the stacks for a specific document on del', function() {
+      // NOTE we don't support undo/redo on del/create at the moment.
+      // See undoManager.js for more details.
+      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var doc1 = this.connection.get('dogs', 'fido');
+      var doc2 = this.connection.get('dogs', 'toby');
+      doc1.create({ test: 5 });
+      doc2.create({ test: 11 });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      undoManager.undo();
+      undoManager.undo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+      doc1.del();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+      doc2.del();
+      expect(undoManager.canUndo()).to.equal(false);
+      expect(undoManager.canRedo()).to.equal(false);
+    });
+
+    it('clears the stacks for a specific document on load', function(done) {
+      var shouldReject = false;
+      this.backend.use('submit', function(request, next) {
+        if (shouldReject) return next(request.rejectedError());
+        next();
+      });
+
+      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var doc1 = this.connection.get('dogs', 'fido');
+      var doc2 = this.connection.get('dogs', 'toby');
+      doc1.create([], otRichText.type.uri);
+      doc2.create([], otRichText.type.uri);
+      doc1.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true });
+      doc2.submitOp([ otRichText.Action.createInsertText('b') ], { undoable: true });
+      doc1.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true });
+      doc2.submitOp([ otRichText.Action.createInsertText('a') ], { undoable: true });
+      undoManager.undo();
+      undoManager.undo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+
+      this.connection.whenNothingPending(function() {
+        shouldReject = true;
+        doc1.submitOp([ otRichText.Action.createInsertText('!') ], function(err) {
+          if (err) return done(err);
+          shouldReject = false;
+          expect(doc1.data).to.eql([ otRichText.Action.createInsertText('2') ]);
+          expect(undoManager.canUndo()).to.equal(true);
+          expect(undoManager.canRedo()).to.equal(true);
+
+          undoManager.undo();
+          expect(undoManager.canUndo()).to.equal(false);
+          expect(undoManager.canRedo()).to.equal(true);
+          expect(doc1.data).to.eql([ otRichText.Action.createInsertText('2') ]);
+          expect(doc2.data).to.eql([]);
+
+          undoManager.redo();
+          expect(undoManager.canUndo()).to.equal(true);
+          expect(undoManager.canRedo()).to.equal(true);
+          expect(doc1.data).to.eql([ otRichText.Action.createInsertText('2') ]);
+          expect(doc2.data).to.eql([ otRichText.Action.createInsertText('b') ]);
+
+          undoManager.redo();
+          expect(undoManager.canUndo()).to.equal(true);
+          expect(undoManager.canRedo()).to.equal(false);
+          expect(doc1.data).to.eql([ otRichText.Action.createInsertText('2') ]);
+          expect(doc2.data).to.eql([ otRichText.Action.createInsertText('ab') ]);
+
+          done();
+        });
+      }.bind(this));
+    });
+
+    it.skip('clears the stacks for a specific document on doc destroy', function(done) {
+      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var doc1 = this.connection.get('dogs', 'fido');
+      var doc2 = this.connection.get('dogs', 'toby');
+      doc1.create({ test: 5 });
+      doc2.create({ test: 11 });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc1.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      doc2.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+      undoManager.undo();
+      undoManager.undo();
+      expect(undoManager.canUndo()).to.equal(true);
+      expect(undoManager.canRedo()).to.equal(true);
+      doc1.destroy(function(err) {
+        if (err) return done(err);
+        expect(undoManager.canUndo()).to.equal(true);
+        expect(undoManager.canRedo()).to.equal(true);
+        doc2.destroy(function(err) {
+          if (err) return done(err);
+          expect(undoManager.canUndo()).to.equal(false);
+          expect(undoManager.canRedo()).to.equal(false);
+        });
+      });
     });
   });
 
