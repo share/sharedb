@@ -213,6 +213,12 @@ changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 * `options.*`
   All other options are passed through to the database adapter.
 
+`connection.undoManager(options)` creates a new `UndoManager`.
+
+* `options.source` if specified, only the operations from that `source` will be undo-able. If `null` or `undefined`, the `source` filter is disabled.
+* `options.limit` the max number of operations to keep on the undo stack.
+* `options.composeTimeout` the max time difference between operations in milliseconds, which still allows the operations to be composed on the undoStack.
+
 ### Class: `ShareDB.Doc`
 
 `doc.type` _(String)_
