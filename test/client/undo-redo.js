@@ -1063,7 +1063,7 @@ describe('client undo/redo', function() {
       }.bind(this));
     });
 
-    it.skip('clears the stacks for a specific document on doc destroy', function(done) {
+    it('clears the stacks for a specific document on doc destroy', function(done) {
       var undoManager = this.connection.undoManager({ composeTimeout: -1 });
       var doc1 = this.connection.get('dogs', 'fido');
       var doc2 = this.connection.get('dogs', 'toby');
@@ -1085,6 +1085,7 @@ describe('client undo/redo', function() {
           if (err) return done(err);
           expect(undoManager.canUndo()).to.equal(false);
           expect(undoManager.canRedo()).to.equal(false);
+          done();
         });
       });
     });
