@@ -936,7 +936,7 @@ describe('client undo/redo', function() {
       this.redo().assert('abcd');
     });
 
-    it('submits a op and fixes up stacks (redo up becomes no-op and is removed from the stack)', function() {
+    it('submits a op and fixes up stacks (redo op becomes no-op and is removed from the stack)', function() {
       this.redo().redo().assert('abcd');
       this.submitOp(-1, { undoable: true }).assert('bcd');
       this.submitOp(-1, { undoable: true }).assert('cd');
@@ -949,6 +949,35 @@ describe('client undo/redo', function() {
       this.undo().assert('d');
       this.undo().assert('bcd');
       this.undo().assert('abcd');
+    });
+
+    it('fixes up the correct ops', function() {
+      var doc = this.connection.get('dogs', 'toby');
+      this.submitSnapshot('', { undoable: true }).assert('');
+      this.submitSnapshot('d', { undoable: true }).assert('d');
+      this.submitSnapshot('cd', { undoable: true }).assert('cd');
+      doc.create({ test: 5 });
+      doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
+      doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
+      this.submitSnapshot('bcd', { undoable: true }).assert('bcd');
+      this.submitSnapshot('abcd', { undoable: true }).assert('abcd');
+      this.undo().assert('bcd');
+      this.undo().assert('cd');
+      this.undo().assert('cd'); // undo one of the `doc` ops
+      expect(doc.data).to.eql({ test: 7 });
+      this.submitSnapshot('!cd', { fixUp: true }).assert('!cd');
+      this.undo().assert('!cd'); // undo one of the `doc` ops
+      expect(doc.data).to.eql({ test: 5 });
+      this.undo().assert('d');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('!cd');
+      this.redo().assert('!cd'); // redo one of the `doc` ops
+      expect(doc.data).to.eql({ test: 7 });
+      this.redo().assert('!cd'); // redo one of the `doc` ops
+      expect(doc.data).to.eql({ test: 9 });
+      this.redo().assert('bcd');
+      this.redo().assert('abcd');
     });
   });
 
