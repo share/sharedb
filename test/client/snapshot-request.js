@@ -33,44 +33,52 @@ describe('SnapshotRequest', function () {
     var v0 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 0,
-      timestamp: 0,
+      v: 0,
       type: null,
-      data: undefined
+      data: undefined,
+      m: {
+        ts: 0
+      }
     };
 
     var v1 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 1,
-      timestamp: DAY1.getTime(),
+      v: 1,
       type: json0,
       data: {
         title: 'Don Quixote'
+      },
+      m: {
+        ts: DAY1.getTime()
       }
     };
 
     var v2 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 2,
-      timestamp: DAY2.getTime(),
+      v: 2,
       type: json0,
       data: {
         title: 'Don Quixote',
         author: 'Miguel de Cervante'
+      },
+      m: {
+        ts: DAY2.getTime()
       }
     };
 
     var v3 = {
       id: 'don-quixote',
       collection: 'books',
-      version: 3,
-      timestamp: DAY3.getTime(),
+      v: 3,
       type: json0,
       data: {
         title: 'Don Quixote',
         author: 'Miguel de Cervantes'
+      },
+      m: {
+        ts: DAY3.getTime()
       }
     };
 
@@ -170,10 +178,12 @@ describe('SnapshotRequest', function () {
           expect(snapshot).to.eql({
             id: 'does-not-exist',
             collection: 'books',
-            version: 0,
-            timestamp: 0,
+            v: 0,
             type: null,
-            data: undefined
+            data: undefined,
+            m: {
+              ts: 0
+            }
           });
           done();
         });
@@ -287,8 +297,8 @@ describe('SnapshotRequest', function () {
           function (request) {
             expect(request.collection).to.be('books');
             expect(request.id).to.be('don-quixote');
-            expect(request.version).to.be(3);
-            expect(request.timestamp).to.be(DAY3.getTime());
+            expect(request.v).to.be(3);
+            expect(request.m.ts).to.be(DAY3.getTime());
             expect(request.snapshots).to.eql([v3.data]);
             expect(request.type).to.be('http://sharejs.org/types/JSONv0');
 
@@ -362,10 +372,12 @@ describe('SnapshotRequest', function () {
         expect(snapshot).to.eql({
           id: 'catch-22',
           collection: 'books',
-          version: 2,
-          timestamp: DAY2.getTime(),
+          v: 2,
           type: null,
-          data: undefined
+          data: undefined,
+          m: {
+            ts: DAY2.getTime()
+          }
         });
 
         done();
@@ -379,11 +391,13 @@ describe('SnapshotRequest', function () {
         expect(snapshot).to.eql({
           id: 'catch-22',
           collection: 'books',
-          version: 1,
-          timestamp: DAY1.getTime(),
+          v: 1,
           type: json0,
           data: {
             title: 'Catch 22',
+          },
+          m: {
+            ts: DAY1.getTime()
           }
         });
 
@@ -415,11 +429,13 @@ describe('SnapshotRequest', function () {
         expect(snapshot).to.eql({
           id: 'hitchhikers-guide',
           collection: 'books',
-          version: 3,
-          timestamp: DAY3.getTime(),
+          v: 3,
           type: json0,
           data: {
             title: 'The Restaurant at the End of the Universe',
+          },
+          m: {
+            ts: DAY3.getTime()
           }
         });
 
