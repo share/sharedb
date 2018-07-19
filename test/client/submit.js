@@ -608,11 +608,16 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           doc.pause();
+          var calledBack = false;
+          doc.on('error', function(err) {
+            expect(calledBack).equal(true);
+            done();
+          });
           doc.submitOp({p: ['age'], na: 1}, function(err) {
             expect(err).ok();
             expect(doc.version).equal(2);
             expect(doc.data).eql(undefined);
-            done();
+            calledBack = true;
           });
           doc.fetch();
         });
@@ -632,11 +637,16 @@ describe('client submit', function() {
           doc2.create({age: 5}, function(err) {
             if (err) return done(err);
             doc.pause();
+            var calledBack = false;
+            doc.on('error', function() {
+              expect(calledBack).equal(true);
+              done();
+            });
             doc.create({age: 9}, function(err) {
               expect(err).ok();
               expect(doc.version).equal(3);
               expect(doc.data).eql({age: 5});
-              done();
+              calledBack = true;
             });
             doc.fetch();
           });
