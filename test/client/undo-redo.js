@@ -36,7 +36,7 @@ describe('client undo/redo', function() {
   });
 
   it('submits a non-undoable operation', function(allDone) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ]),
@@ -51,7 +51,7 @@ describe('client undo/redo', function() {
   });
 
   it('receives a remote operation', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc2.preventCompose = true;
     this.doc.on('op', function() {
       expect(this.doc.version).to.equal(2);
@@ -67,7 +67,7 @@ describe('client undo/redo', function() {
   });
 
   it('submits an undoable operation', function(allDone) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -82,7 +82,7 @@ describe('client undo/redo', function() {
   });
 
   it('undoes an operation', function(allDone) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -98,7 +98,7 @@ describe('client undo/redo', function() {
   });
 
   it('redoes an operation', function(allDone) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -115,7 +115,7 @@ describe('client undo/redo', function() {
   });
 
   it('performs a series of undo and redo operations', function(allDone) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -136,7 +136,7 @@ describe('client undo/redo', function() {
   });
 
   it('performs a series of undo and redo operations synchronously', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 }),
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }),
     expect(this.doc.data).to.eql({ test: 7 });
@@ -157,7 +157,7 @@ describe('client undo/redo', function() {
   });
 
   it('undoes one of two operations', function(allDone) {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -174,7 +174,7 @@ describe('client undo/redo', function() {
   });
 
   it('undoes two of two operations', function(allDone) {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -192,7 +192,7 @@ describe('client undo/redo', function() {
   });
 
   it('redoes one of two operations', function(allDone) {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -211,7 +211,7 @@ describe('client undo/redo', function() {
   });
 
   it('redoes two of two operations', function(allDone) {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     async.series([
       this.doc.create.bind(this.doc, { test: 5 }),
       this.doc.submitOp.bind(this.doc, [ { p: [ 'test' ], na: 2 } ], { undoable: true }),
@@ -231,25 +231,25 @@ describe('client undo/redo', function() {
   });
 
   it('calls undo, when canUndo is false', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     expect(undoManager.canUndo()).to.equal(false);
     undoManager.undo(done);
   });
 
   it('calls undo, when canUndo is false - no callback', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     expect(undoManager.canUndo()).to.equal(false);
     undoManager.undo();
   });
 
   it('calls redo, when canRedo is false', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     expect(undoManager.canRedo()).to.equal(false);
     undoManager.redo(done);
   });
 
   it('calls redo, when canRedo is false - no callback', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     expect(undoManager.canRedo()).to.equal(false);
     undoManager.redo();
   });
@@ -281,7 +281,7 @@ describe('client undo/redo', function() {
   });
 
   it('preserves source on undo', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.on('op', function(op, source) {
@@ -292,7 +292,7 @@ describe('client undo/redo', function() {
   });
 
   it('preserves source on redo', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     undoManager.undo();
@@ -316,7 +316,7 @@ describe('client undo/redo', function() {
   });
 
   it('composes undoable operations within time limit', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     setTimeout(function() {
@@ -331,7 +331,7 @@ describe('client undo/redo', function() {
   });
 
   it('composes undoable operations correctly', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ a: 1, b: 2 });
     this.doc.submitOp([ { p: [ 'a' ], od: 1 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'b' ], od: 2 } ], { undoable: true });
@@ -352,7 +352,7 @@ describe('client undo/redo', function() {
   });
 
   it('does not compose undoable operations outside time limit', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     setTimeout(function () {
@@ -369,8 +369,8 @@ describe('client undo/redo', function() {
     this.clock.runAll();
   });
 
-  it('does not compose undoable operations, if composeTimeout < 0', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+  it('does not compose undoable operations, if composeInterval < 0', function() {
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'test' ], na: 3 } ], { undoable: true });
@@ -384,7 +384,7 @@ describe('client undo/redo', function() {
   });
 
   it('does not compose undoable operations, if type does not support compose nor composeSimilar', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create(5, invertibleType.type.uri);
     this.doc.submitOp(2, { undoable: true });
     expect(this.doc.data).to.equal(7);
@@ -403,7 +403,7 @@ describe('client undo/redo', function() {
   });
 
   it('uses applyAndInvert, if available', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('two') ], { undoable: true });
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('two') ]);
@@ -456,7 +456,7 @@ describe('client undo/redo', function() {
   });
 
   it('fails to submit with fixUp, if type is not invertible', function(done) {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create('two', otText.type.uri);
     this.doc.on('error', done);
     this.doc.submitOp([ 'one' ], { fixUp: true }, function(err) {
@@ -466,7 +466,7 @@ describe('client undo/redo', function() {
   });
 
   it('composes similar operations', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([
       otRichText.Action.createInsertText('one')
@@ -486,7 +486,7 @@ describe('client undo/redo', function() {
   });
 
   it('does not compose dissimilar operations', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create([ otRichText.Action.createInsertText(' ') ], otRichText.type.uri);
 
     this.doc.submitOp([ otRichText.Action.createRetain(1), otRichText.Action.createInsertText('two') ], { undoable: true });
@@ -509,7 +509,7 @@ describe('client undo/redo', function() {
   });
 
   it('does not add no-ops to the undo stack on undoable operation', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     var opCalled = false;
     this.doc.create([ otRichText.Action.createInsertText('test', [ 'key', 'value' ]) ], otRichText.type.uri);
     this.doc.on('op', function(op, source) {
@@ -524,7 +524,7 @@ describe('client undo/redo', function() {
   });
 
   it('limits the size of the undo stack', function() {
-    var undoManager = this.connection.undoManager({ limit: 2, composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ limit: 2, composeInterval: -1 });
     this.doc.create({ test: 5 });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true });
@@ -540,7 +540,7 @@ describe('client undo/redo', function() {
   });
 
   it('does not compose the next operation after undo', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.clock.tick(1001);
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
@@ -562,7 +562,7 @@ describe('client undo/redo', function() {
   });
 
   it('does not compose the next operation after undo and redo', function() {
-    var undoManager = this.connection.undoManager();
+    var undoManager = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.clock.tick(1001);
     this.doc.submitOp([ { p: [ 'test' ], na: 2 } ], { undoable: true }); // not composed
@@ -589,7 +589,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks by remote operations', function(done) {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc2.subscribe();
     this.doc.subscribe();
     this.doc.create([], otRichText.type.uri);
@@ -622,7 +622,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks by remote operations and removes no-ops', function(done) {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc2.subscribe();
     this.doc.subscribe();
     this.doc.create([], otRichText.type.uri);
@@ -653,7 +653,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks by a local operation', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true });
@@ -678,7 +678,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks by a local operation and removes no-ops', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true });
@@ -701,7 +701,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms stacks by an undoable op', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1, source: '1' });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1, source: '1' });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true, source: '1' });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true, source: '1' });
@@ -729,8 +729,8 @@ describe('client undo/redo', function() {
   });
 
   it('transforms stacks by an undo op', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1, source: '1' });
-    var undoManager2 = this.connection.undoManager({ composeTimeout: -1, source: '2' });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1, source: '1' });
+    var undoManager2 = this.connection.createUndoManager({ composeInterval: -1, source: '2' });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true, source: '1' });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true, source: '1' });
@@ -763,8 +763,8 @@ describe('client undo/redo', function() {
   });
 
   it('transforms stacks by a redo op', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1, source: '1' });
-    var undoManager2 = this.connection.undoManager({ composeTimeout: -1, source: '2' });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1, source: '1' });
+    var undoManager2 = this.connection.createUndoManager({ composeInterval: -1, source: '2' });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true, source: '1' });
     this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true, source: '1' });
@@ -797,7 +797,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks using transform', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc.create(0, invertibleType.type.uri);
     this.doc.submitOp(1, { undoable: true });
     this.doc.submitOp(10, { undoable: true });
@@ -822,7 +822,7 @@ describe('client undo/redo', function() {
   });
 
   it('transforms the stacks using transformX', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     this.doc.create(0, invertibleType.typeWithTransformX.uri);
     this.doc.submitOp(1, { undoable: true });
     this.doc.submitOp(10, { undoable: true });
@@ -902,7 +902,7 @@ describe('client undo/redo', function() {
 
   describe('fixup operations', function() {
     beforeEach(function() {
-      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
 
       this.assert = function(text) {
         var expected = text ? [ otRichText.Action.createInsertText(text) ] : [];
@@ -944,7 +944,7 @@ describe('client undo/redo', function() {
     });
 
     it('does not fix up anything', function() {
-      var undoManager = this.connection.undoManager();
+      var undoManager = this.connection.createUndoManager();
       expect(undoManager.canUndo()).to.equal(false);
       expect(undoManager.canRedo()).to.equal(false);
       this.submitOp('!', { fixUp: true }).assert('!cd');
@@ -1088,8 +1088,8 @@ describe('client undo/redo', function() {
   });
 
   it('filters undo/redo ops by source', function() {
-    var undoManager1 = this.connection.undoManager({ composeTimeout: -1, source: '1' });
-    var undoManager2 = this.connection.undoManager({ composeTimeout: -1, source: '2' });
+    var undoManager1 = this.connection.createUndoManager({ composeInterval: -1, source: '1' });
+    var undoManager2 = this.connection.createUndoManager({ composeInterval: -1, source: '2' });
 
     this.doc.create({ test: 5 });
     expect(this.doc.data.test).to.equal(5);
@@ -1170,10 +1170,10 @@ describe('client undo/redo', function() {
   });
 
   it('cannot undo/redo an undo/redo operation', function() {
-    var undoManager1 = this.connection.undoManager();
+    var undoManager1 = this.connection.createUndoManager();
     this.doc.create({ test: 5 });
     this.doc.submitOp([{ p: [ 'test' ], na: 2 }], { undoable: true });
-    var undoManager2 = this.connection.undoManager();
+    var undoManager2 = this.connection.createUndoManager();
     expect(this.doc.data.test).to.equal(7);
     expect(undoManager1.canUndo()).to.equal(true);
     expect(undoManager1.canRedo()).to.equal(false);
@@ -1196,7 +1196,7 @@ describe('client undo/redo', function() {
   });
 
   it('destroys UndoManager', function() {
-    var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
     var doc1 = this.connection.get('dogs', 'fido');
     var doc2 = this.connection.get('dogs', 'toby');
     doc1.create({ test: 5 });
@@ -1225,7 +1225,7 @@ describe('client undo/redo', function() {
 
   describe('UndoManager.clear', function() {
     it('clears the stacks', function() {
-      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
       var doc1 = this.connection.get('dogs', 'fido');
       var doc2 = this.connection.get('dogs', 'toby');
       doc1.create({ test: 5 });
@@ -1251,7 +1251,7 @@ describe('client undo/redo', function() {
     });
 
     it('clears the stacks for a specific document', function() {
-      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
       var doc1 = this.connection.get('dogs', 'fido');
       var doc2 = this.connection.get('dogs', 'toby');
       doc1.create({ test: 5 });
@@ -1291,7 +1291,7 @@ describe('client undo/redo', function() {
     it('clears the stacks for a specific document on del', function() {
       // NOTE we don't support undo/redo on del/create at the moment.
       // See undoManager.js for more details.
-      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
       var doc1 = this.connection.get('dogs', 'fido');
       var doc2 = this.connection.get('dogs', 'toby');
       doc1.create({ test: 5 });
@@ -1319,7 +1319,7 @@ describe('client undo/redo', function() {
         next();
       });
 
-      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
       var doc1 = this.connection.get('dogs', 'fido');
       var doc2 = this.connection.get('dogs', 'toby');
       doc1.create([], otRichText.type.uri);
@@ -1366,7 +1366,7 @@ describe('client undo/redo', function() {
     });
 
     it('clears the stacks for a specific document on doc destroy', function(done) {
-      var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+      var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
       var doc1 = this.connection.get('dogs', 'fido');
       var doc2 = this.connection.get('dogs', 'toby');
       doc1.create({ test: 5 });
@@ -1432,7 +1432,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot with source (no callback)', function(done) {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
@@ -1446,7 +1446,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot with source (with callback)', function(done) {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         var opEmitted = false;
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
@@ -1464,7 +1464,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot without source (no callback)', function(done) {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
           expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
@@ -1478,7 +1478,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot without source (with callback)', function(done) {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         var opEmitted = false;
         this.doc.on('op', function(op, source) {
           expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
@@ -1496,7 +1496,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits snapshots and supports undo and redo', function() {
-        var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+        var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
         this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
@@ -1520,7 +1520,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits snapshots and composes operations', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
         expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
@@ -1553,7 +1553,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits undoable and fixed operations', function() {
-        var undoManager = this.connection.undoManager({ composeTimeout: -1 });
+        var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
         this.doc.create([], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('a') ], { undoable: true });
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('ab') ], { undoable: true });
@@ -1589,7 +1589,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot without a diffHint', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         var opCalled = 0;
         this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true });
@@ -1613,7 +1613,7 @@ describe('client undo/redo', function() {
       });
 
       it('submits a snapshot with a diffHint', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         var opCalled = 0;
         this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
         this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true, diffHint: 2 });
@@ -1661,7 +1661,7 @@ describe('client undo/redo', function() {
 
     describe('with diff', function () {
       it('submits a snapshot (non-undoable)', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create(5, invertibleType.typeWithDiff.uri);
         this.doc.submitSnapshot(7);
         expect(this.doc.data).to.equal(7);
@@ -1669,7 +1669,7 @@ describe('client undo/redo', function() {
         expect(undoManager.canRedo()).to.equal(false);
       });
       it('submits a snapshot (undoable)', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create(5, invertibleType.typeWithDiff.uri);
         this.doc.submitSnapshot(7, { undoable: true });
         expect(this.doc.data).to.equal(7);
@@ -1682,7 +1682,7 @@ describe('client undo/redo', function() {
 
     describe('with diffX', function () {
       it('submits a snapshot (non-undoable)', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create(5, invertibleType.typeWithDiffX.uri);
         this.doc.submitSnapshot(7);
         expect(this.doc.data).to.equal(7);
@@ -1690,7 +1690,7 @@ describe('client undo/redo', function() {
         expect(undoManager.canRedo()).to.equal(false);
       });
       it('submits a snapshot (undoable)', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create(5, invertibleType.typeWithDiffX.uri);
         this.doc.submitSnapshot(7, { undoable: true });
         expect(this.doc.data).to.equal(7);
@@ -1703,7 +1703,7 @@ describe('client undo/redo', function() {
 
     describe('with diff and diffX', function () {
       it('submits a snapshot (non-undoable)', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
         this.doc.submitSnapshot(7);
         expect(this.doc.data).to.equal(7);
@@ -1711,7 +1711,7 @@ describe('client undo/redo', function() {
         expect(undoManager.canRedo()).to.equal(false);
       });
       it('submits a snapshot (undoable)', function() {
-        var undoManager = this.connection.undoManager();
+        var undoManager = this.connection.createUndoManager();
         this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
         this.doc.submitSnapshot(7, { undoable: true });
         expect(this.doc.data).to.equal(7);

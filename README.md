@@ -39,7 +39,7 @@ var socket = new WebSocket('ws://' + window.location.host);
 var connection = new sharedb.Connection(socket);
 ```
 
-The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections. 
+The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections.
 
 The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
 
@@ -229,11 +229,11 @@ changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 * `options.*`
   All other options are passed through to the database adapter.
 
-`connection.undoManager(options)` creates a new `UndoManager`.
+`connection.createUndoManager(options)` creates a new `UndoManager`.
 
 * `options.source` if specified, only the operations from that `source` will be undo-able. If `null` or `undefined`, the `source` filter is disabled.
 * `options.limit` the max number of operations to keep on the undo stack.
-* `options.composeTimeout` the max time difference between operations in milliseconds, which still allows the operations to be composed on the undoStack.
+* `options.composeInterval` the max time difference between operations in milliseconds, which still allows the operations to be composed on the undo stack.
 
 ### Class: `ShareDB.Doc`
 
