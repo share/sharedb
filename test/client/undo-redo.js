@@ -652,7 +652,7 @@ describe('client undo/redo', function() {
     }.bind(this));
   });
 
-  it('transforms the stacks by a local FIXED operation', function() {
+  it('transforms the stacks by a local operation', function() {
     var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
@@ -677,7 +677,7 @@ describe('client undo/redo', function() {
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC1234') ]);
   });
 
-  it('transforms the stacks by a local FIXED operation and removes no-ops', function() {
+  it('transforms the stacks by a local operation and removes no-ops', function() {
     var undoManager = this.connection.undoManager({ composeTimeout: -1 });
     this.doc.create([], otRichText.type.uri);
     this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true });
@@ -698,6 +698,102 @@ describe('client undo/redo', function() {
     undoManager.redo();
     expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('124') ]);
     expect(undoManager.canRedo()).to.equal(false);
+  });
+
+  it('transforms stacks by an undoable op', function() {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1, source: '1' });
+    this.doc.create([], otRichText.type.uri);
+    this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true, source: '1' });
+    undoManager.undo();
+    undoManager.undo();
+
+    // The source does not match, so undoManager transforms its stacks rather than pushing this op on its undo stack.
+    this.doc.submitOp([ otRichText.Action.createInsertText('ABC') ], { undoable: true });
+
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC234') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC1234') ]);
+  });
+
+  it('transforms stacks by an undo op', function() {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1, source: '1' });
+    var undoManager2 = this.connection.undoManager({ composeTimeout: -1, source: '2' });
+    this.doc.create([], otRichText.type.uri);
+    this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true, source: '1' });
+    undoManager.undo();
+    undoManager.undo();
+
+    // These 2 ops cancel each other out, so the undoManager's stacks remain unaffected,
+    // even though they are transformed against those ops.
+    // The second op has `source: '2'`, so it is inverted and added to the undo stack of undoManager2.
+    this.doc.submitOp([ otRichText.Action.createInsertText('ABC') ], { undoable: true });
+    this.doc.submitOp([ otRichText.Action.createDelete(3) ], { undoable: true, source: '2' });
+    // This inserts ABC at position 0 and the undoManager's stacks are transformed accordingly, ready for testing.
+    undoManager2.undo();
+
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC234') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC1234') ]);
+  });
+
+  it('transforms stacks by a redo op', function() {
+    var undoManager = this.connection.undoManager({ composeTimeout: -1, source: '1' });
+    var undoManager2 = this.connection.undoManager({ composeTimeout: -1, source: '2' });
+    this.doc.create([], otRichText.type.uri);
+    this.doc.submitOp([ otRichText.Action.createInsertText('4') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('3') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('2') ], { undoable: true, source: '1' });
+    this.doc.submitOp([ otRichText.Action.createInsertText('1') ], { undoable: true, source: '1' });
+    undoManager.undo();
+    undoManager.undo();
+
+    // submitOp and undo cancel each other out, so the undoManager's stacks remain unaffected,
+    // even though they are transformed against those ops.
+    // The second op has `source: '2'`, so it is inverted and added to the undo stack of undoManager2.
+    this.doc.submitOp([ otRichText.Action.createInsertText('ABC') ], { undoable: true, source: '2' });
+    undoManager2.undo();
+    // This inserts ABC at position 0 and the undoManager's stacks are transformed accordingly, ready for testing.
+    undoManager2.redo();
+
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC4') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC34') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC234') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ABC1234') ]);
   });
 
   it('transforms the stacks using transform', function() {
@@ -979,6 +1075,124 @@ describe('client undo/redo', function() {
       this.redo().assert('bcd');
       this.redo().assert('abcd');
     });
+
+    it('fixes up ops if both fixUp and undoable are true', function() {
+      this.submitOp('!', { undoable: true, fixUp: true }).assert('!cd');
+      this.undo().assert('d');
+      this.undo().assert('');
+      this.redo().assert('d');
+      this.redo().assert('!cd');
+      this.redo().assert('bcd');
+      this.redo().assert('abcd');
+    });
+  });
+
+  it('filters undo/redo ops by source', function() {
+    var undoManager1 = this.connection.undoManager({ composeTimeout: -1, source: '1' });
+    var undoManager2 = this.connection.undoManager({ composeTimeout: -1, source: '2' });
+
+    this.doc.create({ test: 5 });
+    expect(this.doc.data.test).to.equal(5);
+    expect(undoManager1.canUndo()).to.equal(false);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    this.doc.submitOp([{ p: [ 'test' ], na: 2 }], { undoable: true });
+    expect(this.doc.data.test).to.equal(7);
+    expect(undoManager1.canUndo()).to.equal(false);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    this.doc.submitOp([{ p: [ 'test' ], na: 2 }], { undoable: true, source: '3' });
+    expect(this.doc.data.test).to.equal(9);
+    expect(undoManager1.canUndo()).to.equal(false);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    this.doc.submitOp([{ p: [ 'test' ], na: 7 }], { undoable: true, source: '1' });
+    expect(this.doc.data.test).to.equal(16);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    this.doc.submitOp([{ p: [ 'test' ], na: 7 }], { undoable: true, source: '1' });
+    expect(this.doc.data.test).to.equal(23);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    this.doc.submitOp([{ p: [ 'test' ], na: 13 }], { undoable: true, source: '2' });
+    expect(this.doc.data.test).to.equal(36);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(true);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    this.doc.submitOp([{ p: [ 'test' ], na: 13 }], { undoable: true, source: '2' });
+    expect(this.doc.data.test).to.equal(49);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(true);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    undoManager1.undo();
+    expect(this.doc.data.test).to.equal(42);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(true);
+    expect(undoManager2.canUndo()).to.equal(true);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    undoManager2.undo();
+    expect(this.doc.data.test).to.equal(29);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(true);
+    expect(undoManager2.canUndo()).to.equal(true);
+    expect(undoManager2.canRedo()).to.equal(true);
+
+    undoManager1.undo();
+    expect(this.doc.data.test).to.equal(22);
+    expect(undoManager1.canUndo()).to.equal(false);
+    expect(undoManager1.canRedo()).to.equal(true);
+    expect(undoManager2.canUndo()).to.equal(true);
+    expect(undoManager2.canRedo()).to.equal(true);
+
+    undoManager2.undo();
+    expect(this.doc.data.test).to.equal(9);
+    expect(undoManager1.canUndo()).to.equal(false);
+    expect(undoManager1.canRedo()).to.equal(true);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(true);
+  });
+
+  it('cannot undo/redo an undo/redo operation', function() {
+    var undoManager1 = this.connection.undoManager();
+    this.doc.create({ test: 5 });
+    this.doc.submitOp([{ p: [ 'test' ], na: 2 }], { undoable: true });
+    var undoManager2 = this.connection.undoManager();
+    expect(this.doc.data.test).to.equal(7);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    undoManager1.undo();
+    expect(this.doc.data.test).to.equal(5);
+    expect(undoManager1.canUndo()).to.equal(false);
+    expect(undoManager1.canRedo()).to.equal(true);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
+
+    undoManager1.redo();
+    expect(this.doc.data.test).to.equal(7);
+    expect(undoManager1.canUndo()).to.equal(true);
+    expect(undoManager1.canRedo()).to.equal(false);
+    expect(undoManager2.canUndo()).to.equal(false);
+    expect(undoManager2.canRedo()).to.equal(false);
   });
 
   it('destroys UndoManager', function() {
