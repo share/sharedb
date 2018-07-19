@@ -38,6 +38,63 @@ describe('client query subscribe', function() {
     doc.destroy(done);
   });
 
+  it('doc.destroy() returns a Promise', function (done) {
+    var doc = this.connection.get('dogs', 'fido');
+    doc.destroy().then(done);
+  });
+
+  it('doc.destroy() with a callback does not return a promise', function (done) {
+    var doc = this.connection.get('dogs', 'fido');
+    var promise;
+    var callback = function () {
+      expect(promise).to.be.undefined;
+      done();
+    }
+    promise = doc.destroy(callback);
+  });
+
+  it('creates a document, submits an op and fetches it', function (done) {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+
+    doc.create({ tagged: true }, function (error) {
+      if (error) return done(error);
+      doc.submitOp({ p: ['color'], oi: 'white' }, function (error) {
+        if (error) return done(error);
+        doc.destroy(function (error) {
+          if (error) return done(error);
+          var doc2 = connection.get('dogs', 'fido');
+          doc2.fetch(function (error) {
+            if (error) return done(error);
+            expect(doc2.data).eql({ tagged: true, color: 'white' });
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('creates a document, submits an op and fetches it with promises', function () {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+    var doc2;
+
+    return doc.create({ tagged: true })
+      .then(function () {
+        return doc.submitOp({ p: ['color'], oi: 'white' })
+      })
+      .then(function () {
+        return doc.destroy();
+      })
+      .then(function () {
+        doc2 = connection.get('dogs', 'fido')
+        return doc2.fetch();
+      })
+      .then(function () {
+        expect(doc2.data).eql({ tagged: true, color: 'white' });
+      })
+  });
+
   describe('applyStack', function() {
 
     beforeEach(function(done) {
