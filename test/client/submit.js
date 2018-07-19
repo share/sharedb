@@ -609,7 +609,7 @@ describe('client submit', function() {
           if (err) return done(err);
           doc.pause();
           var calledBack = false;
-          doc.on('error', function(err) {
+          doc.on('error', function() {
             expect(calledBack).equal(true);
             done();
           });
