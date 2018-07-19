@@ -509,6 +509,7 @@ describe('client submit', function() {
   });
 
   it('submits fail above the backend.maxSubmitRetries threshold', function(done) {
+    var backend = this.backend;
     this.backend.maxSubmitRetries = 0;
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
@@ -516,18 +517,24 @@ describe('client submit', function() {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
-        var count = 0;
-        var cb = function(err) {
-          count++;
-          if (count === 1) {
-            if (err) return done(err);
-          } else {
-            expect(err).ok();
-            done();
+        var docCallback;
+        var doc2Callback;
+        backend.use('commit', function (request, callback) {
+          if (request.op.op[0].na === 2) docCallback = callback;
+          if (request.op.op[0].na === 7) doc2Callback = callback;
+
+          if (docCallback && doc2Callback) {
+            docCallback();
           }
-        };
-        doc.submitOp({p: ['age'], na: 2}, cb);
-        doc2.submitOp({p: ['age'], na: 7}, cb);
+        });
+        doc.submitOp({p: ['age'], na: 2}, function (error) {
+          if (error) return done(error);
+          doc2Callback();
+        });
+        doc2.submitOp({p: ['age'], na: 7}, function (error) {
+          expect(error).ok();
+          done();
+        });
       });
     });
   });
