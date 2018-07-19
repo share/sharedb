@@ -620,7 +620,6 @@ describe('client submit', function() {
             expect(doc.data).eql(undefined);
             calledBack = true;
           });
-          doc.submitOp({p: ['age'], na: 1});
           doc.fetch();
         });
       });
@@ -650,7 +649,6 @@ describe('client submit', function() {
               expect(doc.data).eql({age: 5});
               calledBack = true;
             });
-            doc.create({age: 9});
             doc.fetch();
           });
         });
