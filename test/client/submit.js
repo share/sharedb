@@ -608,12 +608,17 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           doc.pause();
-          doc.on('error', function(err) {
+          var calledBack = false;
+          doc.on('error', function() {
+            expect(calledBack).equal(true);
+            done();
+          });
+          doc.submitOp({p: ['age'], na: 1}, function(err) {
             expect(err).ok();
             expect(err.code).to.equal(4017);
             expect(doc.version).equal(2);
             expect(doc.data).eql(undefined);
-            done();
+            calledBack = true;
           });
           doc.submitOp({p: ['age'], na: 1});
           doc.fetch();
@@ -634,11 +639,16 @@ describe('client submit', function() {
           doc2.create({age: 5}, function(err) {
             if (err) return done(err);
             doc.pause();
-            doc.on('error', function(err) {
+            var calledBack = false;
+            doc.on('error', function() {
+              expect(calledBack).equal(true);
+              done();
+            });
+            doc.create({age: 9}, function(err) {
               expect(err).ok();
               expect(doc.version).equal(3);
               expect(doc.data).eql({age: 5});
-              done();
+              calledBack = true;
             });
             doc.create({age: 9});
             doc.fetch();
