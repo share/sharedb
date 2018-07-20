@@ -692,26 +692,50 @@ types.register(presenceType.type3);
       ], allDone);
     });
 
-    it('cancels pending presence on destroy', function(allDone) {
-      async.series([
-        this.doc.create.bind(this.doc, [ 'a' ], typeName),
-        function(done) {
-          this.doc.submitPresence(p(0), done);
-          console.log(!!this.doc.inflightPresence, !!this.doc.pendingPresence);
-          this.doc.destroy(errorHandler(done));
-        }.bind(this)
-      ], allDone);
-    });
-
-    it('cancels inflight presence on destroy', function(allDone) {
+    it('hasPending is true, if there is pending presence', function(allDone) {
       async.series([
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         function(done) {
-          this.doc.submitPresence(p(0), done);
-          process.nextTick(function() {
-            this.doc.destroy(errorHandler(done));
-          }.bind(this));
+          expect(this.doc.hasPending()).to.equal(false);
+          this.doc.submitPresence(p(0));
+          expect(this.doc.hasPending()).to.equal(true);
+          expect(!!this.doc.pendingPresence).to.equal(true);
+          expect(!!this.doc.inflightPresence).to.equal(false);
+          this.doc.whenNothingPending(done);
+        }.bind(this),
+        function(done) {
+          expect(this.doc.hasPending()).to.equal(false);
+          expect(!!this.doc.pendingPresence).to.equal(false);
+          expect(!!this.doc.inflightPresence).to.equal(false);
+          done();
+        }.bind(this)
+      ], allDone);
+    });
+
+    it('hasPending is true, if there is inflight presence', function(allDone) {
+      async.series([
+        this.doc.create.bind(this.doc, [ 'a' ], typeName),
+        this.doc.subscribe.bind(this.doc),
+        function(done) {
+          expect(this.doc.hasPending()).to.equal(false);
+          this.doc.submitPresence(p(0));
+          expect(this.doc.hasPending()).to.equal(true);
+          expect(!!this.doc.pendingPresence).to.equal(true);
+          expect(!!this.doc.inflightPresence).to.equal(false);
+          process.nextTick(done);
+        }.bind(this),
+        function(done) {
+          expect(this.doc.hasPending()).to.equal(true);
+          expect(!!this.doc.pendingPresence).to.equal(false);
+          expect(!!this.doc.inflightPresence).to.equal(true);
+          this.doc.whenNothingPending(done);
+        }.bind(this),
+        function(done) {
+          expect(this.doc.hasPending()).to.equal(false);
+          expect(!!this.doc.pendingPresence).to.equal(false);
+          expect(!!this.doc.inflightPresence).to.equal(false);
+          done();
         }.bind(this)
       ], allDone);
     });
