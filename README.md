@@ -246,13 +246,6 @@ Unique document ID
 `doc.data` _(Object)_
 Document contents. Available after document is fetched or subscribed to.
 
-`doc.undoLimit` _(Number, read-write, default=100)_
-The max number of operations to keep on the undo stack.
-
-`doc.undoComposeTimeout` _(Number, read-write, default=1000)_
-The max time difference between operations in milliseconds,
-which still allows "UNDOABLE" operations to be composed on the undo stack.
-
 `doc.fetch(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server.
 
@@ -273,11 +266,11 @@ same time as callbacks to `fetch` and `subscribe`.
 `doc.on('create', function(source) {...})`
 The document was created. Technically, this means it has a type. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('before op'), function(op, source, operationType) {...})`
-An operation is about to be applied to the data. Params are the same as for the `op` event below.
+`doc.on('before op'), function(op, source) {...})`
+An operation is about to be applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
-`doc.on('op', function(op, source, operationType) {...})`
-An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally. `operationType` is one of the following: `"UNDOABLE"` _(local operation that can be undone)_, `"FIXED"` _(local or remote operation that can't be undone nor redone)_, `"UNDO"` _(local undo operation that can be redone)_ and `"REDO"` _(local redo operation that can be undone)_.
+`doc.on('op', function(op, source) {...})`
+An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
@@ -302,19 +295,17 @@ Apply operation to document and send it to the server.
 Call this after you've either fetched or subscribed to the document.
 * `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
 * `options.skipNoop` Should processing be skipped entirely, if `op` is a no-op. Defaults to `false`.
-* `options.undoable` Should it be possible to undo this operation, default=false.
-* `options.fixUpUndoStack` Determines how a non-undoable operation affects the undo stack. If `false` (default), the operation transforms the undo stack, otherwise it is inverted and composed into the last operation on the undo stack.
-* `options.fixUpRedoStack` Determines how a non-undoable operation affects the redo stack. If `false` (default), the operation transforms the redo stack, otherwise it is inverted and composed into the last operation on the redo stack.
+* `options.undoable` Should it be possible to undo this operation. Defaults to `false`.
+* `options.fixUp` If true, this operation is meant to fix the current invalid state of the snapshot. It also updates UndoManagers accordingly. This feature requires the OT type to implement `compose`.
 
 `doc.submitSnapshot(snapshot[, options][, function(err) {...}])`
 Diff the current and the provided snapshots to generate an operation, apply the operation to the document and send it to the server.
 `snapshot` structure depends on the document type.
 Call this after you've either fetched or subscribed to the document.
 * `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
-* `options.skipNoop` Should processing be skipped entirely, if the generated operation is a no-op. Defaults to `false`.
-* `options.undoable` Should it be possible to undo this operation, default=false.
-* `options.fixUpUndoStack` Determines how a non-undoable operation affects the undo stack. If `false` (default), the operation transforms the undo stack, otherwise it is inverted and composed into the last operation on the undo stack.
-* `options.fixUpRedoStack` Determines how a non-undoable operation affects the redo stack. If `false` (default), the operation transforms the redo stack, otherwise it is inverted and composed into the last operation on the redo stack.
+* `options.skipNoop` Should processing be skipped entirely, if `op` is a no-op. Defaults to `false`.
+* `options.undoable` Should it be possible to undo this operation. Defaults to `false`.
+* `options.fixUp` If true, this operation is meant to fix the current invalid state of the snapshot. It also updates UndoManagers accordingly. This feature requires the OT type to implement `compose`.
 * `options.diffHint` A hint passed into the `diff`/`diffX` functions defined by the document type.
 
 `doc.del([options][, function(err) {...}])`
@@ -329,20 +320,6 @@ Invokes the given callback function after
  * all pending fetch, subscribe, and unsubscribe requests have been resolved.
 
 Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
-
-`doc.canUndo()`
-Return `true`, if there's an operation on the undo stack that can be undone, otherwise `false`.
-
-`doc.undo([options][, function(err) {...}])`
-Undo a previously applied "UNDOABLE" or "REDO" operation.
-* `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
-
-`doc.canRedo()`
-Return `true`, if there's an operation on the redo stack that can be undone, otherwise `false`.
-
-`doc.redo([options][, function(err) {...}])`
-Redo a previously applied "UNDO" operation.
-* `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
 
 ### Class: `ShareDB.Query`
 
@@ -381,6 +358,28 @@ after a sequence of diffs are handled.
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
 
+### Class: `ShareDB.UndoManager`
+
+`undoManager.canUndo()`
+Return `true`, if there's an operation on the undo stack that can be undone, otherwise `false`.
+
+`undoManager.undo([options][, function(err) {...}])`
+Undo a previously applied undoable or redo operation.
+* `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
+
+`undoManager.canRedo()`
+Return `true`, if there's an operation on the redo stack that can be undone, otherwise `false`.
+
+`undoManager.redo([options][, function(err) {...}])`
+Redo a previously applied undo operation.
+* `options.source` Argument passed to the `'op'` event locally. This is not sent to the server or other clients. Defaults to `true`.
+
+`undoManager.clear(doc)`
+Remove operations from the undo and redo stacks.
+* `doc` if specified, only the operations on that doc are removed, otherwise all operations are removed.
+
+`undoManager.destroy()`
+Remove all operations from the undo and redo stacks, and stop recording new operations.
 
 ## Error codes
 

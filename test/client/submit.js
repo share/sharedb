@@ -598,7 +598,7 @@ describe('client submit', function() {
     });
   });
 
-  it('transforming pending op by server delete emits error', function(done) {
+  it('transforming pending op by server delete returns error', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -626,7 +626,7 @@ describe('client submit', function() {
     });
   });
 
-  it('transforming pending op by server create emits error', function(done) {
+  it('transforming pending op by server create returns error', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
@@ -645,6 +645,7 @@ describe('client submit', function() {
             });
             doc.create({age: 9}, function(err) {
               expect(err).ok();
+              expect(err.code).to.equal(4018);
               expect(doc.version).equal(3);
               expect(doc.data).eql({age: 5});
               calledBack = true;

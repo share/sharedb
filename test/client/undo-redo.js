@@ -1223,6 +1223,22 @@ describe('client undo/redo', function() {
     expect(undoManager.canRedo()).to.equal(false);
   });
 
+  it('destroys UndoManager twice', function() {
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
+    this.doc.create({ test: 5 });
+    this.doc.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    this.doc.submitOp([ { p: [ 'test' ], 'na': 2 } ], { undoable: true });
+    undoManager.undo();
+    expect(undoManager.canUndo()).to.equal(true);
+    expect(undoManager.canRedo()).to.equal(true);
+    undoManager.destroy();
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+    undoManager.destroy();
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+  });
+
   describe('UndoManager.clear', function() {
     it('clears the stacks', function() {
       var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
