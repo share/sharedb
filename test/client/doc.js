@@ -1,7 +1,7 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 
-describe('client query subscribe', function() {
+describe('client doc', function() {
 
   beforeEach(function() {
     this.backend = new Backend();
@@ -23,6 +23,39 @@ describe('client query subscribe', function() {
 
     var doc2 = this.connection.get('dogs', 'fido');
     expect(doc).not.equal(doc2);
+  });
+
+  it('calling doc.destroy on subscribed doc unregisters it (no callback)', function() {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+    expect(connection.getExisting('dogs', 'fido')).equal(doc);
+
+    doc.subscribe(function(err) {
+      if (err) return done(err);
+      doc.destroy();
+      doc.whenNothingPending(function() {
+        expect(connection.getExisting('dogs', 'fido')).equal(undefined);
+
+        var doc2 = connection.get('dogs', 'fido');
+        expect(doc).not.equal(doc2);
+      });
+    });
+  });
+
+  it('calling doc.destroy on subscribed doc unregisters it (with callback)', function() {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+    expect(connection.getExisting('dogs', 'fido')).equal(doc);
+
+    doc.subscribe(function(err) {
+      if (err) return done(err);
+      doc.destroy(function() {
+        expect(connection.getExisting('dogs', 'fido')).equal(undefined);
+
+        var doc2 = connection.get('dogs', 'fido');
+        expect(doc).not.equal(doc2);
+      });
+    });
   });
 
   it('getting then destroying then getting returns a new doc object', function() {

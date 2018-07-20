@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>ShareDB Textarea</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
 <style>
 body {
   background: #ddd;
@@ -19,9 +20,14 @@ textarea {
   width: 100%;
   box-sizing: border-box;
 }
+#title {
+  font-size: 24;
+}
 </style>
 
 <div id="container">
+  <h1 id="title">Text Area Example with Reconnecting Websockets</h1>
+  <p>Connection Status: <span id="status-span"></span></p>
   <textarea autofocus></textarea>
 </div>
 
