@@ -846,60 +846,6 @@ describe('client undo/redo', function() {
     expect(this.doc.data).to.equal(11111);
   });
 
-  it('does not skip processing when submitting a no-op by default', function(done) {
-    this.doc.on('op', function() {
-      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
-      done();
-    }.bind(this));
-    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitOp([]);
-  });
-
-  it('does not skip processing when submitting an identical snapshot by default', function(done) {
-    this.doc.on('op', function() {
-      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
-      done();
-    }.bind(this));
-    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ]);
-  });
-
-  it('skips processing when submitting a no-op (no callback)', function(done) {
-    this.doc.on('op', function() {
-      done(new Error('Should not emit `op`'));
-    });
-    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitOp([], { skipNoop: true });
-    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
-    done();
-  });
-
-  it('skips processing when submitting a no-op (with callback)', function(done) {
-    this.doc.on('op', function() {
-      done(new Error('Should not emit `op`'));
-    });
-    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitOp([], { skipNoop: true }, done);
-  });
-
-  it('skips processing when submitting an identical snapshot (no callback)', function(done) {
-    this.doc.on('op', function() {
-      done(new Error('Should not emit `op`'));
-    });
-    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true });
-    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
-    done();
-  });
-
-  it('skips processing when submitting an identical snapshot (with callback)', function(done) {
-    this.doc.on('op', function() {
-      done(new Error('Should not emit `op`'));
-    });
-    this.doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
-    this.doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true }, done);
-  });
-
   describe('fixup operations', function() {
     beforeEach(function() {
       var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
@@ -1409,333 +1355,189 @@ describe('client undo/redo', function() {
     });
   });
 
-  describe('submitSnapshot', function() {
-    describe('basic tests', function() {
-      it('submits a snapshot when document is not created (no callback, no options)', function(done) {
-        this.doc.on('error', function(error) {
-          expect(error).to.be.an(Error);
-          expect(error.code).to.equal(4015);
-          done();
-        });
-        this.doc.submitSnapshot(7);
-      });
+  it('submits snapshots and supports undo and redo', function() {
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
+    this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdefghi') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
+    expect(undoManager.canRedo()).to.equal(false);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
+    expect(undoManager.canUndo()).to.equal(false);
+  });
 
-      it('submits a snapshot when document is not created (no callback, with options)', function(done) {
-        this.doc.on('error', function(error) {
-          expect(error).to.be.an(Error);
-          expect(error.code).to.equal(4015);
-          done();
-        });
-        this.doc.submitSnapshot(7, { source: 'test' });
-      });
+  it('submits snapshots and composes operations', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdefghi') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
+    expect(undoManager.canUndo()).to.equal(false);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
+    expect(undoManager.canRedo()).to.equal(false);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
+    expect(undoManager.canUndo()).to.equal(false);
+  });
 
-      it('submits a snapshot when document is not created (with callback, no options)', function(done) {
-        this.doc.on('error', done);
-        this.doc.submitSnapshot(7, function(error) {
-          expect(error).to.be.an(Error);
-          expect(error.code).to.equal(4015);
-          done();
-        });
-      });
+  it('submits undoable and non-undoable snapshots', function() {
+    var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
+    this.doc.create([], otRichText.type.uri);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('a') ], { undoable: true });
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('ab') ], { undoable: true });
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abc') ], { undoable: true });
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcd') ], { undoable: true });
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcde') ], { undoable: true });
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { undoable: true });
+    undoManager.undo();
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcd') ]);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('abc123d') ]);
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123d') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ab123') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('a123') ]);
+    undoManager.undo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('123') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('a123') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ab123') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123d') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123de') ]);
+    undoManager.redo();
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123def') ]);
+  });
 
-      it('submits a snapshot when document is not created (with callback, with options)', function(done) {
-        this.doc.on('error', done);
-        this.doc.submitSnapshot(7, { source: 'test' }, function(error) {
-          expect(error).to.be.an(Error);
-          expect(error.code).to.equal(4015);
-          done();
-        });
-      });
+  it('submits a snapshot without a diffHint', function() {
+    var undoManager = this.connection.createUndoManager();
+    var opCalled = 0;
+    this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
 
-      it('submits a snapshot with source (no callback)', function(done) {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.on('op', function(op, source) {
-          expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          expect(undoManager.canUndo()).to.equal(false);
-          expect(undoManager.canRedo()).to.equal(false);
-          expect(source).to.equal('test');
-          done();
-        }.bind(this));
-        this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { source: 'test' });
-      });
+    this.doc.once('op', function(op) {
+      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaa') ]);
+      expect(op).to.eql([ otRichText.Action.createDelete(1) ]);
+      opCalled++;
+    }.bind(this));
+    undoManager.undo();
 
-      it('submits a snapshot with source (with callback)', function(done) {
-        var undoManager = this.connection.createUndoManager();
-        var opEmitted = false;
-        this.doc.on('op', function(op, source) {
-          expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          expect(source).to.equal('test');
-          expect(undoManager.canUndo()).to.equal(false);
-          expect(undoManager.canRedo()).to.equal(false);
-          opEmitted = true;
-        }.bind(this));
-        this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { source: 'test' }, function(error) {
-          expect(opEmitted).to.equal(true);
-          done(error);
-        });
-      });
+    this.doc.once('op', function(op) {
+      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
+      expect(op).to.eql([ otRichText.Action.createInsertText('a') ]);
+      opCalled++;
+    }.bind(this));
+    undoManager.redo();
 
-      it('submits a snapshot without source (no callback)', function(done) {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.on('op', function(op, source) {
-          expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          expect(undoManager.canUndo()).to.equal(false);
-          expect(undoManager.canRedo()).to.equal(false);
-          expect(source).to.equal(true);
-          done();
-        }.bind(this));
-        this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ]);
-      });
+    expect(opCalled).to.equal(2);
+  });
 
-      it('submits a snapshot without source (with callback)', function(done) {
-        var undoManager = this.connection.createUndoManager();
-        var opEmitted = false;
-        this.doc.on('op', function(op, source) {
-          expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          expect(source).to.equal(true);
-          expect(undoManager.canUndo()).to.equal(false);
-          expect(undoManager.canRedo()).to.equal(false);
-          opEmitted = true;
-        }.bind(this));
-        this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], function(error) {
-          expect(opEmitted).to.equal(true);
-          done(error);
-        });
-      });
+  it('submits a snapshot with a diffHint', function() {
+    var undoManager = this.connection.createUndoManager();
+    var opCalled = 0;
+    this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
+    this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true, diffHint: 2 });
+    expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
 
-      it('submits snapshots and supports undo and redo', function() {
-        var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
-        this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdefghi') ], { undoable: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(undoManager.canUndo()).to.equal(false);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        expect(undoManager.canRedo()).to.equal(false);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(undoManager.canUndo()).to.equal(false);
-      });
+    this.doc.once('op', function(op) {
+      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaa') ]);
+      expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createDelete(1) ]);
+      opCalled++;
+    }.bind(this));
+    undoManager.undo();
 
-      it('submits snapshots and composes operations', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create([ otRichText.Action.createInsertText('ghi') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('defghi') ], { undoable: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('defghi') ]);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdefghi') ], { undoable: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(undoManager.canUndo()).to.equal(false);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdefghi') ]);
-        expect(undoManager.canRedo()).to.equal(false);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ghi') ]);
-        expect(undoManager.canUndo()).to.equal(false);
-      });
+    this.doc.once('op', function(op) {
+      expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
+      expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createInsertText('a') ]);
+      opCalled++;
+    }.bind(this));
+    undoManager.redo();
 
-      it('submits a snapshot and syncs it', function(done) {
-        this.doc2.on('create', function() {
-          this.doc2.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ]);
-        }.bind(this));
-        this.doc.on('op', function(op, source) {
-          expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
-          expect(source).to.equal(false);
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
-          done();
-        }.bind(this));
-        this.doc2.subscribe();
-        this.doc.subscribe();
-        this.doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
-      });
+    expect(opCalled).to.equal(2);
+  });
 
-      it('submits undoable and fixed operations', function() {
-        var undoManager = this.connection.createUndoManager({ composeInterval: -1 });
-        this.doc.create([], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('a') ], { undoable: true });
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('ab') ], { undoable: true });
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abc') ], { undoable: true });
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcd') ], { undoable: true });
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcde') ], { undoable: true });
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { undoable: true });
-        undoManager.undo();
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abcd') ]);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('abc123d') ]);
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123d') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ab123') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('a123') ]);
-        undoManager.undo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('123') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('a123') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('ab123') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123d') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123de') ]);
-        undoManager.redo();
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('abc123def') ]);
-      });
+  it('submits a snapshot (with diff, non-undoable)', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create(5, invertibleType.typeWithDiff.uri);
+    this.doc.submitSnapshot(7);
+    expect(this.doc.data).to.equal(7);
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+  });
 
-      it('submits a snapshot without a diffHint', function() {
-        var undoManager = this.connection.createUndoManager();
-        var opCalled = 0;
-        this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
+  it('submits a snapshot (with diff, undoable)', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create(5, invertibleType.typeWithDiff.uri);
+    this.doc.submitSnapshot(7, { undoable: true });
+    expect(this.doc.data).to.equal(7);
+    undoManager.undo();
+    expect(this.doc.data).to.equal(5);
+    undoManager.redo();
+    expect(this.doc.data).to.equal(7);
+  });
 
-        this.doc.once('op', function(op) {
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaa') ]);
-          expect(op).to.eql([ otRichText.Action.createDelete(1) ]);
-          opCalled++;
-        }.bind(this));
-        undoManager.undo();
+  it('submits a snapshot (with diffX, non-undoable)', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create(5, invertibleType.typeWithDiffX.uri);
+    this.doc.submitSnapshot(7);
+    expect(this.doc.data).to.equal(7);
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+  });
 
-        this.doc.once('op', function(op) {
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
-          expect(op).to.eql([ otRichText.Action.createInsertText('a') ]);
-          opCalled++;
-        }.bind(this));
-        undoManager.redo();
+  it('submits a snapshot (with diffX, undoable)', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create(5, invertibleType.typeWithDiffX.uri);
+    this.doc.submitSnapshot(7, { undoable: true });
+    expect(this.doc.data).to.equal(7);
+    undoManager.undo();
+    expect(this.doc.data).to.equal(5);
+    undoManager.redo();
+    expect(this.doc.data).to.equal(7);
+  });
 
-        expect(opCalled).to.equal(2);
-      });
+  it('submits a snapshot (with diff and diffX, non-undoable)', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
+    this.doc.submitSnapshot(7);
+    expect(this.doc.data).to.equal(7);
+    expect(undoManager.canUndo()).to.equal(false);
+    expect(undoManager.canRedo()).to.equal(false);
+  });
 
-      it('submits a snapshot with a diffHint', function() {
-        var undoManager = this.connection.createUndoManager();
-        var opCalled = 0;
-        this.doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
-        this.doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { undoable: true, diffHint: 2 });
-        expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
-
-        this.doc.once('op', function(op) {
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaa') ]);
-          expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createDelete(1) ]);
-          opCalled++;
-        }.bind(this));
-        undoManager.undo();
-
-        this.doc.once('op', function(op) {
-          expect(this.doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
-          expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createInsertText('a') ]);
-          opCalled++;
-        }.bind(this));
-        undoManager.redo();
-
-        expect(opCalled).to.equal(2);
-      });
-    });
-
-    describe('no diff nor diffX', function() {
-      it('submits a snapshot (no callback)', function(done) {
-        this.doc.on('error', function(error) {
-          expect(error).to.be.an(Error);
-          expect(error.code).to.equal(4024);
-          done();
-        });
-        this.doc.create(5, invertibleType.type.uri);
-        this.doc.submitSnapshot(7);
-      });
-
-      it('submits a snapshot (with callback)', function(done) {
-        this.doc.on('error', done);
-        this.doc.create(5, invertibleType.type.uri);
-        this.doc.submitSnapshot(7, function(error) {
-          expect(error).to.be.an(Error);
-          expect(error.code).to.equal(4024);
-          done();
-        });
-      });
-    });
-
-    describe('with diff', function () {
-      it('submits a snapshot (non-undoable)', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create(5, invertibleType.typeWithDiff.uri);
-        this.doc.submitSnapshot(7);
-        expect(this.doc.data).to.equal(7);
-        expect(undoManager.canUndo()).to.equal(false);
-        expect(undoManager.canRedo()).to.equal(false);
-      });
-      it('submits a snapshot (undoable)', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create(5, invertibleType.typeWithDiff.uri);
-        this.doc.submitSnapshot(7, { undoable: true });
-        expect(this.doc.data).to.equal(7);
-        undoManager.undo();
-        expect(this.doc.data).to.equal(5);
-        undoManager.redo();
-        expect(this.doc.data).to.equal(7);
-      });
-    });
-
-    describe('with diffX', function () {
-      it('submits a snapshot (non-undoable)', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create(5, invertibleType.typeWithDiffX.uri);
-        this.doc.submitSnapshot(7);
-        expect(this.doc.data).to.equal(7);
-        expect(undoManager.canUndo()).to.equal(false);
-        expect(undoManager.canRedo()).to.equal(false);
-      });
-      it('submits a snapshot (undoable)', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create(5, invertibleType.typeWithDiffX.uri);
-        this.doc.submitSnapshot(7, { undoable: true });
-        expect(this.doc.data).to.equal(7);
-        undoManager.undo();
-        expect(this.doc.data).to.equal(5);
-        undoManager.redo();
-        expect(this.doc.data).to.equal(7);
-      });
-    });
-
-    describe('with diff and diffX', function () {
-      it('submits a snapshot (non-undoable)', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
-        this.doc.submitSnapshot(7);
-        expect(this.doc.data).to.equal(7);
-        expect(undoManager.canUndo()).to.equal(false);
-        expect(undoManager.canRedo()).to.equal(false);
-      });
-      it('submits a snapshot (undoable)', function() {
-        var undoManager = this.connection.createUndoManager();
-        this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
-        this.doc.submitSnapshot(7, { undoable: true });
-        expect(this.doc.data).to.equal(7);
-        undoManager.undo();
-        expect(this.doc.data).to.equal(5);
-        undoManager.redo();
-        expect(this.doc.data).to.equal(7);
-      });
-    });
+  it('submits a snapshot (with diff and diffX, undoable)', function() {
+    var undoManager = this.connection.createUndoManager();
+    this.doc.create(5, invertibleType.typeWithDiffAndDiffX.uri);
+    this.doc.submitSnapshot(7, { undoable: true });
+    expect(this.doc.data).to.equal(7);
+    undoManager.undo();
+    expect(this.doc.data).to.equal(5);
+    undoManager.redo();
+    expect(this.doc.data).to.equal(7);
   });
 });
