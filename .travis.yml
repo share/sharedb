@@ -1,10 +1,8 @@
 language: node_js
 node_js:
   - "10"
-  - "9"
   - "8"
   - "6"
-  - "4"
-script: "npm run jshint && npm run test-cover"
+script: "ln -s .. node_modules/sharedb; npm run jshint && npm run test-cover"
 # Send coverage data to Coveralls
 after_script: "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js"

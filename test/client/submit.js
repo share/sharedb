@@ -2,8 +2,10 @@ var async = require('async');
 var expect = require('expect.js');
 var types = require('../../lib/types');
 var deserializedType = require('./deserialized-type');
+var otRichText = require('@teamwork/ot-rich-text');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
+types.register(otRichText.type);
 
 module.exports = function() {
 describe('client submit', function() {
@@ -608,11 +610,17 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           doc.pause();
+          var calledBack = false;
+          doc.on('error', function() {
+            expect(calledBack).equal(true);
+            done();
+          });
           doc.submitOp({p: ['age'], na: 1}, function(err) {
             expect(err).ok();
+            expect(err.code).to.equal(4017);
             expect(doc.version).equal(2);
             expect(doc.data).eql(undefined);
-            done();
+            calledBack = true;
           });
           doc.fetch();
         });
@@ -632,11 +640,17 @@ describe('client submit', function() {
           doc2.create({age: 5}, function(err) {
             if (err) return done(err);
             doc.pause();
+            var calledBack = false;
+            doc.on('error', function() {
+              expect(calledBack).equal(true);
+              done();
+            });
             doc.create({age: 9}, function(err) {
               expect(err).ok();
+              expect(err.code).to.equal(4018);
               expect(doc.version).equal(3);
               expect(doc.data).eql({age: 5});
-              done();
+              calledBack = true;
             });
             doc.fetch();
           });
@@ -1042,6 +1056,227 @@ describe('client submit', function() {
         done();
       });
     });
+  });
+
+  it('does not skip processing when submitting a no-op by default', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function() {
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
+      done();
+    });
+    doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    doc.submitOp([]);
+  });
+
+  it('does not skip processing when submitting an identical snapshot by default', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function() {
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
+      done();
+    });
+    doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('test') ]);
+  });
+
+  it('skips processing when submitting a no-op (no callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function() {
+      done(new Error('Should not emit `op`'));
+    });
+    doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    doc.submitOp([], { skipNoop: true });
+    expect(doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
+    done();
+  });
+
+  it('skips processing when submitting a no-op (with callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function() {
+      done(new Error('Should not emit `op`'));
+    });
+    doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    doc.submitOp([], { skipNoop: true }, done);
+  });
+
+  it('skips processing when submitting an identical snapshot (no callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function() {
+      done(new Error('Should not emit `op`'));
+    });
+    doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true });
+    expect(doc.data).to.eql([ otRichText.Action.createInsertText('test') ]);
+    done();
+  });
+
+  it('skips processing when submitting an identical snapshot (with callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function() {
+      done(new Error('Should not emit `op`'));
+    });
+    doc.create([ otRichText.Action.createInsertText('test') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('test') ], { skipNoop: true }, done);
+  });
+
+  it('submits a snapshot when document is not created (no callback, no options)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('error', function(error) {
+      expect(error).to.be.an(Error);
+      expect(error.code).to.equal(4015);
+      done();
+    });
+    doc.submitSnapshot(7);
+  });
+
+  it('submits a snapshot when document is not created (no callback, with options)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('error', function(error) {
+      expect(error).to.be.an(Error);
+      expect(error.code).to.equal(4015);
+      done();
+    });
+    doc.submitSnapshot(7, { source: 'test' });
+  });
+
+  it('submits a snapshot when document is not created (with callback, no options)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('error', done);
+    doc.submitSnapshot(7, function(error) {
+      expect(error).to.be.an(Error);
+      expect(error.code).to.equal(4015);
+      done();
+    });
+  });
+
+  it('submits a snapshot when document is not created (with callback, with options)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('error', done);
+    doc.submitSnapshot(7, { source: 'test' }, function(error) {
+      expect(error).to.be.an(Error);
+      expect(error.code).to.equal(4015);
+      done();
+    });
+  });
+
+  it('submits a snapshot with source (no callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function(op, source) {
+      expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
+      expect(source).to.equal('test');
+      done();
+    });
+    doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { source: 'test' });
+  });
+
+  it('submits a snapshot with source (with callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var opEmitted = false;
+    doc.on('op', function(op, source) {
+      expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
+      expect(source).to.equal('test');
+      opEmitted = true;
+    });
+    doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], { source: 'test' }, function(error) {
+      expect(opEmitted).to.equal(true);
+      done(error);
+    });
+  });
+
+  it('submits a snapshot without source (no callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('op', function(op, source) {
+      expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
+      expect(source).to.equal(true);
+      done();
+    });
+    doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ]);
+  });
+
+  it('submits a snapshot without source (with callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var opEmitted = false;
+    doc.on('op', function(op, source) {
+      expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
+      expect(source).to.equal(true);
+      opEmitted = true;
+    });
+    doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
+    doc.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ], function(error) {
+      expect(opEmitted).to.equal(true);
+      done(error);
+    });
+  });
+
+  it('submits a snapshot and syncs it', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    var doc2 = this.backend.connect().get('dogs', 'fido');
+    doc2.on('create', function() {
+      doc2.submitSnapshot([ otRichText.Action.createInsertText('abcdef') ]);
+    });
+    doc.on('op', function(op, source) {
+      expect(op).to.eql([ otRichText.Action.createInsertText('abc') ]);
+      expect(source).to.equal(false);
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('abcdef') ]);
+      done();
+    });
+    doc.subscribe(function(err) {
+      if (err) return done(err);
+      doc2.subscribe(function(err) {
+        if (err) return done(err);
+        doc.create([ otRichText.Action.createInsertText('def') ], otRichText.type.uri);
+      });
+    });
+  });
+
+  it('submits a snapshot (no diff, no diffX, no callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('error', function(error) {
+      expect(error).to.be.an(Error);
+      expect(error.code).to.equal(4024);
+      done();
+    });
+    doc.create({ test: 5 });
+    doc.submitSnapshot({ test: 7 });
+  });
+
+  it('submits a snapshot (no diff, no diffX, with callback)', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.on('error', done);
+    doc.create({ test: 5 });
+    doc.submitSnapshot({ test: 7 }, function(error) {
+      expect(error).to.be.an(Error);
+      expect(error.code).to.equal(4024);
+      done();
+    });
+  });
+
+  it('submits a snapshot without a diffHint', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
+    doc.on('op', function(op) {
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
+      expect(op).to.eql([ otRichText.Action.createInsertText('a') ]);
+      done();
+    });
+    doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ]);
+  });
+
+  it('submits a snapshot with a diffHint', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create([ otRichText.Action.createInsertText('aaaa') ], otRichText.type.uri);
+    doc.on('op', function(op) {
+      expect(doc.data).to.eql([ otRichText.Action.createInsertText('aaaaa') ]);
+      expect(op).to.eql([ otRichText.Action.createRetain(2), otRichText.Action.createInsertText('a') ]);
+      done();
+    });
+    doc.submitSnapshot([ otRichText.Action.createInsertText('aaaaa') ], { diffHint: 2 });
   });
 
   describe('type.deserialize', function() {
