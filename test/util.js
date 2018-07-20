@@ -15,6 +15,12 @@ exports.pluck = function(docs, key) {
   return values;
 };
 
+exports.errorHandler = function(callback) {
+  return function(err) {
+    if (err) callback(err);
+  };
+};
+
 // Wrap a done function to call back only after a specified number of calls.
 // For example, `var callbackAfter = callAfter(1, callback)` means that if
 // `callbackAfter` is called once, it won't call back. If it is called twice

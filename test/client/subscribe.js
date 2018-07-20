@@ -405,20 +405,34 @@ describe('client subscribe', function() {
   });
 
   it('doc destroy stops op updates', function(done) {
-    var doc = this.backend.connect().get('dogs', 'fido');
-    var doc2 = this.backend.connect().get('dogs', 'fido');
+    var connection1 = this.backend.connect();
+    var connection2 = this.backend.connect();
+    var doc = connection1.get('dogs', 'fido');
+    var doc2 = connection2.get('dogs', 'fido');
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       doc2.subscribe(function(err) {
         if (err) return done(err);
         doc2.on('op', function(op, context) {
-          done();
+          done(new Error('Should not get op event'));
         });
         doc2.destroy(function(err) {
           if (err) return done(err);
+          expect(connection2.getExisting('dogs', 'fido')).equal(undefined);
           doc.submitOp({p: ['age'], na: 1}, done);
         });
       });
+    });
+  });
+
+  it('doc destroy removes doc from connection when doc is not subscribed', function(done) {
+    var connection = this.backend.connect();
+    var doc = connection.get('dogs', 'fido');
+    expect(connection.getExisting('dogs', 'fido')).equal(doc);
+    doc.destroy(function(err) {
+      if (err) return done(err);
+      expect(connection.getExisting('dogs', 'fido')).equal(undefined);
+      done();
     });
   });
 

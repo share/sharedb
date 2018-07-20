@@ -19,6 +19,7 @@ tracker](https://github.com/share/sharedb/issues).
 
 - Realtime synchronization of any JSON document
 - Concurrent multi-user collaboration
+- Realtime synchronization of any ephemeral "presence" data
 - Synchronous editing API with asynchronous eventual consistency
 - Realtime query subscriptions
 - Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo), [PostgresQL](https://github.com/share/sharedb-postgres) (experimental)
@@ -72,6 +73,10 @@ submit a *create operation*, which will set the document's type and give it
 initial data. Then you can submit editing operations on the document (using
 OT). Finally you can delete the document with a delete operation. By
 default, ShareDB stores all operations forever - nothing is truly deleted.
+
+## User presence synchronization
+
+Presence data represents a user and is automatically synchronized between all clients subscribed to the same document. Its format is defined by the document's [OT Type](https://github.com/ottypes/docs), for example it may contain a user ID and a cursor position in a text document. All clients can modify their own presence data and receive a read-only version of other client's data. Presence data is automatically cleared when a client unsubscribes from the document or disconnects. It is also automatically transformed against applied operations, so that it still makes sense in the context of a modified document, for example a cursor position may be automatically advanced when a user types at the beginning of a text document.
 
 ## Server API
 
@@ -239,6 +244,9 @@ Unique document ID
 `doc.data` _(Object)_
 Document contents. Available after document is fetched or subscribed to.
 
+`doc.presence` _(Object)_
+Each property under `doc.presence` contains presence data shared by a client subscribed to this document. The property name is an empty string for this client's data and connection IDs for other clients' data.
+
 `doc.fetch(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server.
 
@@ -267,6 +275,9 @@ An operation was applied to the data. `source` will be `false` for ops received 
 
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+
+`doc.on('presence', function(srcList, submitted) {...})`
+Presence data has changed. `srcList` is an Array of `doc.presence` property names for which values have changed. `submitted` is `true`, if the event is the result of new presence data being submitted by the local or remote user, otherwise it is `false` - eg if the presence data was transformed against an operation or was cleared on unsubscribe, disconnect or roll-back.
 
 `doc.on('error', function(err) {...})`
 There was an error fetching the document or applying an operation.
@@ -300,6 +311,11 @@ Invokes the given callback function after
  * all pending fetch, subscribe, and unsubscribe requests have been resolved.
 
 Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
+
+`doc.submitPresence(presenceData[, function(err) {...}])`
+Set local presence data and publish it for other clients.
+`presenceData` structure depends on the document type.
+Presence is synchronized only when subscribed to the document.
 
 ### Class: `ShareDB.Query`
 
@@ -376,6 +392,9 @@ Additional fields may be added to the error object for debugging context dependi
 * 4021 - Invalid client id
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
+* 4024 - OT Type does not support presence
+* 4025 - Not subscribed to document
+* 4026 - Presence data superseded
 
 ### 5000 - Internal error
 
