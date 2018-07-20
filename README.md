@@ -139,7 +139,6 @@ Register a new middleware.
   One of:
   * `'connect'`: A new client connected to the server.
   * `'op'`: An operation was loaded from the database.
-  * `'doc'`: DEPRECATED: A snapshot was loaded from the database. Please use 'readSnapshots'
   * `'readSnapshots'`: Snapshot(s) were loaded from the database for a fetch or subscribe of a query or document
   * `'query'`: A query is about to be sent to the database
   * `'submit'`: An operation is about to be submitted to the database
