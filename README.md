@@ -38,7 +38,7 @@ var socket = new WebSocket('ws://' + window.location.host);
 var connection = new sharedb.Connection(socket);
 ```
 
-The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections. 
+The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections.
 
 The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
 
@@ -227,7 +227,7 @@ changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
 * `options.*`
   All other options are passed through to the database adapter.
 
-`connection.getSnapshot(collection, id, version, callback): void;`
+`connection.fetchSnapshot(collection, id, version, callback): void;`
 Get a read-only snapshot of a document at the requested version.
 
 * `collection` _(String)_
@@ -241,26 +241,12 @@ Get a read-only snapshot of a document at the requested version.
 
   ```javascript
   {
-    collection: string; // collection name of the snapshot
     id: string;         // ID of the snapshot
-    version: number;    // version number of the snapshot
-    timestamp: number;  // the UNIX timestamp of the snapshot
+    v: number;          // version number of the snapshot
     type: any;          // the OT type of the snapshot, or null if it doesn't exist or is deleted
     data: any;          // the snapshot
   }
   ```
-
-`connection.getSnapshotAtTime(collection, id, timestamp, callback): void;`
-Get a read-only snapshot of a document at the requested timestamp.
-
-* `collection` _(String)_
-  Collection name of the snapshot
-* `id` _(String)_
-  ID of the snapshot
-* `timestamp` _(number) [optional]_
-  The timestamp at which you wish to view the snapshot. If an exact timestamp match is not made, then the next lower version is returned. ie if ops were submitted at 02:00 and 03:00, then asking for a Date at 02:30 will return the 02:00 version.
-* `callback` _(Function)_
-  Called with `(error, snapshot)`, where `snapshot` takes the same form as for `getSnapshot` above.
 
 ### Class: `ShareDB.Doc`
 
@@ -411,7 +397,6 @@ Additional fields may be added to the error object for debugging context dependi
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
 * 4024 - Invalid version
-* 4025 - Invalid timestamp
 
 ### 5000 - Internal error
 
