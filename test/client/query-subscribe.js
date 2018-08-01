@@ -413,14 +413,13 @@ describe('client query subscribe', function() {
 
   it('changing a sorted property moves in a subscribed query', function(done) {
     var connection = this.backend.connect();
-    var matchAllDbQuery = this.matchAllDbQuery;
 
     async.parallel([
       function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
       function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
     ], function(err) {
       if (err) return done(err);
-      var dbQuery = getQuery({query: matchAllDbQuery, sort: [['age', 1]]});
+      var dbQuery = getQuery({query: {}, sort: [['age', 1]]});
       var query = connection.createSubscribeQuery(
         'dogs',
         dbQuery,
