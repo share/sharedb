@@ -1,7 +1,5 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
-var StreamSocket = require('../../lib/stream-socket');
-var Connection = require('../../lib/client/connection');
 
 describe('SnapshotRequest', function () {
   var backend;
@@ -210,8 +208,7 @@ describe('SnapshotRequest', function () {
     });
 
     it('can drop its connection and reconnect, and the callback is just called once', function (done) {
-      var socket = new StreamSocket();
-      var connection = backend.connect(new Connection(socket));
+      var connection = backend.connect();
 
       connection.fetchSnapshot('books', 'don-quixote', function (error) {
         if (error) return done(error);
