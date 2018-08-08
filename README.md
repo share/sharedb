@@ -243,7 +243,7 @@ Get a read-only snapshot of a document at the requested version.
   {
     id: string;         // ID of the snapshot
     v: number;          // version number of the snapshot
-    type: any;          // the OT type of the snapshot, or null if it doesn't exist or is deleted
+    type: string;       // the OT type of the snapshot, or null if it doesn't exist or is deleted
     data: any;          // the snapshot
   }
   ```
