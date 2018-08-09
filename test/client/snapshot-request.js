@@ -96,13 +96,13 @@ describe('SnapshotRequest', function () {
       });
     });
 
-    it('fetches the latest version if the version is undefined', function (done) {
-      backend.connect().fetchSnapshot('books', 'don-quixote', undefined, function (error, snapshot) {
-        if (error) return done(error);
-        expect(snapshot).to.eql(v3);
-        done();
+    it('throws if the version is undefined', function () {
+      var fetch = function () {
+        backend.connect().fetchSnapshot('books', 'don-quixote', undefined, function () {});
+      };
+
+      expect(fetch).to.throwError();
       });
-    });
 
     it('fetches the latest version when the optional version is not provided', function (done) {
       backend.connect().fetchSnapshot('books', 'don-quixote', function (error, snapshot) {
@@ -117,15 +117,15 @@ describe('SnapshotRequest', function () {
         backend.connect().fetchSnapshot('books', 'don-quixote');
       };
 
-      expect(fetch).to.throwError("Callback is required");
+      expect(fetch).to.throwError();
     });
 
-    it('returns an empty snapshot if the version is -1', function (done) {
-      backend.connect().fetchSnapshot('books', 'don-quixote', -1, function (error, snapshot) {
-        if (error) return done(error);
-        expect(snapshot).to.eql(v0);
-        done();
-      });
+    it('throws if the version is -1', function () {
+      var fetch = function () {
+        backend.connect().fetchSnapshot('books', 'don-quixote', -1, function () {});
+      };
+
+      expect(fetch).to.throwError();
     });
 
     it('errors if the version is a string', function () {
@@ -133,7 +133,7 @@ describe('SnapshotRequest', function () {
         backend.connect().fetchSnapshot('books', 'don-quixote', 'foo', function () { });
       }
 
-      expect(fetch).to.throwError("version must be an integer");
+      expect(fetch).to.throwError();
     });
 
     it('errors if asking for a version that does not exist', function (done) {
@@ -223,12 +223,7 @@ describe('SnapshotRequest', function () {
       it('triggers the middleware', function (done) {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
           function (request) {
-            expect(request.collection).to.be('books');
-            expect(request.id).to.be('don-quixote');
-            expect(request.v).to.be(3);
-            expect(request.snapshots).to.eql([v3.data]);
-            expect(request.type).to.be('http://sharejs.org/types/JSONv0');
-
+            expect(request.snapshots[0]).to.eql(v3);
             done();
           }
         );
@@ -239,7 +234,7 @@ describe('SnapshotRequest', function () {
       it('can have its snapshot manipulated in the middleware', function (done) {
         backend.middleware[backend.MIDDLEWARE_ACTIONS.readSnapshots] = [
           function (request, callback) {
-            request.snapshots[0].title = 'Alice in Wonderland';
+            request.snapshots[0].data.title = 'Alice in Wonderland';
             callback();
           },
         ];
