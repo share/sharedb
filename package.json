@@ -16,7 +16,8 @@
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.2",
     "jshint": "^2.9.2",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "sinon": "^6.1.5"
   },
   "scripts": {
     "test": "./node_modules/.bin/mocha && npm run jshint",

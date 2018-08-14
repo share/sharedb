@@ -2,6 +2,7 @@ var async = require('async');
 var expect = require('expect.js');
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
+var Snapshot = require('../lib/snapshot');
 
 module.exports = function(options) {
   var create = options.create;
@@ -810,5 +811,327 @@ module.exports = function(options) {
         });
       });
     });
+
+    describe('milestone snapshots', function () {
+      var db;
+      var backend;
+
+      beforeEach(function (done) {
+        var tests = this;
+        this.db.saveMilestoneSnapshot('test-implementation', undefined, function (error) {
+          // Only run this test block if milestone snapshots are implemented on the driver
+          if (error) {
+            if (error.code === 5019) return tests.skip();
+            if (error.code !== 5020) return done(error);
+          }
+          done();
+        });
+      });
+
+      describe('milestone snapshots not enabled (default)', function () {
+        beforeEach(function () {
+          db = this.db;
+          backend = this.backend;
+        });
+
+        it('errors when directly storing milestone snapshots', function (done) {
+          var snapshot = new Snapshot(
+            'catcher-in-the-rye',
+            1,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye' },
+            null
+          );
+
+          db.saveMilestoneSnapshot('books', snapshot, function (error) {
+            expect(error.code).to.be(5020);
+            db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, function (error, retrievedSnapshot) {
+              if (error) return done(error);
+              expect(retrievedSnapshot).to.be(undefined);
+              done();
+            });
+          });
+        });
+
+        it('does not store milestone snapshots on commit', function (done) {
+          var doc = backend.connect().get('books', 'catcher-in-the-rye');
+          doc.create({ title: 'Catcher in the Rye' }, function (error) {
+            if (error) return done(error);
+            db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, function (error, retrievedSnapshot) {
+              expect(retrievedSnapshot).to.be(undefined);
+              done();
+            });
+          });
+        });
+      });
+
+      describe('milestone snapshots enabled for every version', function () {
+        beforeEach(function (done) {
+          var options = {
+            milestoneSnapshots: {
+              enabled: true,
+              interval: 1
+            }
+          };
+
+          create(options, function (err, createdDb) {
+            if (err) return done(err);
+            db = createdDb;
+            backend = new Backend({ db: createdDb });
+            done();
+          });
+        });
+
+        afterEach(function (done) {
+          backend.close(done);
+        });
+
+        it('stores and fetches a milestone snapshot', function (done) {
+          var snapshot = new Snapshot(
+            'catcher-in-the-rye',
+            2,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye' },
+            null
+          );
+
+          db.saveMilestoneSnapshot('books', snapshot, function (error) {
+            if (error) return done(error);
+            db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, function (error, retrievedSnapshot) {
+              if (error) return done(error);
+              expect(retrievedSnapshot).to.eql(snapshot);
+              done();
+            });
+          });
+        });
+
+        it('fetches the most recent snapshot before the requested version', function (done) {
+          var snapshot1 = new Snapshot(
+            'catcher-in-the-rye',
+            1,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye' },
+            null
+          );
+
+          var snapshot2 = new Snapshot(
+            'catcher-in-the-rye',
+            2,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye', author: 'J.D. Salinger' },
+            null
+          );
+
+          var snapshot10 = new Snapshot(
+            'catcher-in-the-rye',
+            10,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye', author: 'J.D. Salinger', publicationDate: '1951-07-16' },
+            null
+          );
+
+          db.saveMilestoneSnapshot('books', snapshot1, function (error) {
+            if (error) return done(error);
+            db.saveMilestoneSnapshot('books', snapshot2, function (error) {
+              if (error) return done(error);
+              db.saveMilestoneSnapshot('books', snapshot10, function (error) {
+                if (error) return done(error);
+                db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, function (error, retrievedSnapshot) {
+                  if (error) return done(error);
+                  expect(retrievedSnapshot).to.eql(snapshot2);
+                  done();
+                });
+              });
+            });
+          });
+        });
+
+        it('fetches the most recent snapshot even if they are inserted in the wrong order', function (done) {
+          var snapshot1 = new Snapshot(
+            'catcher-in-the-rye',
+            1,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye' },
+            null
+          );
+
+          var snapshot2 = new Snapshot(
+            'catcher-in-the-rye',
+            2,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye', author: 'J.D. Salinger' },
+            null
+          );
+
+          db.saveMilestoneSnapshot('books', snapshot2, function (error) {
+            if (error) return done(error);
+            db.saveMilestoneSnapshot('books', snapshot1, function (error) {
+              if (error) return done(error);
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, function (error, retrievedSnapshot) {
+                if (error) return done(error);
+                expect(retrievedSnapshot).to.eql(snapshot2);
+                done();
+              });
+            });
+          });
+        });
+
+        it('fetches the most recent snapshot when the version is null', function (done) {
+          var snapshot1 = new Snapshot(
+            'catcher-in-the-rye',
+            1,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye' },
+            null
+          );
+
+          var snapshot2 = new Snapshot(
+            'catcher-in-the-rye',
+            2,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye', author: 'J.D. Salinger' },
+            null
+          );
+
+          db.saveMilestoneSnapshot('books', snapshot1, function (error) {
+            if (error) return done(error);
+            db.saveMilestoneSnapshot('books', snapshot2, function (error) {
+              if (error) return done(error);
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, function (error, retrievedSnapshot) {
+                if (error) return done(error);
+                expect(retrievedSnapshot).to.eql(snapshot2);
+                done();
+              });
+            });
+          });
+        });
+
+        it('returns undefined if no snapshot exists', function (done) {
+          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, function (error, retrievedSnapshot) {
+            if (error) return done(error);
+            expect(retrievedSnapshot).to.be(undefined);
+            done();
+          });
+        });
+
+        it('stores a milestone snapshot on commit', function (done) {
+          var doc = backend.connect().get('books', 'catcher-in-the-rye');
+          doc.create({ title: 'Catcher in the Rye' }, function (error) {
+            if (error) return done(error);
+            db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, function (error, retrievedSnapshot) {
+              if (error) return done(error);
+              expect(retrievedSnapshot.id).to.eql('catcher-in-the-rye');
+              expect(retrievedSnapshot.v).to.eql(1);
+              expect(retrievedSnapshot.type).to.eql('http://sharejs.org/types/JSONv0');
+              expect(retrievedSnapshot.data).to.eql({ title: 'Catcher in the Rye' });
+              expect(retrievedSnapshot.m).to.be.ok;
+              done();
+            });
+          });
+        });
+
+        it('does not error when trying to save an undefined snapshot', function (done) {
+          db.saveMilestoneSnapshot('books', undefined, done);
+        });
+      });
+
+      describe('milestone snapshots enabled for every other version', function () {
+        beforeEach(function (done) {
+          var options = {
+            milestoneSnapshots: {
+              enabled: true,
+              interval: 2
+            }
+          };
+
+          create(options, function (err, createdDb) {
+            if (err) return done(err);
+            db = createdDb;
+            backend = new Backend({ db: createdDb });
+            done();
+          });
+        });
+
+        afterEach(function (done) {
+          backend.close(done);
+        });
+
+        it('only stores even-numbered versions', function (done) {
+          var doc = backend.connect().get('books', 'catcher-in-the-rye');
+
+          callInSeries([
+            function (next) {
+              doc.create({ title: 'Catcher in the Rye' }, next);
+            },
+            function (next) {
+              doc.submitOp({ p: ['author'], oi: 'J.F.Salinger' }, next);
+            },
+            function (next) {
+              doc.submitOp({ p: ['author'], od: 'J.F.Salinger', oi: 'J.D.Salinger' }, next);
+            },
+            function (next) {
+              doc.submitOp({ p: ['author'], od: 'J.D.Salinger', oi: 'J.D. Salinger' }, next);
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, function (error, retrievedSnapshot) {
+                if (error) return done(error);
+                expect(retrievedSnapshot).to.be(undefined);
+                next();
+              });
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, function (error, retrievedSnapshot) {
+                if (error) return done(error);
+                expect(retrievedSnapshot.v).to.be(2);
+                next();
+              });
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 3, function (error, retrievedSnapshot) {
+                if (error) return done(error);
+                expect(retrievedSnapshot.v).to.be(2);
+                next();
+              });
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, function (error, retrievedSnapshot) {
+                if (error) return done(error);
+                expect(retrievedSnapshot.v).to.be(4);
+                next();
+              });
+            }
+          ], done);
+        });
+
+        it('can directly store an odd-numbered version', function (done) {
+          var snapshot = new Snapshot(
+            'catcher-in-the-rye',
+            1,
+            'http://sharejs.org/types/JSONv0',
+            { title: 'Catcher in the Rye' },
+            null
+          );
+
+          db.saveMilestoneSnapshot('books', snapshot, function (error) {
+            if (error) return done(error);
+            db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, function (error, retrievedSnapshot) {
+              if (error) return done(error);
+              expect(retrievedSnapshot).to.eql(snapshot);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    function callInSeries(callbacks, done) {
+      if (!callbacks.length) return done();
+      var callback = callbacks.shift();
+      callback(function (error) {
+        if (error) return done(error);
+        callInSeries(callbacks, done);
+      });
+    }
+
   });
 };
