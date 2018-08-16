@@ -1,7 +1,9 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
-var MemoryDB = require('../../lib/db/memory');
+var MemoryDb = require('../../lib/db/memory');
+var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
 var sinon = require('sinon');
+var util = require('../util');
 
 describe('SnapshotRequest', function () {
   var backend;
@@ -357,51 +359,46 @@ describe('SnapshotRequest', function () {
   });
 
   describe('milestone snapshots enabled for every other version', function () {
+    var milestoneDb;
     var db;
 
-    beforeEach(function (done) {
-      var options = {
-        milestoneSnapshots: {
-          enabled: true,
-          interval: 2
-        }
-      };
-      db = new MemoryDB(options);
-      backend = new Backend({ db: db });
-
-      var tests = this;
-      db.saveMilestoneSnapshot('test-implementation', undefined, function (error) {
-        // Only run this test block if milestone snapshots are implemented on the driver
-        if (error) {
-          if (error.code === 5019) return tests.skip();
-          if (error.code !== 5020) return done(error);
-        }
-        done();
+    beforeEach(function () {
+      var options = { interval: 2 };
+      db = new MemoryDb();
+      milestoneDb = new MemoryMilestoneDb(options);
+      backend = new Backend({
+        db: db,
+        milestoneDb: milestoneDb
       });
     });
 
     it('fetches a snapshot using the milestone', function (done) {
       var doc = backend.connect().get('books', 'mocking-bird');
-      doc.create({ title: 'To Kill a Mocking Bird' }, function (error) {
-        if (error) return done(error);
-        doc.submitOp({ p: ['author'], oi: 'Harper Lea' }, function (error) {
-          if (error) return done(error);
-          doc.submitOp({ p: ['author'], od: 'Harper Lea', oi: 'Harper Lee' }, function (error) {
-            if (error) return done(error);
-            sinon.spy(db, 'getMilestoneSnapshot');
-            sinon.spy(db, 'getOps');
-            backend.connect().fetchSnapshot('books', 'mocking-bird', 3, function (error, snapshot) {
-              if (error) return done(error);
-              expect(db.getMilestoneSnapshot.calledOnce).to.be(true);
-              expect(db.getOps.calledWith('books', 'mocking-bird', 2, 3)).to.be(true);
 
-              expect(snapshot.v).to.be(3);
-              expect(snapshot.data).to.eql({ title: 'To Kill a Mocking Bird', author: 'Harper Lee' });
-              done();
-            });
-          });
-        });
-      });
+      util.callInSeries([
+        function (next) {
+          doc.create({ title: 'To Kill a Mocking Bird' }, next);
+        },
+        function (next) {
+          doc.submitOp({ p: ['author'], oi: 'Harper Lea' }, next);
+        },
+        function (next) {
+          doc.submitOp({ p: ['author'], od: 'Harper Lea', oi: 'Harper Lee' }, next);
+        },
+        function (next) {
+          sinon.spy(milestoneDb, 'getMilestoneSnapshot');
+          sinon.spy(db, 'getOps');
+          backend.connect().fetchSnapshot('books', 'mocking-bird', 3, next);
+        },
+        function (snapshot, next) {
+          expect(milestoneDb.getMilestoneSnapshot.calledOnce).to.be(true);
+          expect(db.getOps.calledWith('books', 'mocking-bird', 2, 3)).to.be(true);
+          expect(snapshot.v).to.be(3);
+          expect(snapshot.data).to.eql({ title: 'To Kill a Mocking Bird', author: 'Harper Lee' });
+          next();
+        },
+        done
+      ]);
     });
   });
 });
