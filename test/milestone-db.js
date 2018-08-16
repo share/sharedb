@@ -367,6 +367,66 @@ module.exports = function (options) {
           }
         ]);
       });
+
+      it('can have the saving logic overridden in middleware', function (done) {
+        backend.use('commit', function (request, callback) {
+          request.saveMilestoneSnapshot = request.snapshot.v >= 3;
+          callback();
+        });
+
+        db.on('save', function (saved, collection, snapshot) {
+          if (snapshot.v !== 4) return;
+
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.be(undefined);
+              next();
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.be(undefined);
+              next();
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 3, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot.v).to.be(3);
+              next();
+            },
+            function (next) {
+              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot.v).to.be(4);
+              next();
+            },
+            done
+          ]);
+        });
+
+        var doc = backend.connect().get('books', 'catcher-in-the-rye');
+
+        util.callInSeries([
+          function (next) {
+            doc.create({ title: 'Catcher in the Rye' }, next);
+          },
+          function (next) {
+            doc.submitOp({ p: ['author'], oi: 'J.F.Salinger' }, next);
+          },
+          function (next) {
+            doc.submitOp({ p: ['author'], od: 'J.F.Salinger', oi: 'J.D.Salinger' }, next);
+          },
+          function (next) {
+            doc.submitOp({ p: ['author'], od: 'J.D.Salinger', oi: 'J.D. Salinger' }, next);
+          }
+        ]);
+      });
     });
   });
 };
