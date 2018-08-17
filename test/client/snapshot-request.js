@@ -1,5 +1,9 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
+var MemoryDb = require('../../lib/db/memory');
+var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
+var sinon = require('sinon');
+var util = require('../util');
 
 describe('SnapshotRequest', function () {
   var backend;
@@ -351,6 +355,50 @@ describe('SnapshotRequest', function () {
 
         done();
       });
+    });
+  });
+
+  describe('milestone snapshots enabled for every other version', function () {
+    var milestoneDb;
+    var db;
+
+    beforeEach(function () {
+      var options = { interval: 2 };
+      db = new MemoryDb();
+      milestoneDb = new MemoryMilestoneDb(options);
+      backend = new Backend({
+        db: db,
+        milestoneDb: milestoneDb
+      });
+    });
+
+    it('fetches a snapshot using the milestone', function (done) {
+      var doc = backend.connect().get('books', 'mocking-bird');
+
+      util.callInSeries([
+        function (next) {
+          doc.create({ title: 'To Kill a Mocking Bird' }, next);
+        },
+        function (next) {
+          doc.submitOp({ p: ['author'], oi: 'Harper Lea' }, next);
+        },
+        function (next) {
+          doc.submitOp({ p: ['author'], od: 'Harper Lea', oi: 'Harper Lee' }, next);
+        },
+        function (next) {
+          sinon.spy(milestoneDb, 'getMilestoneSnapshot');
+          sinon.spy(db, 'getOps');
+          backend.connect().fetchSnapshot('books', 'mocking-bird', 3, next);
+        },
+        function (snapshot, next) {
+          expect(milestoneDb.getMilestoneSnapshot.calledOnce).to.be(true);
+          expect(db.getOps.calledWith('books', 'mocking-bird', 2, 3)).to.be(true);
+          expect(snapshot.v).to.be(3);
+          expect(snapshot.data).to.eql({ title: 'To Kill a Mocking Bird', author: 'Harper Lee' });
+          next();
+        },
+        done
+      ]);
     });
   });
 });

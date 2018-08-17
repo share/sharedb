@@ -119,8 +119,12 @@ function snapshotComparator(sortProperties) {
 
 // Run all the DB-based tests against the BasicQueryableMemoryDB.
 require('./db')({
-  create: function(callback) {
-    var db = new BasicQueryableMemoryDB();
+  create: function(options, callback) {
+    if (typeof options === 'function') {
+      callback = options;
+      options = null;
+    }
+    var db = new BasicQueryableMemoryDB(options);
     callback(null, db);
   },
   getQuery: function(options) {
