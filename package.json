@@ -17,7 +17,8 @@
     "istanbul": "^0.4.2",
     "jshint": "^2.9.2",
     "mocha": "^5.2.0",
-    "sinon": "^6.1.5"
+    "sinon": "^6.1.5",
+    "yarn": "^1.9.4"
   },
   "scripts": {
     "test": "./node_modules/.bin/mocha && npm run jshint",
