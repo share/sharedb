@@ -253,6 +253,84 @@ module.exports = function (options) {
       ]);
     });
 
+    it('fetches the most recent snapshot when the version is undefined', function (done) {
+      var snapshot1 = new Snapshot(
+        'catcher-in-the-rye',
+        1,
+        'http://sharejs.org/types/JSONv0',
+        { title: 'Catcher in the Rye' },
+        null
+      );
+
+      var snapshot2 = new Snapshot(
+        'catcher-in-the-rye',
+        2,
+        'http://sharejs.org/types/JSONv0',
+        { title: 'Catcher in the Rye', author: 'J.D. Salinger' },
+        null
+      );
+
+      util.callInSeries([
+        function (next) {
+          db.saveMilestoneSnapshot('books', snapshot1, next);
+        },
+        function (next) {
+          db.saveMilestoneSnapshot('books', snapshot2, next);
+        },
+        function (next) {
+          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, next);
+        },
+        function (snapshot, next) {
+          expect(snapshot).to.eql(snapshot2);
+          next();
+        },
+        done
+      ]);
+    });
+
+    it('errors when fetching version -1', function (done) {
+      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', -1, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching version "foo"', function (done) {
+      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 'foo', function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching a null collection', function (done) {
+      db.getMilestoneSnapshot(null, 'catcher-in-the-rye', 1, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching a null ID', function (done) {
+      db.getMilestoneSnapshot('books', null, 1, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when saving a null collection', function (done) {
+      var snapshot = new Snapshot(
+        'catcher-in-the-rye',
+        1,
+        'http://sharejs.org/types/JSONv0',
+        { title: 'Catcher in the Rye' },
+        null
+      );
+
+      db.saveMilestoneSnapshot(null, snapshot, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
     it('returns undefined if no snapshot exists', function (done) {
       util.callInSeries([
         function (next) {
@@ -303,7 +381,7 @@ module.exports = function (options) {
 
     it('errors when the snapshot is undefined', function (done) {
       db.saveMilestoneSnapshot('books', undefined, function (error) {
-        expect(error).to.be.ok;
+        expect(error).to.be.ok();
         done();
       });
     });
