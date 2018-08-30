@@ -214,13 +214,34 @@ describe('SnapshotRequest', function () {
     it('can drop its connection and reconnect, and the callback is just called once', function (done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshot('books', 'don-quixote', function (error) {
-        if (error) return done(error);
-        done();
+      var connectionInterrupted = false;
+      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function (request, callback) {
+        if (!connectionInterrupted) {
+          connection.close();
+          backend.connect(connection);
+          connectionInterrupted = true;
+        }
+
+        callback();
       });
 
-      connection.close();
-      backend.connect(connection);
+      connection.fetchSnapshot('books', 'don-quixote', done);
+    });
+
+    it('cannot send the same request twice over a connection', function (done) {
+      var connection = backend.connect();
+
+      var hasResent = false;
+      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function (request, callback) {
+        if (!hasResent) {
+          connection._snapshotRequests[1]._onConnectionStateChanged();
+          hasResent = true;
+        }
+
+        callback();
+      });
+
+      connection.fetchSnapshot('books', 'don-quixote', done);
     });
 
     describe('readSnapshots middleware', function () {
