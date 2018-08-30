@@ -253,39 +253,11 @@ module.exports = function (options) {
       ]);
     });
 
-    it('fetches the most recent snapshot when the version is undefined', function (done) {
-      var snapshot1 = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        { title: 'Catcher in the Rye' },
-        null
-      );
-
-      var snapshot2 = new Snapshot(
-        'catcher-in-the-rye',
-        2,
-        'http://sharejs.org/types/JSONv0',
-        { title: 'Catcher in the Rye', author: 'J.D. Salinger' },
-        null
-      );
-
-      util.callInSeries([
-        function (next) {
-          db.saveMilestoneSnapshot('books', snapshot1, next);
-        },
-        function (next) {
-          db.saveMilestoneSnapshot('books', snapshot2, next);
-        },
-        function (next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, next);
-        },
-        function (snapshot, next) {
-          expect(snapshot).to.eql(snapshot2);
-          next();
-        },
-        done
-      ]);
+    it('errors when fetching an undefined version', function (done) {
+      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
     });
 
     it('errors when fetching version -1', function (done) {
