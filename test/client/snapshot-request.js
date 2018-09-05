@@ -228,11 +228,12 @@ describe('SnapshotRequest', function () {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
           function (request) {
             expect(request.snapshots[0]).to.eql(v3);
+            expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.byVersion);
             done();
           }
         );
 
-        backend.connect().fetchSnapshot('books', 'don-quixote', function () { });
+        backend.connect().fetchSnapshot('books', 'don-quixote', 3, function () { });
       });
 
       it('can have its snapshot manipulated in the middleware', function (done) {
