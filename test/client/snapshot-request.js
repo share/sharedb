@@ -228,7 +228,7 @@ describe('SnapshotRequest', function () {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
           function (request) {
             expect(request.snapshots[0]).to.eql(v3);
-            expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.historical);
+            expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.byVersion);
             done();
           }
         );
