@@ -420,3 +420,5 @@ The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the
 * 5016 - _unsubscribe PubSub method unimplemented
 * 5017 - _publish PubSub method unimplemented
 * 5018 - Required QueryEmitter listener not assigned
+* 5019 - getMilestoneSnapshot MilestoneDB method unimplemented
+* 5020 - saveMilestoneSnapshot MilestoneDB method unimplemented

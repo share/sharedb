@@ -1,8 +1,89 @@
 var expect = require('expect.js');
 var Backend = require('../lib/backend');
 var MilestoneDB = require('../lib/milestone-db');
+var NoOpMilestoneDB = require('../lib/milestone-db/no-op');
 var Snapshot = require('../lib/snapshot');
 var util = require('./util');
+
+describe('Base class', function () {
+  var db;
+
+  beforeEach(function () {
+    db = new MilestoneDB();
+  });
+
+  it('calls back with an error when trying to get a snapshot', function (done) {
+    db.getMilestoneSnapshot('books', '123', 1, function (error) {
+      expect(error.code).to.be(5019);
+      done();
+    });
+  });
+
+  it('emits an error when trying to get a snapshot', function (done) {
+    db.on('error', function (error) {
+      expect(error.code).to.be(5019);
+      done();
+    });
+
+    db.getMilestoneSnapshot('books', '123', 1);
+  });
+
+  it('calls back with an error when trying to save a snapshot', function (done) {
+    db.saveMilestoneSnapshot('books', {}, function (error) {
+      expect(error.code).to.be(5020);
+      done();
+    });
+  });
+
+  it('emits an error when trying to save a snapshot', function (done) {
+    db.on('error', function (error) {
+      expect(error.code).to.be(5020);
+      done();
+    });
+
+    db.saveMilestoneSnapshot('books', {});
+  });
+});
+
+describe('NoOpMilestoneDB', function () {
+  var db;
+
+  beforeEach(function () {
+    db = new NoOpMilestoneDB();
+  });
+
+  it('does not error when trying to save and fetch a snapshot', function (done) {
+    var snapshot = new Snapshot(
+      'catcher-in-the-rye',
+      2,
+      'http://sharejs.org/types/JSONv0',
+      { title: 'Catcher in the Rye' },
+      null
+    );
+
+    util.callInSeries([
+      function (next) {
+        db.saveMilestoneSnapshot('books', snapshot, next);
+      },
+      function (next) {
+        db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, next);
+      },
+      function (snapshot, next) {
+        expect(snapshot).to.be(undefined);
+        next();
+      },
+      done
+    ]);
+  });
+
+  it('emits an event when saving without a callback', function (done) {
+    db.on('save', function () {
+      done();
+    });
+
+    db.saveMilestoneSnapshot('books', undefined);
+  });
+});
 
 module.exports = function (options) {
   var create = options.create;
@@ -22,47 +103,6 @@ module.exports = function (options) {
 
     afterEach(function (done) {
       db.close(done);
-    });
-
-    describe('base class', function () {
-      beforeEach(function () {
-        db = new MilestoneDB();
-        backend = new Backend({ milestoneDb: db });
-      });
-
-      it('does not error when trying to save and fetch a snapshot', function (done) {
-        var snapshot = new Snapshot(
-          'catcher-in-the-rye',
-          2,
-          'http://sharejs.org/types/JSONv0',
-          { title: 'Catcher in the Rye' },
-          null
-        );
-
-        util.callInSeries([
-          function (next) {
-            db.saveMilestoneSnapshot('books', snapshot, next);
-          },
-          function (wasSaved, next) {
-            expect(wasSaved).to.be(false);
-            db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, next);
-          },
-          function (snapshot, next) {
-            expect(snapshot).to.be(undefined);
-            next();
-          },
-          done
-        ]);
-      });
-
-      it('emits an event when saving without a callback', function (done) {
-        db.on('save', function (saved) {
-          expect(saved).to.be(false);
-          done();
-        });
-
-        db.saveMilestoneSnapshot('books', undefined);
-      });
     });
 
     it('can call close() without a callback', function (done) {
@@ -86,8 +126,7 @@ module.exports = function (options) {
         function (next) {
           db.saveMilestoneSnapshot('books', snapshot, next);
         },
-        function (wasSaved, next) {
-          expect(wasSaved).to.be(true);
+        function (next) {
           db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, next);
         },
         function (retrievedSnapshot, next) {
@@ -127,13 +166,13 @@ module.exports = function (options) {
         function (next) {
           db.saveMilestoneSnapshot('books', snapshot1, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.saveMilestoneSnapshot('books', snapshot2, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.saveMilestoneSnapshot('books', snapshot10, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
         },
         function (snapshot, next) {
@@ -165,10 +204,10 @@ module.exports = function (options) {
         function (next) {
           db.saveMilestoneSnapshot('books', snapshot2, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.saveMilestoneSnapshot('books', snapshot1, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
         },
         function (snapshot, next) {
@@ -200,10 +239,10 @@ module.exports = function (options) {
         function (next) {
           db.saveMilestoneSnapshot('books', snapshot1, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.saveMilestoneSnapshot('books', snapshot2, next);
         },
-        function (wasSaved, next) {
+        function (next) {
           db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, next);
         },
         function (snapshot, next) {
@@ -212,6 +251,56 @@ module.exports = function (options) {
         },
         done
       ]);
+    });
+
+    it('errors when fetching an undefined version', function (done) {
+      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching version -1', function (done) {
+      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', -1, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching version "foo"', function (done) {
+      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 'foo', function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching a null collection', function (done) {
+      db.getMilestoneSnapshot(null, 'catcher-in-the-rye', 1, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when fetching a null ID', function (done) {
+      db.getMilestoneSnapshot('books', null, 1, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
+    });
+
+    it('errors when saving a null collection', function (done) {
+      var snapshot = new Snapshot(
+        'catcher-in-the-rye',
+        1,
+        'http://sharejs.org/types/JSONv0',
+        { title: 'Catcher in the Rye' },
+        null
+      );
+
+      db.saveMilestoneSnapshot(null, snapshot, function (error) {
+        expect(error).to.be.ok();
+        done();
+      });
     });
 
     it('returns undefined if no snapshot exists', function (done) {
@@ -253,8 +342,7 @@ module.exports = function (options) {
         null
       );
 
-      db.on('save', function (saved, collection, snapshot) {
-        expect(saved).to.be(true);
+      db.on('save', function (collection, snapshot) {
         expect(collection).to.be('books');
         expect(snapshot).to.eql(snapshot);
         done();
@@ -263,17 +351,11 @@ module.exports = function (options) {
       db.saveMilestoneSnapshot('books', snapshot);
     });
 
-    it('does not error when the snapshot is undefined', function (done) {
-      db.saveMilestoneSnapshot('books', undefined, done);
-    });
-
-    it('emits an event when a snapshot does not save', function (done) {
-      db.on('save', function (saved) {
-        expect(saved).to.be(false);
+    it('errors when the snapshot is undefined', function (done) {
+      db.saveMilestoneSnapshot('books', undefined, function (error) {
+        expect(error).to.be.ok();
         done();
       });
-
-      db.saveMilestoneSnapshot('books', undefined);
     });
 
     describe('milestones enabled for every version', function () {
@@ -289,8 +371,7 @@ module.exports = function (options) {
       });
 
       it('stores a milestone snapshot on commit', function (done) {
-        db.on('save', function (saved, collection, snapshot) {
-          expect(saved).to.be(true);
+        db.on('save', function (collection, snapshot) {
           expect(collection).to.be('books');
           expect(snapshot.data).to.eql({ title: 'Catcher in the Rye' });
           done();
@@ -314,7 +395,7 @@ module.exports = function (options) {
       });
 
       it('only stores even-numbered versions', function (done) {
-        db.on('save', function (saved, collection, snapshot) {
+        db.on('save', function (collection, snapshot) {
           if (snapshot.v !== 4) return;
 
           util.callInSeries([
@@ -374,7 +455,7 @@ module.exports = function (options) {
           callback();
         });
 
-        db.on('save', function (saved, collection, snapshot) {
+        db.on('save', function (collection, snapshot) {
           if (snapshot.v !== 4) return;
 
           util.callInSeries([
