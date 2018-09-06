@@ -214,13 +214,50 @@ describe('SnapshotRequest', function () {
     it('can drop its connection and reconnect, and the callback is just called once', function (done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshot('books', 'don-quixote', function (error) {
-        if (error) return done(error);
-        done();
+      // Here we hook into middleware to make sure that we get the following flow:
+      // - Connection established
+      // - Connection attempts to fetch a snapshot
+      // - Snapshot is about to be returned
+      // - Connection is dropped before the snapshot is returned
+      // - Connection is re-established
+      // - Connection re-requests the snapshot
+      // - This time the fetch operation is allowed to complete (because of the connectionInterrupted flag)
+      // - The done callback is called just once (if it's called twice, then mocha will complain)
+      var connectionInterrupted = false;
+      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function (request, callback) {
+        if (!connectionInterrupted) {
+          connection.close();
+          backend.connect(connection);
+          connectionInterrupted = true;
+        }
+
+        callback();
       });
 
-      connection.close();
-      backend.connect(connection);
+      connection.fetchSnapshot('books', 'don-quixote', done);
+    });
+
+    it('cannot send the same request twice over a connection', function (done) {
+      var connection = backend.connect();
+
+      // Here we hook into the middleware to make sure that we get the following flow:
+      // - Attempt to fetch a snapshot
+      // - The snapshot request is temporarily stored on the Connection
+      // - Snapshot is about to be returned (ie the request was already successfully sent)
+      // - We attempt to resend the request again
+      // - The done callback is call just once, because the second request does not get sent
+      //   (if the done callback is called twice, then mocha will complain)
+      var hasResent = false;
+      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function (request, callback) {
+        if (!hasResent) {
+          connection._snapshotRequests[1]._onConnectionStateChanged();
+          hasResent = true;
+        }
+
+        callback();
+      });
+
+      connection.fetchSnapshot('books', 'don-quixote', done);
     });
 
     describe('readSnapshots middleware', function () {
