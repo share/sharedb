@@ -279,11 +279,17 @@ same time as callbacks to `fetch` and `subscribe`.
 `doc.on('create', function(source) {...})`
 The document was created. Technically, this means it has a type. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
+`doc.on('before op batch'), function() {...})`
+An operation batch is about to be applied to the data. For each partial operation a pair of `before op` and `op` events will be emitted after this event.
+
 `doc.on('before op'), function(op, source) {...})`
 An operation is about to be applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
 `doc.on('op', function(op, source) {...})`
 An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+
+`doc.on('after op batch'), function() {...})`
+An operation batch was applied to the data.
 
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
