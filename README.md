@@ -187,6 +187,25 @@ Note that only the [JSON0 OT type](https://github.com/ottypes/json0) is supporte
 `share.close(callback)`
 Closes connections to the database and pub/sub adapters.
 
+### Logging
+
+ShareDB logs some errors and warnings, which can be useful for debugging. By default, the log level is set to `warn`. This can be configured through the `logLevel` constructor argument, which can be set to any of the following:
+
+  - `silent`
+  - `trace`
+  - `debug`
+  - `info`
+  - `warn` (default)
+  - `error`
+
+For example, the following will disable anything except errors:
+
+```js
+var share = new Backend({
+  logLevel: 'error',
+});
+```
+
 ## Client API
 
 The client API can be used from either Node or a browser. First, get a `ShareDB.Connection` object by connecting to the ShareDB server instance:
@@ -357,6 +376,24 @@ after a sequence of diffs are handled.
 
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
+
+### Logging
+
+ShareDB logs some errors and warnings, which can be useful for debugging. By default, the log level is set to `warn`. This can be configured through the `logLevel` constructor argument, which can be set to any of the following:
+
+  - `silent`
+  - `trace`
+  - `debug`
+  - `info`
+  - `warn` (default)
+  - `error`
+
+For example, the following will disable everything except errors:
+
+```js
+var Client = require('sharedb/lib/client');
+Client.setLogLevel('error');
+```
 
 
 ## Error codes
