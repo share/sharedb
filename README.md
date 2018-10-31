@@ -42,7 +42,7 @@ The native Websocket object that you feed to ShareDB's `Connection` constructor 
 
 The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
 
-In the "textarea" example we show this off using a Reconnecting Websocket implementation from [https://github.com/pladaria/reconnecting-websocket](reconnecting-websocket).
+In the "textarea" example we show this off using a Reconnecting Websocket implementation from [reconnecting-websocket](https://github.com/pladaria/reconnecting-websocket).
 
 
 
