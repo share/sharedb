@@ -26,9 +26,25 @@ tracker](https://github.com/share/sharedb/issues).
 - Projections to select desired fields from documents and operations
 - Middleware for implementing access control and custom extensions
 - Ideal for use in browsers or on the server
-- Reconnection of document and query subscriptions
 - Offline change syncing upon reconnection
 - In-memory implementations of database and pub/sub for unit testing
+
+### Reconnection
+
+**TLDR**
+```javascript
+const WebSocket = require('reconnecting-websocket');
+var socket = new WebSocket('ws://' + window.location.host);
+var connection = new sharedb.Connection(socket);
+```
+
+The native Websocket object that you feed to ShareDB's `Connection` constructor **does not** handle reconnections.
+
+The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
+
+In the "textarea" example we show this off using a Reconnecting Websocket implementation from [reconnecting-websocket](https://github.com/pladaria/reconnecting-websocket).
+
+
 
 ## Example apps
 
@@ -123,7 +139,6 @@ Register a new middleware.
   One of:
   * `'connect'`: A new client connected to the server.
   * `'op'`: An operation was loaded from the database.
-  * `'doc'`: DEPRECATED: A snapshot was loaded from the database. Please use 'readSnapshots'
   * `'readSnapshots'`: Snapshot(s) were loaded from the database for a fetch or subscribe of a query or document
   * `'query'`: A query is about to be sent to the database
   * `'submit'`: An operation is about to be submitted to the database
@@ -211,6 +226,27 @@ changes. Returns a [`ShareDB.Query`](#class-sharedbquery) instance.
   Prior query results if available, such as from server rendering.
 * `options.*`
   All other options are passed through to the database adapter.
+
+`connection.fetchSnapshot(collection, id, version, callback): void;`
+Get a read-only snapshot of a document at the requested version.
+
+* `collection` _(String)_
+  Collection name of the snapshot
+* `id` _(String)_
+  ID of the snapshot
+* `version` _(number) [optional]_
+  The version number of the desired snapshot
+* `callback` _(Function)_
+  Called with `(error, snapshot)`, where `snapshot` takes the following form:
+
+  ```javascript
+  {
+    id: string;         // ID of the snapshot
+    v: number;          // version number of the snapshot
+    type: string;       // the OT type of the snapshot, or null if it doesn't exist or is deleted
+    data: any;          // the snapshot
+  }
+  ```
 
 ### Class: `ShareDB.Doc`
 
@@ -360,6 +396,7 @@ Additional fields may be added to the error object for debugging context dependi
 * 4021 - Invalid client id
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
+* 4024 - Invalid version
 
 ### 5000 - Internal error
 
@@ -383,3 +420,5 @@ The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the
 * 5016 - _unsubscribe PubSub method unimplemented
 * 5017 - _publish PubSub method unimplemented
 * 5018 - Required QueryEmitter listener not assigned
+* 5019 - getMilestoneSnapshot MilestoneDB method unimplemented
+* 5020 - saveMilestoneSnapshot MilestoneDB method unimplemented

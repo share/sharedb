@@ -2,6 +2,7 @@ var async = require('async');
 var expect = require('expect.js');
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
+var Snapshot = require('../lib/snapshot');
 
 module.exports = function(options) {
   var create = options.create;
@@ -229,7 +230,7 @@ module.exports = function(options) {
       it('getSnapshot returns v0 snapshot', function(done) {
         this.db.getSnapshot('testcollection', 'test', null, null, function(err, result) {
           if (err) return done(err);
-          expect(result).eql({id: 'test', type: null, v: 0, data: undefined});
+          expect(result).eql({id: 'test', type: null, v: 0, data: undefined, m: null});
           done();
         });
       });
@@ -242,7 +243,7 @@ module.exports = function(options) {
           if (err) return done(err);
           db.getSnapshot('testcollection', 'test', null, null, function(err, result) {
             if (err) return done(err);
-            expect(result).eql({id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data});
+            expect(result).eql({id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data, m: null});
             done();
           });
         });
@@ -253,7 +254,7 @@ module.exports = function(options) {
         commitSnapshotWithMetadata(db, function(err) {
           db.getSnapshot('testcollection', 'test', null, null, function(err, result) {
             if (err) return done(err);
-            expect(result.m).equal(undefined);
+            expect(result.m).equal(null);
             done();
           });
         });
@@ -292,8 +293,8 @@ module.exports = function(options) {
           db.getSnapshotBulk('testcollection', ['test2', 'test'], null, null, function(err, resultMap) {
             if (err) return done(err);
             expect(resultMap).eql({
-              test: {id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data},
-              test2: {id: 'test2', type: null, v: 0, data: undefined}
+              test: {id: 'test', type: 'http://sharejs.org/types/JSONv0', v: 1, data: data, m: null},
+              test2: {id: 'test2', type: null, v: 0, data: undefined, m: null}
             });
             done();
           });
@@ -305,7 +306,7 @@ module.exports = function(options) {
         commitSnapshotWithMetadata(db, function(err) {
           db.getSnapshotBulk('testcollection', ['test2', 'test'], null, null, function(err, resultMap) {
             if (err) return done(err);
-            expect(resultMap.test.m).equal(undefined);
+            expect(resultMap.test.m).equal(null);
             done();
           });
         });
@@ -621,7 +622,7 @@ module.exports = function(options) {
 
     describe('query', function() {
       it('query returns data in the collection', function(done) {
-        var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
+        var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}, m: null};
         var db = this.db;
         db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err, succeeded) {
           if (err) return done(err);
@@ -647,7 +648,7 @@ module.exports = function(options) {
         commitSnapshotWithMetadata(db, function(err) {
           db.query('testcollection', {x: 5}, null, null, function(err, results) {
             if (err) return done(err);
-            expect(results[0].m).equal(undefined);
+            expect(results[0].m).equal(null);
             done();
           });
         });
@@ -699,7 +700,7 @@ module.exports = function(options) {
         commitSnapshotWithMetadata(db, function(err) {
           db.query('testcollection', {x: 5}, {x: true}, null, function(err, results) {
             if (err) return done(err);
-            expect(results[0].m).equal(undefined);
+            expect(results[0].m).equal(null);
             done();
           });
         });
@@ -789,10 +790,10 @@ module.exports = function(options) {
         // test that getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]})
         // sorts by foo first, then bar
         var snapshots = [
-          {type: 'json0', id: '0', v: 1, data: {foo: 1, bar: 1}},
-          {type: 'json0', id: '1', v: 1, data: {foo: 2, bar: 1}},
-          {type: 'json0', id: '2', v: 1, data: {foo: 1, bar: 2}},
-          {type: 'json0', id: '3', v: 1, data: {foo: 2, bar: 2}}
+          {type: 'json0', id: '0', v: 1, data: {foo: 1, bar: 1}, m: null},
+          {type: 'json0', id: '1', v: 1, data: { foo: 2, bar: 1 }, m: null},
+          {type: 'json0', id: '2', v: 1, data: { foo: 1, bar: 2 }, m: null},
+          {type: 'json0', id: '3', v: 1, data: { foo: 2, bar: 2 }, m: null}
         ];
         var db = this.db;
         var dbQuery = getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]});

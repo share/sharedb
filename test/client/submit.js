@@ -2,8 +2,10 @@ var async = require('async');
 var expect = require('expect.js');
 var types = require('../../lib/types');
 var deserializedType = require('./deserialized-type');
+var numberType = require('./number-type');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
+types.register(numberType.type);
 
 module.exports = function() {
 describe('client submit', function() {
@@ -509,6 +511,7 @@ describe('client submit', function() {
   });
 
   it('submits fail above the backend.maxSubmitRetries threshold', function(done) {
+    var backend = this.backend;
     this.backend.maxSubmitRetries = 0;
     var doc = this.backend.connect().get('dogs', 'fido');
     var doc2 = this.backend.connect().get('dogs', 'fido');
@@ -516,18 +519,36 @@ describe('client submit', function() {
       if (err) return done(err);
       doc2.fetch(function(err) {
         if (err) return done(err);
-        var count = 0;
-        var cb = function(err) {
-          count++;
-          if (count === 1) {
-            if (err) return done(err);
-          } else {
-            expect(err).ok();
-            done();
+        var docCallback;
+        var doc2Callback;
+        // The submit retry happens just after an op is committed. This hook into the middleware
+        // catches both ops just before they're about to be committed. This ensures that both ops
+        // are certainly working on the same snapshot (ie one op hasn't been committed before the
+        // other fetches the snapshot to apply to). By storing the callbacks, we can then
+        // manually trigger the callbacks, first calling doc, and when we know that's been committed,
+        // we then commit doc2.
+        backend.use('commit', function (request, callback) {
+          if (request.op.op[0].na === 2) docCallback = callback;
+          if (request.op.op[0].na === 7) doc2Callback = callback;
+
+          // Wait until both ops have been applied to the same snapshot and are about to be committed
+          if (docCallback && doc2Callback) {
+            // Trigger the first op's commit and then the second one later, which will cause the
+            // second op to retry
+            docCallback();
           }
-        };
-        doc.submitOp({p: ['age'], na: 2}, cb);
-        doc2.submitOp({p: ['age'], na: 7}, cb);
+        });
+        doc.submitOp({p: ['age'], na: 2}, function (error) {
+          if (error) return done(error);
+          // When we know the first op has been committed, we try to commit the second op, which will
+          // fail because it's working on an out-of-date snapshot. It will retry, but exceed the
+          // maxSubmitRetries limit of 0
+          doc2Callback();
+        });
+        doc2.submitOp({p: ['age'], na: 7}, function (error) {
+          expect(error).ok();
+          done();
+        });
       });
     });
   });
@@ -608,11 +629,16 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           doc.pause();
+          var calledBack = false;
+          doc.on('error', function() {
+            expect(calledBack).equal(true);
+            done();
+          });
           doc.submitOp({p: ['age'], na: 1}, function(err) {
             expect(err).ok();
             expect(doc.version).equal(2);
             expect(doc.data).eql(undefined);
-            done();
+            calledBack = true;
           });
           doc.fetch();
         });
@@ -632,11 +658,16 @@ describe('client submit', function() {
           doc2.create({age: 5}, function(err) {
             if (err) return done(err);
             doc.pause();
+            var calledBack = false;
+            doc.on('error', function() {
+              expect(calledBack).equal(true);
+              done();
+            });
             doc.create({age: 9}, function(err) {
               expect(err).ok();
               expect(doc.version).equal(3);
               expect(doc.data).eql({age: 5});
-              done();
+              calledBack = true;
             });
             doc.fetch();
           });
@@ -1039,6 +1070,19 @@ describe('client submit', function() {
       if (err) return done(err);
       doc._submit({}, null, function(err) {
         expect(err).ok();
+        done();
+      });
+    });
+  });
+
+  it('allows snapshot and op to be a non-object', function(done) {
+    var doc = this.backend.connect().get('dogs', 'fido');
+    doc.create(5, numberType.type.uri, function (err) {
+      if (err) return done(err);
+      expect(doc.data).to.equal(5);
+      doc.submitOp(2, function(err) {
+        if (err) return done(err);
+        expect(doc.data).to.equal(7);
         done();
       });
     });
