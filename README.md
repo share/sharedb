@@ -182,6 +182,28 @@ share.addProjection('users_limited', 'users', { name:true, profileUrl:true });
 
 Note that only the [JSON0 OT type](https://github.com/ottypes/json0) is supported for projections.
 
+### Logging
+
+By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
+
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `Backend`:
+
+```javascript
+var share = new Backend({
+  logger: {
+    info: () => {},                         // Silence info
+    warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+    error: () => alerts.critical(arguments) // Remap errors to critical alerts
+  }
+});
+```
+
+ShareDB only supports the following logger methods:
+
+  - `info`
+  - `warn`
+  - `error`
+
 ### Shutdown
 
 `share.close(callback)`
@@ -357,6 +379,27 @@ after a sequence of diffs are handled.
 
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
+
+### Logging
+
+By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
+
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `logger.setMethods`
+
+```javascript
+var ShareDB = require('sharedb/lib/client');
+ShareDB.logger.setMethods({
+    info: () => {},                         // Silence info
+    warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+    error: () => alerts.critical(arguments) // Remap errors to critical alerts
+});
+```
+
+ShareDB only supports the following logger methods:
+
+  - `info`
+  - `warn`
+  - `error`
 
 
 ## Error codes
