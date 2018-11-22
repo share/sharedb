@@ -186,15 +186,14 @@ Note that only the [JSON0 OT type](https://github.com/ottypes/json0) is supporte
 
 By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
 
-Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `Backend`:
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `logger.setMethods`:
 
 ```javascript
-var share = new Backend({
-  logger: {
-    info: () => {},                         // Silence info
-    warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
-    error: () => alerts.critical(arguments) // Remap errors to critical alerts
-  }
+var ShareDB = require('sharedb');
+ShareDB.logger.setMethods({
+  info: () => {},                         // Silence info
+  warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+  error: () => alerts.critical(arguments) // Remap errors to critical alerts
 });
 ```
 
@@ -389,9 +388,9 @@ Methods can be overridden by passing a [`console`-like object](https://developer
 ```javascript
 var ShareDB = require('sharedb/lib/client');
 ShareDB.logger.setMethods({
-    info: () => {},                         // Silence info
-    warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
-    error: () => alerts.critical(arguments) // Remap errors to critical alerts
+  info: () => {},                         // Silence info
+  warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+  error: () => alerts.critical(arguments) // Remap errors to critical alerts
 });
 ```
 
