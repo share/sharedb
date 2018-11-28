@@ -1,5 +1,6 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
+var util = require('../util')
 
 describe('client query subscribe', function() {
 
@@ -212,4 +213,133 @@ describe('client query subscribe', function() {
 
   });
 
+  describe('submitting an invalid op', function () {
+    var doc;
+    var invalidOp;
+    var validOp;
+
+    beforeEach(function (done) {
+      // This op is invalid because we try to perform a list deletion
+      // on something that isn't a list
+      invalidOp = {p: ['name'], ld: 'Scooby'};
+
+      validOp = {p:['snacks'], oi: true};
+
+      doc = this.connection.get('dogs', 'scooby');
+      doc.create({ name: 'Scooby' }, function (error) {
+        if (error) return done(error);
+        doc.whenNothingPending(done);
+      });
+    });
+
+    it('returns an error to the submitOp callback', function (done) {
+      doc.submitOp(invalidOp, function (error) {
+        expect(error.message).to.equal('Referenced element not a list');
+        done();
+      });
+    });
+
+    it('rolls the doc back to a usable state', function (done) {
+      util.callInSeries([
+        function (next) {
+          doc.submitOp(invalidOp, function (error) {
+            expect(error).to.be.ok();
+            next();
+          });
+        },
+        function (next) {
+          doc.whenNothingPending(next);
+        },
+        function (next) {
+          expect(doc.data).to.eql({name: 'Scooby'});
+          doc.submitOp(validOp, next);
+        },
+        function (next) {
+          expect(doc.data).to.eql({name: 'Scooby', snacks: true});
+          next();
+        },
+        done
+      ]);
+    });
+
+    it('rescues an irreversible op collision', function (done) {
+      // This test case attempts to reconstruct the following corner case, with
+      // two independent references to the same document. We submit two simultaneous, but
+      // incompatible operations (eg one of them changes the data structure the other op is
+      // attempting to manipulate).
+      //
+      // The second document to attempt to submit should have its op rejected, and its
+      // state successfully rolled back to a usable state.
+      var doc1 = this.backend.connect().get('dogs', 'snoopy');
+      var doc2 = this.backend.connect().get('dogs', 'snoopy');
+
+      var pauseSubmit = false;
+      var fireSubmit;
+      this.backend.use('submit', function (request, callback) {
+        if (pauseSubmit) {
+          fireSubmit = function () {
+            pauseSubmit = false;
+            callback();
+          };
+        } else {
+          fireSubmit = null;
+          callback();
+        }
+      });
+
+      util.callInSeries([
+        function (next) {
+          doc1.create({colours: ['white']}, next);
+        },
+        function (next) {
+          doc1.whenNothingPending(next);
+        },
+        function (next) {
+          doc2.fetch(next);
+        },
+        function (next) {
+          doc2.whenNothingPending(next);
+        },
+        // Both documents start off at the same v1 state, with colours as a list
+        function (next) {
+          expect(doc1.data).to.eql({colours: ['white']});
+          expect(doc2.data).to.eql({colours: ['white']});
+          next();
+        },
+        // doc1 successfully submits an op which changes our list into a string in v2
+        function (next) {
+          doc1.submitOp({p: ['colours'], oi: 'white,black'}, next);
+        },
+        // This next step is a little fiddly. We abuse the middleware to pause the op submission and
+        // ensure that we get this repeatable sequence of events:
+        // 1. doc2 is still on v1, where 'colours' is a list (but it's a string in v2)
+        // 2. doc2 submits an op that assumes 'colours' is still a list
+        // 3. doc2 fetches v2 before the op submission completes - 'colours' is no longer a list locally
+        // 4. doc2's op is rejected by the server, because 'colours' is not a list on the server
+        // 5. doc2 attempts to roll back the inflight op by turning a list insertion into a list deletion
+        // 6. doc2 applies this list deletion to a field that is no longer a list
+        // 7. type.apply throws, because this is an invalid op
+        function (next) {
+          pauseSubmit = true;
+          doc2.submitOp({p: ['colours', '0'], li: 'black'}, function (error) {
+            expect(error.message).to.equal('Referenced element not a list');
+            next();
+          });
+
+          doc2.fetch(function (error) {
+            if (error) return next(error);
+            fireSubmit();
+          });
+        },
+        // Validate that - despite the error in doc2.submitOp - doc2 has been returned to a
+        // workable state in v2
+        function (next) {
+          expect(doc1.data).to.eql({colours: 'white,black'});
+          expect(doc2.data).to.eql(doc1.data);
+          doc2.submitOp({p: ['colours'], oi: 'white,black,red'}, next);
+        },
+        done
+      ]);
+    });
+  });
 });
