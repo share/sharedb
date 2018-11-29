@@ -42,7 +42,7 @@ The native Websocket object that you feed to ShareDB's `Connection` constructor 
 
 The easiest way is to give it a WebSocket object that does reconnect. There are plenty of example on the web. The most important thing is that the custom reconnecting websocket, must have the same API as the native rfc6455 version.
 
-In the "textarea" example we show this off using a Reconnecting Websocket implementation from [https://github.com/pladaria/reconnecting-websocket](reconnecting-websocket).
+In the "textarea" example we show this off using a Reconnecting Websocket implementation from [reconnecting-websocket](https://github.com/pladaria/reconnecting-websocket).
 
 
 
@@ -182,6 +182,27 @@ share.addProjection('users_limited', 'users', { name:true, profileUrl:true });
 
 Note that only the [JSON0 OT type](https://github.com/ottypes/json0) is supported for projections.
 
+### Logging
+
+By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
+
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `logger.setMethods`:
+
+```javascript
+var ShareDB = require('sharedb');
+ShareDB.logger.setMethods({
+  info: () => {},                         // Silence info
+  warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+  error: () => alerts.critical(arguments) // Remap errors to critical alerts
+});
+```
+
+ShareDB only supports the following logger methods:
+
+  - `info`
+  - `warn`
+  - `error`
+
 ### Shutdown
 
 `share.close(callback)`
@@ -267,7 +288,7 @@ Populate the fields on `doc` with a snapshot of the document from the server, an
 fire events on subsequent changes.
 
 `doc.ingestSnapshot(snapshot, callback)`
-Ingest snapshot data. This data must include a version, snapshot and type. This method is generally called interally as a result of fetch or subscribe and not directly. However, it may be called directly to pass data that was transferred to the client external to the client's ShareDB connection, such as snapshot data sent along with server rendering of a webpage.
+Ingest snapshot data. The `snapshot` param must include the fields `v` (doc version), `data`, and `type` (OT type). This method is generally called interally as a result of fetch or subscribe and not directly from user code. However, it may still be called directly from user code to pass data that was transferred to the client external to the client's ShareDB connection, such as snapshot data sent along with server rendering of a webpage.
 
 `doc.destroy()`
 Unsubscribe and stop firing events.
@@ -363,6 +384,27 @@ after a sequence of diffs are handled.
 
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
+
+### Logging
+
+By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
+
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `logger.setMethods`
+
+```javascript
+var ShareDB = require('sharedb/lib/client');
+ShareDB.logger.setMethods({
+  info: () => {},                         // Silence info
+  warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+  error: () => alerts.critical(arguments) // Remap errors to critical alerts
+});
+```
+
+ShareDB only supports the following logger methods:
+
+  - `info`
+  - `warn`
+  - `error`
 
 
 ## Error codes
