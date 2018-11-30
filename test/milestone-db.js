@@ -43,6 +43,20 @@ describe('Base class', function () {
 
     db.saveMilestoneSnapshot('books', {});
   });
+
+  it('calls back with an error when trying to get a snapshot before a time', function (done) {
+    db.getMilestoneSnapshotAtOrBeforeTime('books', '123', 1000, function (error) {
+      expect(error.code).to.be(5021);
+      done();
+    });
+  });
+
+  it('calls back with an error when trying to get a snapshot after a time', function (done) {
+    db.getMilestoneSnapshotAtOrAfterTime('books', '123', 1000, function (error) {
+      expect(error.code).to.be(5022);
+      done();
+    });
+  });
 });
 
 describe('NoOpMilestoneDB', function () {
@@ -355,6 +369,228 @@ module.exports = function (options) {
       db.saveMilestoneSnapshot('books', undefined, function (error) {
         expect(error).to.be.ok();
         done();
+      });
+    });
+
+    describe('snapshots with timestamps', function () {
+      var snapshot1 = new Snapshot(
+        'catcher-in-the-rye',
+        1,
+        'http://sharejs.org/types/JSONv0',
+        {
+          title: 'Catcher in the Rye'
+        },
+        {
+          ctime: 1000,
+          mtime: 1000
+        }
+      );
+
+      var snapshot2 = new Snapshot(
+        'catcher-in-the-rye',
+        2,
+        'http://sharejs.org/types/JSONv0',
+        {
+          title: 'Catcher in the Rye',
+          author: 'JD Salinger'
+        },
+        {
+          ctime: 1000,
+          mtime: 2000
+        }
+      );
+
+      var snapshot3 = new Snapshot(
+        'catcher-in-the-rye',
+        3,
+        'http://sharejs.org/types/JSONv0',
+        {
+          title: 'Catcher in the Rye',
+          author: 'J.D. Salinger'
+        },
+        {
+          ctime: 1000,
+          mtime: 3000
+        }
+      );
+
+      beforeEach(function (done) {
+        util.callInSeries([
+          function (next) {
+            db.saveMilestoneSnapshot('books', snapshot1, next);
+          },
+          function (next) {
+            db.saveMilestoneSnapshot('books', snapshot2, next);
+          },
+          function (next) {
+            db.saveMilestoneSnapshot('books', snapshot3, next);
+          },
+          done
+        ]);
+      });
+
+      describe('fetching a snapshot before or at a time', function () {
+        it('fetches a snapshot before a given time', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 2500, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.eql(snapshot2);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('fetches a snapshot at an exact time', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 2000, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.eql(snapshot2);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('fetches the first snapshot for a null timestamp', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', null, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.eql(snapshot1);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('returns an error for a string timestamp', function (done) {
+          db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+
+        it('returns an error for a negative timestamp', function (done) {
+          db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', -1, function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+
+        it('returns undefined if there are no snapshots before a time', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 0, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.be(undefined);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('errors if no collection is provided', function (done) {
+          db.getMilestoneSnapshotAtOrBeforeTime(undefined, 'catcher-in-the-rye', 0, function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+
+        it('errors if no ID is provided', function (done) {
+          db.getMilestoneSnapshotAtOrBeforeTime('books', undefined, 0, function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+      });
+
+      describe('fetching a snapshot after or at a time', function () {
+        it('fetches a snapshot after a given time', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 2500, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.eql(snapshot3);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('fetches a snapshot at an exact time', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 2000, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.eql(snapshot2);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('fetches the last snapshot for a null timestamp', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', null, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.eql(snapshot3);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('returns an error for a string timestamp', function (done) {
+          db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+
+        it('returns an error for a negative timestamp', function (done) {
+          db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', -1, function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+
+        it('returns undefined if there are no snapshots after a time', function (done) {
+          util.callInSeries([
+            function (next) {
+              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 4000, next);
+            },
+            function (snapshot, next) {
+              expect(snapshot).to.be(undefined);
+              next();
+            },
+            done
+          ]);
+        });
+
+        it('errors if no collection is provided', function (done) {
+          db.getMilestoneSnapshotAtOrAfterTime(undefined, 'catcher-in-the-rye', 0, function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
+
+        it('errors if no ID is provided', function (done) {
+          db.getMilestoneSnapshotAtOrAfterTime('books', undefined, 0, function (error) {
+            expect(error).to.be.ok();
+            done();
+          });
+        });
       });
     });
 
