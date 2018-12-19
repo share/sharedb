@@ -485,5 +485,5 @@ The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the
 * 5018 - Required QueryEmitter listener not assigned
 * 5019 - getMilestoneSnapshot MilestoneDB method unimplemented
 * 5020 - saveMilestoneSnapshot MilestoneDB method unimplemented
-* 5021 - getMilestoneSnapshotBeforeTime MilestoneDB method unimplemented
-* 5022 - getMilestoneSnapshotAfterTime MilestoneDB method unimplemented
+* 5021 - getMilestoneSnapshotAtOrBeforeTime MilestoneDB method unimplemented
+* 5022 - getMilestoneSnapshotAtOrAfterTime MilestoneDB method unimplemented
