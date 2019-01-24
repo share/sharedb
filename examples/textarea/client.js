@@ -31,6 +31,6 @@ var doc = connection.get('examples', 'textarea');
 doc.subscribe(function(err) {
   if (err) throw err;
   
-  var binding = new StringBinding(element, doc);
+  var binding = new StringBinding(element, doc, ['content']);
   binding.setup();
 });
