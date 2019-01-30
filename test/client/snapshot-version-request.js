@@ -5,7 +5,7 @@ var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
 var sinon = require('sinon');
 var util = require('../util');
 
-describe('SnapshotRequest', function () {
+describe('SnapshotVersionRequest', function () {
   var backend;
 
   beforeEach(function () {
@@ -16,7 +16,7 @@ describe('SnapshotRequest', function () {
     backend.close(done);
   });
 
-  describe('a document with some simple versions a day apart', function () {
+  describe('a document with some simple versions', function () {
     var v0 = {
       id: 'don-quixote',
       v: 0,
@@ -106,7 +106,7 @@ describe('SnapshotRequest', function () {
       };
 
       expect(fetch).to.throwError();
-      });
+    });
 
     it('fetches the latest version when the optional version is not provided', function (done) {
       backend.connect().fetchSnapshot('books', 'don-quixote', function (error, snapshot) {
@@ -399,19 +399,24 @@ describe('SnapshotRequest', function () {
   describe('milestone snapshots enabled for every other version', function () {
     var milestoneDb;
     var db;
+    var backendWithMilestones;
 
     beforeEach(function () {
       var options = { interval: 2 };
       db = new MemoryDb();
       milestoneDb = new MemoryMilestoneDb(options);
-      backend = new Backend({
+      backendWithMilestones = new Backend({
         db: db,
         milestoneDb: milestoneDb
       });
     });
 
+    afterEach(function (done) {
+      backendWithMilestones.close(done);
+    });
+
     it('fetches a snapshot using the milestone', function (done) {
-      var doc = backend.connect().get('books', 'mocking-bird');
+      var doc = backendWithMilestones.connect().get('books', 'mocking-bird');
 
       util.callInSeries([
         function (next) {
@@ -426,7 +431,7 @@ describe('SnapshotRequest', function () {
         function (next) {
           sinon.spy(milestoneDb, 'getMilestoneSnapshot');
           sinon.spy(db, 'getOps');
-          backend.connect().fetchSnapshot('books', 'mocking-bird', 3, next);
+          backendWithMilestones.connect().fetchSnapshot('books', 'mocking-bird', 3, next);
         },
         function (snapshot, next) {
           expect(milestoneDb.getMilestoneSnapshot.calledOnce).to.be(true);
