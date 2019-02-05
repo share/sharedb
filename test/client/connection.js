@@ -56,6 +56,27 @@ describe('client connection', function() {
     });
   });
 
+  it('subscribing to same doc closes old stream and adds new stream to agent', function(done) {
+    var connection = this.backend.connect();
+    var agent = connection.agent;
+    var collection = 'test';
+    var docId = 'abcd-1234';
+    var doc = connection.get(collection, docId);
+    doc.subscribe(function(err) {
+      if (err) return done(err);
+      var originalStream = agent.subscribedDocs[collection][docId];
+      doc.subscribe(function() {
+        if (err) return done(err);
+        expect(originalStream).to.have.property('open', false);
+        var newStream = agent.subscribedDocs[collection][docId];
+        expect(newStream).to.have.property('open', true);
+        expect(newStream).to.not.be(originalStream);
+        connection.close();
+        done();
+      });
+    });
+  });
+
   it('emits socket errors as "connection error" events', function(done) {
     var connection = this.backend.connect();
     connection.on('connection error', function(err) {

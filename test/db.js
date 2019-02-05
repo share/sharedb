@@ -2,7 +2,6 @@ var async = require('async');
 var expect = require('expect.js');
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
-var Snapshot = require('../lib/snapshot');
 
 module.exports = function(options) {
   var create = options.create;
