@@ -1,6 +1,6 @@
 {
   "name": "sharedb",
-  "version": "1.0.0-beta.17",
+  "version": "1.0.0-beta.18",
   "description": "JSON OT database backend",
   "main": "lib/index.js",
   "dependencies": {
@@ -16,6 +16,7 @@
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.2",
     "jshint": "^2.9.2",
+    "lolex": "^3.0.0",
     "mocha": "^5.2.0",
     "sinon": "^6.1.5"
   },
