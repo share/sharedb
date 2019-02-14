@@ -326,6 +326,8 @@ describe('SnapshotTimestampRequest', function () {
       it('triggers the middleware', function (done) {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
           function (request) {
+            expect(request.method).to.eql(backend.READ_SNAPSHOTS_METHODS.fetchSnapshotByTimestamp);
+            expect(request.parameters).to.eql({index: 'books', id: 'time-machine', timestamp: day3});
             expect(request.snapshots[0]).to.eql(v3);
             expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.byTimestamp);
             done();
