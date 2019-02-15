@@ -199,8 +199,6 @@ describe('middleware', function() {
       var doneAfter = util.callAfter(1, done);
       backend.use('readSnapshots', function(request, next) {
         expect(request.snapshots).to.have.length(1);
-        expect(request.method).to.be.a('string');
-        expect(request.parameters).to.be.ok;
         expectFido(request);
         doneAfter();
         next();
@@ -212,8 +210,6 @@ describe('middleware', function() {
       var doneAfter = util.callAfter(1, done);
       backend.use('readSnapshots', function(request, next) {
         expect(request.snapshots).to.have.length(2);
-        expect(request.method).to.be.a('string');
-        expect(request.parameters).to.be.ok;
         expectFido(request);
         expectSpot(request);
         doneAfter();
