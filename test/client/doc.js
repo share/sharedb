@@ -2,7 +2,7 @@ var Backend = require('../../lib/backend');
 var expect = require('expect.js');
 var util = require('../util')
 
-describe('client query subscribe', function() {
+describe('Doc', function() {
 
   beforeEach(function() {
     this.backend = new Backend();
@@ -211,6 +211,41 @@ describe('client query subscribe', function() {
       });
     });
 
+  });
+
+  describe('submitting ops in callbacks', function() {
+    beforeEach(function () {
+      this.doc = this.connection.get('dogs', 'scooby');
+    });
+
+    it('succeeds with valid op', function(done) {
+      var doc = this.doc;
+      doc.create({ name: 'Scooby Doo' }, function(error) {
+        expect(error).to.not.be.ok();
+        // Build valid op that deletes a substring at index 0 of name.
+        var textOpComponents = [{ p: 0, d: 'Scooby '}];
+        var op = [{ p: ['name'], t: 'text0', o: textOpComponents }];
+        doc.submitOp(op, function(error) {
+          if (error) return done(error);
+          expect(doc.data).eql({ name: 'Doo' });
+          done();
+        });
+      });
+    });
+
+    it('fails with invalid op', function(done) {
+      var doc = this.doc;
+      doc.create({ name: 'Scooby Doo' }, function(error) {
+        expect(error).to.not.be.ok();
+        // Build op that tries to delete an invalid substring at index 0 of name.
+        var textOpComponents = [{ p: 0, d: 'invalid'}];
+        var op = [{ p: ['name'], t: 'text0', o: textOpComponents }];
+        doc.submitOp(op, function(error) {
+          expect(error).to.be.ok();
+          done();
+        });
+      });
+    });
   });
 
   describe('submitting an invalid op', function () {
