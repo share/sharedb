@@ -112,7 +112,7 @@ Community Provided Pub/Sub Adapters
 ### Listening to WebSocket connections
 
 ```js
-var WebSocketJSONStream = require('websocket-json-stream');
+var WebSocketJSONStream = require('@teamwork/websocket-json-stream');
 
 // 'ws' is a websocket server connection, as passed into
 // new (require('ws').Server).on('connection', ...)
