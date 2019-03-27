@@ -221,6 +221,96 @@ describe('middleware', function() {
     testReadDoc(expectFidoOnly, expectFidoAndSpot);
   });
 
+  describe('reply', function() {
+    beforeEach(function(done) {
+      this.snapshot = {v: 1, type: 'json0', data: {age: 3}};
+      this.backend.db.commit('dogs', 'fido', {v: 0, create: {}}, this.snapshot, null, done);
+    });
+
+    it('context has request and reply objects', function(done) {
+      var snapshot = this.snapshot;
+      this.backend.use('reply', function(replyContext, next) {
+        expect(replyContext).to.have.property('action', 'reply');
+        expect(replyContext.request).to.eql({a: 'qf', id: 1, c: 'dogs', q: {age: 3}});
+        expect(replyContext.reply).to.eql({
+          data: [{v: 1, data: snapshot.data, d: 'fido'}],
+          extra: undefined,
+          a: 'qf',
+          id: 1
+        });
+        expect(replyContext).to.have.property('agent');
+        expect(replyContext).to.have.property('backend');
+        next();
+      });
+
+      var connection = this.backend.connect();
+      connection.createFetchQuery('dogs', {age: 3}, null, function(err, results) {
+        if (err) {
+          return done(err);
+        }
+        expect(results).to.have.length(1);
+        expect(results[0].data).to.eql(snapshot.data);
+        done();
+      });
+    });
+
+    it('triggers on errors', function(done) {
+      var backend = this.backend;
+      var connection = this.backend.connect();
+      var doc = connection.get('dogs', 'fido');
+      doc.fetch(function(err) {
+        if (err) {
+          return done(err);
+        }
+        // Directly invoke backend DB method to delete doc, so that
+        // client `doc` is unaware of the change.
+        debugger;
+        backend.db.commit('dogs', 'fido', {v: 1, del: true}, {v: 2, data: null}, null, function(err) {
+          if (err) {
+            return done(err);
+          }
+          // Submitting op on deleted doc should result in an error.
+          var newOp = {p: ['age'], na: 1};
+          backend.use('reply', function(replyContext, next) {
+            var reply = replyContext.reply;
+            expect(reply.a).to.eql('op');
+            expect(reply.c).to.eql('dogs');
+            expect(reply.d).to.eql('fido');
+            expect(reply.op).to.eql([newOp]);
+            expect(reply.error).to.have.property('code', 4017);  // "Document was deleted"
+            next();
+          });
+          doc.submitOp(newOp, function(err) {
+            // Expect that there was an error.
+            expect(err).to.have.property('code', 4017);  // "Document was deleted"
+            done();
+          })
+        });
+      });
+    });
+
+    it('can make raw additions to query reply extra', function(done) {
+      var snapshot = this.snapshot;
+      this.backend.use('reply', function(replyContext, next) {
+        expect(replyContext.request.a === 'qf');
+        replyContext.reply.extra = replyContext.reply.extra || {};
+        replyContext.reply.extra.replyMiddlewareValue = 'some value';
+        next();
+      });
+
+      var connection = this.backend.connect();
+      connection.createFetchQuery('dogs', {age: 3}, null, function(err, results, extra) {
+        if (err) {
+          return done(err);
+        }
+        expect(results).to.have.length(1);
+        expect(results[0].data).to.eql(snapshot.data);
+        expect(extra).to.eql({replyMiddlewareValue: 'some value'});
+        done();
+      });
+    });
+  });
+
   describe('submit lifecycle', function() {
     // DEPRECATED: 'after submit' is a synonym for 'afterSubmit'
     ['submit', 'apply', 'commit', 'afterSubmit', 'after submit'].forEach(function(action) {
