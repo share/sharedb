@@ -254,6 +254,19 @@ describe('middleware', function() {
       });
     });
 
+    it('can produce errors that get sent back to client', function(done) {
+      var errorMessage = 'This is an error from reply middleware';
+      this.backend.use('reply', function(_replyContext, next) {
+        next(errorMessage);
+      });
+      var connection = this.backend.connect();
+      var doc = connection.get('dogs', 'fido');
+      doc.fetch(function(err) {
+        expect(err).to.have.property('message', errorMessage);
+        done();
+      });
+    });
+
     it('can make raw additions to query reply extra', function(done) {
       var snapshot = this.snapshot;
       this.backend.use('reply', function(replyContext, next) {
