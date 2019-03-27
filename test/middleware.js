@@ -254,40 +254,6 @@ describe('middleware', function() {
       });
     });
 
-    it('triggers on errors', function(done) {
-      var backend = this.backend;
-      var connection = this.backend.connect();
-      var doc = connection.get('dogs', 'fido');
-      doc.fetch(function(err) {
-        if (err) {
-          return done(err);
-        }
-        // Directly invoke backend DB method to delete doc, so that
-        // client `doc` is unaware of the change.
-        backend.db.commit('dogs', 'fido', {v: 1, del: true}, {v: 2, data: null}, null, function(err) {
-          if (err) {
-            return done(err);
-          }
-          // Submitting op on deleted doc should result in an error.
-          var newOp = {p: ['age'], na: 1};
-          backend.use('reply', function(replyContext, next) {
-            var reply = replyContext.reply;
-            expect(reply.a).to.eql('op');
-            expect(reply.c).to.eql('dogs');
-            expect(reply.d).to.eql('fido');
-            expect(reply.op).to.eql([newOp]);
-            expect(reply.error).to.have.property('code', 4017);  // "Document was deleted"
-            next();
-          });
-          doc.submitOp(newOp, function(err) {
-            // Expect that there was an error.
-            expect(err).to.have.property('code', 4017);  // "Document was deleted"
-            done();
-          });
-        });
-      });
-    });
-
     it('can make raw additions to query reply extra', function(done) {
       var snapshot = this.snapshot;
       this.backend.use('reply', function(replyContext, next) {
