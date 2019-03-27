@@ -264,7 +264,6 @@ describe('middleware', function() {
         }
         // Directly invoke backend DB method to delete doc, so that
         // client `doc` is unaware of the change.
-        debugger;
         backend.db.commit('dogs', 'fido', {v: 1, del: true}, {v: 2, data: null}, null, function(err) {
           if (err) {
             return done(err);
@@ -284,7 +283,7 @@ describe('middleware', function() {
             // Expect that there was an error.
             expect(err).to.have.property('code', 4017);  // "Document was deleted"
             done();
-          })
+          });
         });
       });
     });
