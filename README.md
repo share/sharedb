@@ -149,17 +149,24 @@ Register a new middleware.
   * `'afterSubmit'`: An operation was successfully submitted to
     the database.
   * `'receive'`: Received a message from a client
-* `fn` _(Function(request, callback))_
+  * `'reply'`: About to send a non-error reply to a client message
+* `fn` _(Function(context, callback))_
   Call this function at the time specified by `action`.
-  `request` contains a subset of the following properties, as relevant for the action:
-  * `action`: The action this middleware is handing
-  * `agent`: An object corresponding to the server agent handing this client
-  * `req`: The HTTP request being handled
-  * `collection`: The collection name being handled
-  * `id`: The document id being handled
-  * `snapshots`: The retrieved snapshots for the `readSnapshots` action
-  * `query`: The query object being handled
-  * `op`: The op being handled
+  * `context` will always have the following properties:
+    * `action`: The action this middleware is hanlding
+    * `agent`: A reference to the server agent handling this client
+    * `backend`: A reference to this ShareDB backend instance
+  * `context` can also have additional properties, as relevant for the action:
+    * `collection`: The collection name being handled
+    * `id`: The document id being handled
+    * `op`: The op being handled
+    * `req`: HTTP request being handled, if provided to `share.listen` (for 'connect')
+    * `stream`: The duplex Stream provided to `share.listen` (for 'connect')
+    * `query`: The query object being handled (for 'query')
+    * `snapshots`: Array of retrieved snapshots (for 'readSnapshots')
+    * `data`: Received client message (for 'receive')
+    * `request`: Client message being replied to (for 'reply')
+    * `reply`: Reply to be sent to the client (for 'reply')
 
 ### Projections
 
