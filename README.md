@@ -256,7 +256,7 @@ Get a read-only snapshot of a document at the requested version.
 * `id` _(String)_
   ID of the snapshot
 * `version` _(number) [optional]_
-  The version number of the desired snapshot
+  The version number of the desired snapshot. If `null`, the latest version is fetched.
 * `callback` _(Function)_
   Called with `(error, snapshot)`, where `snapshot` takes the following form:
 
@@ -277,7 +277,7 @@ Get a read-only snapshot of a document at the requested version.
 * `id` _(String)_
   ID of the snapshot
 * `timestamp` _(number) [optional]_
-  The timestamp of the desired snapshot. The returned snapshot will be the latest snapshot before the provided timestamp
+  The timestamp of the desired snapshot. The returned snapshot will be the latest snapshot before the provided timestamp. If `null`, the latest version is fetched.
 * `callback` _(Function)_
   Called with `(error, snapshot)`, where `snapshot` takes the following form:
 
