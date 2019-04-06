@@ -2,7 +2,7 @@ var http = require('http');
 var express = require('express');
 var ShareDB = require('sharedb');
 var WebSocket = require('ws');
-var WebSocketJSONStream = require('websocket-json-stream');
+var WebSocketJSONStream = require('@teamwork/websocket-json-stream');
 
 var backend = new ShareDB();
 createDoc(startServer);
