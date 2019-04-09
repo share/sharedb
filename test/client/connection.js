@@ -106,10 +106,19 @@ describe('client connection', function() {
       var connection = backend.connect();
       connection.on('connected', function() {
         connection.socket.stream.emit('close')
-        setTimeout(function() {
-          expect(backend.agentsCount).equal(0);
-          done();
-        }, 10);
+        expect(backend.agentsCount).equal(0);
+        done();
+      });
+    });
+
+    it('updates correctly after stream emits both "end" and "close"', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      connection.on('connected', function() {
+        connection.socket.stream.emit('end')
+        connection.socket.stream.emit('close')
+        expect(backend.agentsCount).equal(0);
+        done();
       });
     });
 
