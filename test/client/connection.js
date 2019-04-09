@@ -101,6 +101,18 @@ describe('client connection', function() {
       });
     });
 
+    it('updates after connection socket stream emits "close"', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      connection.on('connected', function() {
+        connection.socket.stream.emit('close')
+        setTimeout(function() {
+          expect(backend.agentsCount).equal(0);
+          done();
+        }, 10);
+      });
+    });
+
     it('does not increment when agent connect is rejected', function() {
       var backend = this.backend;
       backend.use('connect', function(request, next) {
