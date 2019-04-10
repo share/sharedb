@@ -14,7 +14,7 @@ function createDoc(callback) {
   doc.fetch(function(err) {
     if (err) throw err;
     if (doc.type === null) {
-      doc.create('', callback);
+      doc.create({ content: '' }, callback);
       return;
     }
     callback();

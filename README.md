@@ -112,7 +112,7 @@ Community Provided Pub/Sub Adapters
 ### Listening to WebSocket connections
 
 ```js
-var WebSocketJSONStream = require('websocket-json-stream');
+var WebSocketJSONStream = require('@teamwork/websocket-json-stream');
 
 // 'ws' is a websocket server connection, as passed into
 // new (require('ws').Server).on('connection', ...)
@@ -149,17 +149,24 @@ Register a new middleware.
   * `'afterSubmit'`: An operation was successfully submitted to
     the database.
   * `'receive'`: Received a message from a client
-* `fn` _(Function(request, callback))_
+  * `'reply'`: About to send a non-error reply to a client message
+* `fn` _(Function(context, callback))_
   Call this function at the time specified by `action`.
-  `request` contains a subset of the following properties, as relevant for the action:
-  * `action`: The action this middleware is handing
-  * `agent`: An object corresponding to the server agent handing this client
-  * `req`: The HTTP request being handled
-  * `collection`: The collection name being handled
-  * `id`: The document id being handled
-  * `snapshots`: The retrieved snapshots for the `readSnapshots` action
-  * `query`: The query object being handled
-  * `op`: The op being handled
+  * `context` will always have the following properties:
+    * `action`: The action this middleware is hanlding
+    * `agent`: A reference to the server agent handling this client
+    * `backend`: A reference to this ShareDB backend instance
+  * `context` can also have additional properties, as relevant for the action:
+    * `collection`: The collection name being handled
+    * `id`: The document id being handled
+    * `op`: The op being handled
+    * `req`: HTTP request being handled, if provided to `share.listen` (for 'connect')
+    * `stream`: The duplex Stream provided to `share.listen` (for 'connect')
+    * `query`: The query object being handled (for 'query')
+    * `snapshots`: Array of retrieved snapshots (for 'readSnapshots')
+    * `data`: Received client message (for 'receive')
+    * `request`: Client message being replied to (for 'reply')
+    * `reply`: Reply to be sent to the client (for 'reply')
 
 ### Projections
 
@@ -181,6 +188,27 @@ share.addProjection('users_limited', 'users', { name:true, profileUrl:true });
 ```
 
 Note that only the [JSON0 OT type](https://github.com/ottypes/json0) is supported for projections.
+
+### Logging
+
+By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
+
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `logger.setMethods`:
+
+```javascript
+var ShareDB = require('sharedb');
+ShareDB.logger.setMethods({
+  info: () => {},                         // Silence info
+  warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+  error: () => alerts.critical(arguments) // Remap errors to critical alerts
+});
+```
+
+ShareDB only supports the following logger methods:
+
+  - `info`
+  - `warn`
+  - `error`
 
 ### Shutdown
 
@@ -235,7 +263,28 @@ Get a read-only snapshot of a document at the requested version.
 * `id` _(String)_
   ID of the snapshot
 * `version` _(number) [optional]_
-  The version number of the desired snapshot
+  The version number of the desired snapshot. If `null`, the latest version is fetched.
+* `callback` _(Function)_
+  Called with `(error, snapshot)`, where `snapshot` takes the following form:
+
+  ```javascript
+  {
+    id: string;         // ID of the snapshot
+    v: number;          // version number of the snapshot
+    type: string;       // the OT type of the snapshot, or null if it doesn't exist or is deleted
+    data: any;          // the snapshot
+  }
+  ```
+
+`connection.fetchSnapshotByTimestamp(collection, id, timestamp, callback): void;`
+Get a read-only snapshot of a document at the requested version.
+
+* `collection` _(String)_
+  Collection name of the snapshot
+* `id` _(String)_
+  ID of the snapshot
+* `timestamp` _(number) [optional]_
+  The timestamp of the desired snapshot. The returned snapshot will be the latest snapshot before the provided timestamp. If `null`, the latest version is fetched.
 * `callback` _(Function)_
   Called with `(error, snapshot)`, where `snapshot` takes the following form:
 
@@ -267,7 +316,7 @@ Populate the fields on `doc` with a snapshot of the document from the server, an
 fire events on subsequent changes.
 
 `doc.ingestSnapshot(snapshot, callback)`
-Ingest snapshot data. This data must include a version, snapshot and type. This method is generally called interally as a result of fetch or subscribe and not directly. However, it may be called directly to pass data that was transferred to the client external to the client's ShareDB connection, such as snapshot data sent along with server rendering of a webpage.
+Ingest snapshot data. The `snapshot` param must include the fields `v` (doc version), `data`, and `type` (OT type). This method is generally called interally as a result of fetch or subscribe and not directly from user code. However, it may still be called directly from user code to pass data that was transferred to the client external to the client's ShareDB connection, such as snapshot data sent along with server rendering of a webpage.
 
 `doc.destroy()`
 Unsubscribe and stop firing events.
@@ -358,6 +407,27 @@ after a sequence of diffs are handled.
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
 
+### Logging
+
+By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
+
+Methods can be overridden by passing a [`console`-like object](https://developer.mozilla.org/en-US/docs/Web/API/console) to `logger.setMethods`
+
+```javascript
+var ShareDB = require('sharedb/lib/client');
+ShareDB.logger.setMethods({
+  info: () => {},                         // Silence info
+  warn: () => alerts.warn(arguments),     // Forward warnings to alerting service
+  error: () => alerts.critical(arguments) // Remap errors to critical alerts
+});
+```
+
+ShareDB only supports the following logger methods:
+
+  - `info`
+  - `warn`
+  - `error`
+
 
 ## Error codes
 
@@ -422,3 +492,5 @@ The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the
 * 5018 - Required QueryEmitter listener not assigned
 * 5019 - getMilestoneSnapshot MilestoneDB method unimplemented
 * 5020 - saveMilestoneSnapshot MilestoneDB method unimplemented
+* 5021 - getMilestoneSnapshotAtOrBeforeTime MilestoneDB method unimplemented
+* 5022 - getMilestoneSnapshotAtOrAfterTime MilestoneDB method unimplemented
