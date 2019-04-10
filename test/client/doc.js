@@ -15,28 +15,39 @@ describe('Doc', function() {
     expect(doc).equal(doc2);
   });
 
-  it('calling doc.destroy unregisters it', function() {
-    var doc = this.connection.get('dogs', 'fido');
-    expect(this.connection.getExisting('dogs', 'fido')).equal(doc);
+  it('calling doc.destroy unregisters it', function(done) {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+    expect(connection.getExisting('dogs', 'fido')).equal(doc);
 
-    doc.destroy();
-    expect(this.connection.getExisting('dogs', 'fido')).equal(undefined);
+    doc.destroy(function(err) {
+      if (err) return done(err);
+      expect(connection.getExisting('dogs', 'fido')).equal(undefined);
 
-    var doc2 = this.connection.get('dogs', 'fido');
-    expect(doc).not.equal(doc2);
+      var doc2 = connection.get('dogs', 'fido');
+      expect(doc).not.equal(doc2);
+      done();
+    });
+
+    // destroy is async
+    expect(connection.getExisting('dogs', 'fido')).equal(doc);
   });
 
-  it('getting then destroying then getting returns a new doc object', function() {
-    var doc = this.connection.get('dogs', 'fido');
-    doc.destroy();
-    var doc2 = this.connection.get('dogs', 'fido');
-    expect(doc).not.equal(doc2);
-    expect(doc).eql(doc2);
+  it('getting then destroying then getting returns a new doc object', function(done) {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+    doc.destroy(function(err) {
+      if (err) return done(err);
+      var doc2 = connection.get('dogs', 'fido');
+      expect(doc).not.equal(doc2);
+      expect(doc).eql(doc2);
+      done();
+    });
   });
 
-  it('doc.destroy() calls back', function(done) {
+  it('doc.destroy() works without a callback', function() {
     var doc = this.connection.get('dogs', 'fido');
-    doc.destroy(done);
+    doc.destroy();
   });
 
   describe('applyStack', function() {
