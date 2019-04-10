@@ -101,6 +101,27 @@ describe('client connection', function() {
       });
     });
 
+    it('updates after connection socket stream emits "close"', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      connection.on('connected', function() {
+        connection.socket.stream.emit('close')
+        expect(backend.agentsCount).equal(0);
+        done();
+      });
+    });
+
+    it('updates correctly after stream emits both "end" and "close"', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      connection.on('connected', function() {
+        connection.socket.stream.emit('end')
+        connection.socket.stream.emit('close')
+        expect(backend.agentsCount).equal(0);
+        done();
+      });
+    });
+
     it('does not increment when agent connect is rejected', function() {
       var backend = this.backend;
       backend.use('connect', function(request, next) {
