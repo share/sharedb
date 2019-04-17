@@ -1405,7 +1405,7 @@ types.register(presenceType.type3);
           return handleMessage.apply(this, arguments);
         };
         if (expireCache) {
-          this.doc.receivedPresenceTimeout = 0;
+          this.doc.presence.receivedTimeout = 0;
         }
         async.series([
           this.doc.create.bind(this.doc, [ 'a' ], typeName),
