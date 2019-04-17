@@ -701,13 +701,13 @@ types.register(presenceType.type3);
           expect(this.doc.hasPending()).to.equal(false);
           this.doc.submitPresence(p(0));
           expect(this.doc.hasPending()).to.equal(true);
-          expect(!!this.doc.pendingPresence).to.equal(true);
+          expect(!!this.doc.presence.pending).to.equal(true);
           expect(!!this.doc.presence.inflight).to.equal(false);
           this.doc.whenNothingPending(done);
         }.bind(this),
         function(done) {
           expect(this.doc.hasPending()).to.equal(false);
-          expect(!!this.doc.pendingPresence).to.equal(false);
+          expect(!!this.doc.presence.pending).to.equal(false);
           expect(!!this.doc.presence.inflight).to.equal(false);
           done();
         }.bind(this)
@@ -722,19 +722,19 @@ types.register(presenceType.type3);
           expect(this.doc.hasPending()).to.equal(false);
           this.doc.submitPresence(p(0));
           expect(this.doc.hasPending()).to.equal(true);
-          expect(!!this.doc.pendingPresence).to.equal(true);
+          expect(!!this.doc.presence.pending).to.equal(true);
           expect(!!this.doc.presence.inflight).to.equal(false);
           process.nextTick(done);
         }.bind(this),
         function(done) {
           expect(this.doc.hasPending()).to.equal(true);
-          expect(!!this.doc.pendingPresence).to.equal(false);
+          expect(!!this.doc.presence.pending).to.equal(false);
           expect(!!this.doc.presence.inflight).to.equal(true);
           this.doc.whenNothingPending(done);
         }.bind(this),
         function(done) {
           expect(this.doc.hasPending()).to.equal(false);
-          expect(!!this.doc.pendingPresence).to.equal(false);
+          expect(!!this.doc.presence.pending).to.equal(false);
           expect(!!this.doc.presence.inflight).to.equal(false);
           done();
         }.bind(this)
@@ -1317,7 +1317,7 @@ types.register(presenceType.type3);
         }.bind(this),
         this.doc.submitPresence.bind(this.doc, p(1)), // presence.inflight
         process.nextTick, // wait for "presence" event
-        this.doc.submitPresence.bind(this.doc, p(2)), // pendingPresence
+        this.doc.submitPresence.bind(this.doc, p(2)), // presence.pending
         process.nextTick, // wait for "presence" event
         function(done) {
           var presenceEmitted = false;
@@ -1374,7 +1374,7 @@ types.register(presenceType.type3);
           }
           this.doc.submitPresence(p(1), callback); // presence.inflight
           process.nextTick(function() { // wait for presence event
-            this.doc.submitPresence(p(2), callback); // pendingPresence
+            this.doc.submitPresence(p(2), callback); // presence.pending
             process.nextTick(function() { // wait for presence event
               this.doc.on('presence', function(srcList, submitted) {
                 expect(presenceEmitted).to.equal(false);
