@@ -39,7 +39,7 @@ types.register(presenceType.type3);
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
         function(done) {
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
           this.doc2.once('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
@@ -60,7 +60,7 @@ types.register(presenceType.type3);
         function(done) {
           this.doc.submitOp({ index: 0, value: 'a' }, errorHandler(done));
           this.doc.submitOp({ index: 1, value: 'b' }, errorHandler(done));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
           this.doc2.once('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
@@ -88,7 +88,7 @@ types.register(presenceType.type3);
           }.bind(this));
           // A hack to send presence for a future version.
           this.doc.version += 2;
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), function(err) {
             if (err) return done(err);
             this.doc.version -= 2;
@@ -117,7 +117,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -141,7 +141,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -165,7 +165,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'c' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -189,7 +189,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -213,7 +213,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -237,7 +237,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'c' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -259,7 +259,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0), errorHandler(done));
         }.bind(this),
         function(done) {
@@ -272,7 +272,7 @@ types.register(presenceType.type3);
           }.bind(this));
           // A hack to send presence for an older version.
           this.doc.version = 2;
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -293,7 +293,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0), errorHandler(done));
         }.bind(this),
         function(done) {
@@ -308,7 +308,7 @@ types.register(presenceType.type3);
           // A hack to send presence for an older version.
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -538,7 +538,7 @@ types.register(presenceType.type3);
               expect(srcList).to.eql([ this.connection.id ]);
               expect(this.doc2.presence.current['']).to.eql(p(1));
               expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
-              expect(this.doc2.requestReplyPresence).to.equal(false);
+              expect(this.doc2.presence.requestReply).to.equal(false);
               done();
             }
           }.bind(this));
@@ -622,7 +622,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(2));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0), errorHandler(done));
           this.doc.submitPresence(p(1), errorHandler(done));
           this.doc.submitPresence(p(2), errorHandler(done));
@@ -641,7 +641,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
           setTimeout(function() {
             this.doc.subscribe(function(err) {
@@ -669,7 +669,7 @@ types.register(presenceType.type3);
           this.doc.submitPresence(p(1), errorHandler(done));
           process.nextTick(function() {
             this.backend.connect(this.connection);
-            this.doc.requestReplyPresence = false;
+            this.doc.presence.requestReply = false;
           }.bind(this));
         }.bind(this)
       ], allDone);
@@ -687,7 +687,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0));
         }.bind(this)
       ], allDone);
@@ -758,7 +758,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
           this.doc2.del(errorHandler(done));
         }.bind(this)
@@ -980,7 +980,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(0), errorHandler(done));
           this.doc2.submitOp({ index: 1, value: 'b' }, errorHandler(done))
           this.doc2.submitOp({ index: 2, value: 'c' }, errorHandler(done))
@@ -1000,7 +1000,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
           this.doc2.submitOp({ index: 1, value: 'c' }, errorHandler(done))
           this.doc2.submitOp({ index: 1, value: 'b' }, errorHandler(done))
@@ -1020,7 +1020,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current[this.connection.id]).to.eql(p(3));
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(1), errorHandler(done));
           this.doc2.submitOp({ index: 0, value: 'b' }, errorHandler(done))
           this.doc2.submitOp({ index: 0, value: 'a' }, errorHandler(done))
@@ -1044,7 +1044,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(2), errorHandler(done));
           this.doc2.del(errorHandler(done));
           this.doc2.create([ 'c' ], typeName, errorHandler(done));
@@ -1070,7 +1070,7 @@ types.register(presenceType.type3);
             expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
-          this.doc.requestReplyPresence = false;
+          this.doc.presence.requestReply = false;
           this.doc.submitPresence(p(2), errorHandler(done));
           this.doc2.submitOp({ index: 0, value: 'b' }, errorHandler(done));
           this.doc2.del(errorHandler(done));
@@ -1412,7 +1412,7 @@ types.register(presenceType.type3);
           this.doc.subscribe.bind(this.doc),
           this.doc2.subscribe.bind(this.doc2),
           function(done) {
-            this.doc2.requestReplyPresence = false;
+            this.doc2.presence.requestReply = false;
             this.doc2.submitPresence(p(0), done);
           }.bind(this),
           setTimeout,
