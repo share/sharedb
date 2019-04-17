@@ -45,7 +45,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
         }.bind(this)
@@ -66,7 +66,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
         }.bind(this)
@@ -83,7 +83,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
           // A hack to send presence for a future version.
@@ -111,7 +111,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -135,7 +135,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(3));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(3));
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -159,7 +159,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(3));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(3));
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -183,7 +183,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -207,7 +207,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -231,7 +231,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(3));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(3));
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -256,7 +256,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'b' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -267,7 +267,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'b' ]);
-            expect(this.doc2.presence).to.not.have.key(this.connection.id);
+            expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -290,7 +290,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -302,7 +302,7 @@ types.register(presenceType.type3);
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
             expect(this.doc2.data).to.eql([ 'a', 'b', 'c' ]);
-            expect(this.doc2.presence).to.not.have.key(this.connection.id);
+            expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           // A hack to send presence for an older version.
@@ -326,8 +326,8 @@ types.register(presenceType.type3);
           this.doc.on('presence', function(srcList, submitted) {
             expect(srcList.sort()).to.eql([ '', this.connection2.id ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence).to.not.have.key('');
-            expect(this.doc.presence).to.not.have.key(this.connection2.id);
+            expect(this.doc.presence.current).to.not.have.key('');
+            expect(this.doc.presence.current).to.not.have.key(this.connection2.id);
             done();
           }.bind(this));
           this.doc.del(errorHandler(done));
@@ -347,8 +347,8 @@ types.register(presenceType.type3);
           this.doc.on('presence', function(srcList, submitted) {
             expect(srcList.sort()).to.eql([ '', this.connection2.id ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence).to.not.have.key('');
-            expect(this.doc.presence).to.not.have.key(this.connection2.id);
+            expect(this.doc.presence.current).to.not.have.key('');
+            expect(this.doc.presence.current).to.not.have.key(this.connection2.id);
             done();
           }.bind(this));
           this.doc2.del(errorHandler(done));
@@ -368,8 +368,8 @@ types.register(presenceType.type3);
           this.doc.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection2.id ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence['']).to.eql(p(0));
-            expect(this.doc.presence[this.connection2.id]).to.eql(p(3));
+            expect(this.doc.presence.current['']).to.eql(p(0));
+            expect(this.doc.presence.current[this.connection2.id]).to.eql(p(3));
             done();
           }.bind(this));
           this.doc.submitOp({ index: 1, value: 'b' }, errorHandler(done));
@@ -389,8 +389,8 @@ types.register(presenceType.type3);
           this.doc.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection2.id ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence['']).to.eql(p(0));
-            expect(this.doc.presence[this.connection2.id]).to.eql(p(3));
+            expect(this.doc.presence.current['']).to.eql(p(0));
+            expect(this.doc.presence.current[this.connection2.id]).to.eql(p(3));
             done();
           }.bind(this));
           this.doc2.submitOp({ index: 1, value: 'b' }, errorHandler(done));
@@ -410,8 +410,8 @@ types.register(presenceType.type3);
           this.doc.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ '' ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence['']).to.eql(p(2));
-            expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+            expect(this.doc.presence.current['']).to.eql(p(2));
+            expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
             done();
           }.bind(this));
           this.doc.submitOp({ index: 1, value: 'b' }, errorHandler(done));
@@ -431,8 +431,8 @@ types.register(presenceType.type3);
           this.doc.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection2.id ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence['']).to.eql(p(1));
-            expect(this.doc.presence[this.connection2.id]).to.eql(p(2));
+            expect(this.doc.presence.current['']).to.eql(p(1));
+            expect(this.doc.presence.current[this.connection2.id]).to.eql(p(2));
             done();
           }.bind(this));
           this.doc2.submitOp({ index: 1, value: 'b' }, errorHandler(done));
@@ -512,8 +512,6 @@ types.register(presenceType.type3);
         },
         this.doc.submitOp.bind(this.doc, op3),
         function(done) {
-          console.log('a');
-          console.log('b');
           expect(this.doc.cachedOps.length).to.equal(2);
           expect(this.doc.cachedOps[0].op).to.equal(op2);
           expect(this.doc.cachedOps[1].op).to.equal(op3);
@@ -521,7 +519,6 @@ types.register(presenceType.type3);
           done();
         }.bind(this)
       ], allDone);
-      console.log('runAll');
     });
 
     it('requests reply presence when sending presence for the first time', function(allDone) {
@@ -535,12 +532,12 @@ types.register(presenceType.type3);
             if (srcList[0] === '') {
               expect(srcList).to.eql([ '' ]);
               expect(submitted).to.equal(true);
-              expect(this.doc2.presence['']).to.eql(p(1));
-              expect(this.doc2.presence).to.not.have.key(this.connection.id);
+              expect(this.doc2.presence.current['']).to.eql(p(1));
+              expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             } else {
               expect(srcList).to.eql([ this.connection.id ]);
-              expect(this.doc2.presence['']).to.eql(p(1));
-              expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+              expect(this.doc2.presence.current['']).to.eql(p(1));
+              expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
               expect(this.doc2.requestReplyPresence).to.equal(false);
               done();
             }
@@ -622,7 +619,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(2));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(2));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -641,7 +638,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -649,7 +646,7 @@ types.register(presenceType.type3);
           setTimeout(function() {
             this.doc.subscribe(function(err) {
               if (err) return done(err);
-              expect(this.doc2.presence).to.eql({});
+              expect(this.doc2.presence.current).to.eql({});
             }.bind(this));
           }.bind(this));
         }.bind(this)
@@ -665,7 +662,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
           this.connection.close();
@@ -687,7 +684,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -752,13 +749,13 @@ types.register(presenceType.type3);
         this.doc.submitPresence.bind(this.doc, p(0)),
         setTimeout,
         function(done) {
-          expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+          expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             // The call to `del` transforms the presence and fires the event.
             // The call to `submitPresence` does not fire the event because presence is already null.
             expect(submitted).to.equal(false);
-            expect(this.doc2.presence).to.not.have.key(this.connection.id);
+            expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -777,17 +774,17 @@ types.register(presenceType.type3);
         this.doc2.submitPresence.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
-          expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
-          expect(this.doc2.presence['']).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
+          expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
+          expect(this.doc2.presence.current['']).to.eql(p(1));
 
           var connectionId = this.connection.id;
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ connectionId ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence).to.not.have.key(connectionId);
-            expect(this.doc2.presence['']).to.eql(p(1));
+            expect(this.doc2.presence.current).to.not.have.key(connectionId);
+            expect(this.doc2.presence.current['']).to.eql(p(1));
             done();
           }.bind(this));
           this.connection.close();
@@ -804,17 +801,17 @@ types.register(presenceType.type3);
         this.doc2.submitPresence.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
-          expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
-          expect(this.doc2.presence['']).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
+          expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
+          expect(this.doc2.presence.current['']).to.eql(p(1));
 
           var connectionId = this.connection.id;
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ connectionId ]);
             expect(submitted).to.equal(false);
-            expect(this.doc2.presence).to.not.have.key(connectionId);
-            expect(this.doc2.presence['']).to.eql(p(1));
+            expect(this.doc2.presence.current).to.not.have.key(connectionId);
+            expect(this.doc2.presence.current['']).to.eql(p(1));
             done();
           }.bind(this));
           this.connection2.close();
@@ -831,17 +828,17 @@ types.register(presenceType.type3);
         this.doc2.submitPresence.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
-          expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
-          expect(this.doc2.presence['']).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
+          expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
+          expect(this.doc2.presence.current['']).to.eql(p(1));
 
           var connectionId = this.connection.id;
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ connectionId ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence).to.not.have.key(connectionId);
-            expect(this.doc2.presence['']).to.eql(p(1));
+            expect(this.doc2.presence.current).to.not.have.key(connectionId);
+            expect(this.doc2.presence.current['']).to.eql(p(1));
             done();
           }.bind(this));
           this.doc.unsubscribe(errorHandler(done));
@@ -858,17 +855,17 @@ types.register(presenceType.type3);
         this.doc2.submitPresence.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
-          expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
-          expect(this.doc2.presence['']).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
+          expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
+          expect(this.doc2.presence.current['']).to.eql(p(1));
 
           var connectionId = this.connection.id;
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ connectionId ]);
             expect(submitted).to.equal(false);
-            expect(this.doc2.presence).to.not.have.key(connectionId);
-            expect(this.doc2.presence['']).to.eql(p(1));
+            expect(this.doc2.presence.current).to.not.have.key(connectionId);
+            expect(this.doc2.presence.current['']).to.eql(p(1));
             done();
           }.bind(this));
           this.doc2.unsubscribe(errorHandler(done));
@@ -929,18 +926,18 @@ types.register(presenceType.type3);
         this.doc2.submitPresence.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
           this.connection.close();
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence).to.not.have.key(this.connection2.id);
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current).to.not.have.key(this.connection2.id);
           this.backend.connect(this.connection);
           process.nextTick(done);
         }.bind(this),
         setTimeout, // wait for re-sync
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
           process.nextTick(done);
         }.bind(this)
       ], allDone);
@@ -955,17 +952,17 @@ types.register(presenceType.type3);
         this.doc2.submitPresence.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
           this.doc.unsubscribe(errorHandler(done));
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence).to.not.have.key(this.connection2.id);
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current).to.not.have.key(this.connection2.id);
           this.doc.subscribe(done);
         }.bind(this),
         setTimeout, // wait for re-sync
         function(done) {
-          expect(this.doc.presence['']).to.eql(p(0));
-          expect(this.doc.presence[this.connection2.id]).to.eql(p(1));
+          expect(this.doc.presence.current['']).to.eql(p(0));
+          expect(this.doc.presence.current[this.connection2.id]).to.eql(p(1));
           process.nextTick(done);
         }.bind(this)
       ], allDone);
@@ -980,7 +977,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(0));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -1000,7 +997,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -1020,7 +1017,7 @@ types.register(presenceType.type3);
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
-            expect(this.doc2.presence[this.connection.id]).to.eql(p(3));
+            expect(this.doc2.presence.current[this.connection.id]).to.eql(p(3));
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -1044,7 +1041,7 @@ types.register(presenceType.type3);
             // The call to `del` transforms the presence and fires the event.
             // The call to `submitPresence` does not fire the event because presence is already null.
             expect(submitted).to.equal(false);
-            expect(this.doc2.presence).to.not.have.key(this.connection.id);
+            expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -1070,7 +1067,7 @@ types.register(presenceType.type3);
             // The call to `del` transforms the presence and fires the event.
             // The call to `submitPresence` does not fire the event because presence is already null.
             expect(submitted).to.equal(false);
-            expect(this.doc2.presence).to.not.have.key(this.connection.id);
+            expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           this.doc.requestReplyPresence = false;
@@ -1092,7 +1089,7 @@ types.register(presenceType.type3);
             if (typeName === 'wrapped-presence-no-compare') {
               expect(srcList).to.eql([ '' ]);
               expect(submitted).to.equal(true);
-              expect(this.doc.presence['']).to.eql(p(1));
+              expect(this.doc.presence.current['']).to.eql(p(1));
               done();
             } else {
               done(new Error('Unexpected presence event'));
@@ -1115,7 +1112,7 @@ types.register(presenceType.type3);
             if (typeName === 'wrapped-presence-no-compare') {
               expect(srcList).to.eql([ this.connection.id ]);
               expect(submitted).to.equal(true);
-              expect(this.doc2.presence[this.connection.id]).to.eql(p(1));
+              expect(this.doc2.presence.current[this.connection.id]).to.eql(p(1));
               done();
             } else {
               done(new Error('Unexpected presence event'));
@@ -1329,8 +1326,8 @@ types.register(presenceType.type3);
             presenceEmitted = true;
             expect(srcList.sort()).to.eql([ '', this.connection2.id ]);
             expect(submitted).to.equal(false);
-            expect(this.doc.presence).to.not.have.key('');
-            expect(this.doc.presence).to.not.have.key(this.connection2.id);
+            expect(this.doc.presence.current).to.not.have.key('');
+            expect(this.doc.presence.current).to.not.have.key(this.connection2.id);
           }.bind(this));
 
           this.doc.on('error', function(err) {
@@ -1384,8 +1381,8 @@ types.register(presenceType.type3);
                 presenceEmitted = true;
                 expect(srcList.sort()).to.eql([ '', this.connection2.id ]);
                 expect(submitted).to.equal(false);
-                expect(this.doc.presence).to.not.have.key('');
-                expect(this.doc.presence).to.not.have.key(this.connection2.id);
+                expect(this.doc.presence.current).to.not.have.key('');
+                expect(this.doc.presence.current).to.not.have.key(this.connection2.id);
               }.bind(this));
               this.doc.on('error', done);
 
@@ -1423,7 +1420,7 @@ types.register(presenceType.type3);
           setTimeout,
           function(done) {
             expect(this.doc.data).to.eql([ 'a', 'b' ]);
-            expect(this.doc.presence[this.connection2.id]).to.eql(p(0));
+            expect(this.doc.presence.current[this.connection2.id]).to.eql(p(0));
             // Replay the `lastPresence` with modified payload.
             lastPresence.p = p(1);
             lastPresence.v++; // +1 to account for the op above
@@ -1434,7 +1431,7 @@ types.register(presenceType.type3);
             process.nextTick(done);
           }.bind(this),
           function(done) {
-            expect(this.doc.presence[this.connection2.id]).to.eql(expireCache ? p(1) : p(0));
+            expect(this.doc.presence.current[this.connection2.id]).to.eql(expireCache ? p(1) : p(0));
             process.nextTick(done);
           }.bind(this)
         ], allDone);

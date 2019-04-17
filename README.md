@@ -313,8 +313,8 @@ Unique document ID
 `doc.data` _(Object)_
 Document contents. Available after document is fetched or subscribed to.
 
-`doc.presence` _(Object)_
-Each property under `doc.presence` contains presence data shared by a client subscribed to this document. The property name is an empty string for this client's data and connection IDs for other clients' data.
+`doc.presence.current` _(Object)_
+Each property under `doc.presence.current` contains presence data shared by a client subscribed to this document. The property name is an empty string for this client's data and connection IDs for other clients' data.
 
 `doc.fetch(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server.
