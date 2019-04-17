@@ -46,12 +46,9 @@ function apply(snapshot, op) {
 }
 
 function transform(op1, op2, side) {
-  return op1.index < op2.index || (op1.index === op2.index && side === 'left') ?
-    op1 :
-    {
-      index: op1.index + 1,
-      value: op1.value
-    };
+  return op1.index < op2.index || (op1.index === op2.index && side === 'left')
+    ? op1
+    : { index: op1.index + 1, value: op1.value };
 }
 
 function createPresence(data) {
@@ -59,11 +56,9 @@ function createPresence(data) {
 }
 
 function transformPresence(presence, op, isOwnOperation) {
-  return presence.index < op.index || (presence.index === op.index && !isOwnOperation) ?
-    presence :
-    {
-      index: presence.index + 1
-    };
+  return presence.index < op.index || (presence.index === op.index && !isOwnOperation)
+    ? presence
+    : { index: presence.index + 1 };
 }
 
 function comparePresence(presence1, presence2) {
@@ -77,6 +72,7 @@ function createPresence2(data) {
 }
 
 function transformPresence2(presence, op, isOwnOperation) {
-  return presence < op.index || (presence === op.index && !isOwnOperation) ?
-    presence : presence + 1;
+  return presence < op.index || (presence === op.index && !isOwnOperation)
+    ? presence
+    : presence + 1;
 }
