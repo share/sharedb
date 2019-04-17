@@ -1,4 +1,5 @@
 var async = require('async');
+var lolex = require('lolex');
 var util = require('../util');
 var errorHandler = util.errorHandler;
 var Backend = require('../../lib/backend');
@@ -474,6 +475,7 @@ types.register(presenceType.type3);
     });
 
     it('expires cached ops', function(allDone) {
+      var clock = lolex.install();
       var op1 = { index: 1, value: 'b' };
       var op2 = { index: 2, value: 'b' };
       var op3 = { index: 3, value: 'b' };
@@ -492,6 +494,7 @@ types.register(presenceType.type3);
         // Cache another op before the first 2 expire.
         function (callback) {
           setTimeout(callback, 30);
+          clock.next();
         },
         this.doc.submitOp.bind(this.doc, op2),
         function(done) {
@@ -505,15 +508,20 @@ types.register(presenceType.type3);
         // Cache another op after the first 2 expire.
         function (callback) {
           setTimeout(callback, 31);
+          clock.next();
         },
         this.doc.submitOp.bind(this.doc, op3),
         function(done) {
+          console.log('a');
+          console.log('b');
           expect(this.doc.cachedOps.length).to.equal(2);
           expect(this.doc.cachedOps[0].op).to.equal(op2);
           expect(this.doc.cachedOps[1].op).to.equal(op3);
+          clock.uninstall();
           done();
         }.bind(this)
       ], allDone);
+      console.log('runAll');
     });
 
     it('requests reply presence when sending presence for the first time', function(allDone) {
