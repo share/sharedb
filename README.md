@@ -76,6 +76,8 @@ default, ShareDB stores all operations forever - nothing is truly deleted.
 
 ## User presence synchronization
 
+ShareDB supports synchronization of user presence data. This feature is opt-in, not enabled by default. To enable this feature, pass the `enablePresence: true` option to the ShareDB constructor (e.g. `var share = new ShareDB({ enablePresence: true })`).
+
 Presence data represents a user and is automatically synchronized between all clients subscribed to the same document. Its format is defined by the document's [OT Type](https://github.com/ottypes/docs), for example it may contain a user ID and a cursor position in a text document. All clients can modify their own presence data and receive a read-only version of other client's data. Presence data is automatically cleared when a client unsubscribes from the document or disconnects. It is also automatically transformed against applied operations, so that it still makes sense in the context of a modified document, for example a cursor position may be automatically advanced when a user types at the beginning of a text document.
 
 ## Server API
@@ -96,6 +98,8 @@ __Options__
 * `options.pubsub` _(instance of `ShareDB.PubSub`)_
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
+* `options.enablePresence` _(optional boolean)_
+  Enable user presence synchronization.
 
 #### Database Adapters
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries

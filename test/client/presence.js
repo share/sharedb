@@ -11,6 +11,15 @@ types.register(presenceType.type);
 types.register(presenceType.type2);
 types.register(presenceType.type3);
 
+describe('client presence', function() {
+  it('does not expose doc.presence if enablePresence is false', function() {
+    var backend = new Backend();
+    var connection = backend.connect();
+    var doc = connection.get('dogs', 'fido');
+    expect(typeof doc.presence).to.equal('undefined');
+  });
+});
+
 [
   'wrapped-presence-no-compare',
   'wrapped-presence-with-compare',
@@ -22,7 +31,7 @@ types.register(presenceType.type3);
 
   describe('client presence (' + typeName + ')', function() {
     beforeEach(function() {
-      this.backend = new Backend();
+      this.backend = new Backend({ enablePresence: true });
       this.connection = this.backend.connect();
       this.connection2 = this.backend.connect();
       this.doc = this.connection.get('dogs', 'fido');
