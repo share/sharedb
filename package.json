@@ -18,8 +18,7 @@
     "jshint": "^2.9.2",
     "lolex": "^3.0.0",
     "mocha": "^5.2.0",
-    "sinon": "^6.1.5",
-    "sharedb-mingo-memory": "^1.0.0-beta"
+    "sinon": "^6.1.5"
   },
   "scripts": {
     "test": "./node_modules/.bin/mocha && npm run jshint",
