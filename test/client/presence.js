@@ -297,7 +297,7 @@ types.register(presenceType.type3);
           this.doc.submitPresence(p(0), errorHandler(done));
         }.bind(this),
         function(done) {
-          this.doc2.cachedOps = [];
+          this.doc2.presence.cachedOps = [];
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
@@ -447,10 +447,10 @@ types.register(presenceType.type3);
         this.doc.submitOp.bind(this.doc, op),
         this.doc.del.bind(this.doc),
         function(done) {
-          expect(this.doc.cachedOps.length).to.equal(3);
-          expect(this.doc.cachedOps[0].create).to.equal(true);
-          expect(this.doc.cachedOps[1].op).to.equal(op);
-          expect(this.doc.cachedOps[2].del).to.equal(true);
+          expect(this.doc.presence.cachedOps.length).to.equal(3);
+          expect(this.doc.presence.cachedOps[0].create).to.equal(true);
+          expect(this.doc.presence.cachedOps[1].op).to.equal(op);
+          expect(this.doc.presence.cachedOps[2].del).to.equal(true);
           done();
         }.bind(this)
       ], allDone);
@@ -465,10 +465,10 @@ types.register(presenceType.type3);
         this.doc.del.bind(this.doc),
         setTimeout,
         function(done) {
-          expect(this.doc2.cachedOps.length).to.equal(3);
-          expect(this.doc2.cachedOps[0].create).to.equal(true);
-          expect(this.doc2.cachedOps[1].op).to.eql(op);
-          expect(this.doc2.cachedOps[2].del).to.equal(true);
+          expect(this.doc2.presence.cachedOps.length).to.equal(3);
+          expect(this.doc2.presence.cachedOps[0].create).to.equal(true);
+          expect(this.doc2.presence.cachedOps[1].op).to.eql(op);
+          expect(this.doc2.presence.cachedOps[2].del).to.equal(true);
           done();
         }.bind(this)
       ], allDone);
@@ -479,15 +479,15 @@ types.register(presenceType.type3);
       var op1 = { index: 1, value: 'b' };
       var op2 = { index: 2, value: 'b' };
       var op3 = { index: 3, value: 'b' };
-      this.doc.cachedOpsTimeout = 60;
+      this.doc.presence.cachedOpsTimeout = 60;
       async.series([
         // Cache 2 ops.
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.submitOp.bind(this.doc, op1),
         function(done) {
-          expect(this.doc.cachedOps.length).to.equal(2);
-          expect(this.doc.cachedOps[0].create).to.equal(true);
-          expect(this.doc.cachedOps[1].op).to.equal(op1);
+          expect(this.doc.presence.cachedOps.length).to.equal(2);
+          expect(this.doc.presence.cachedOps[0].create).to.equal(true);
+          expect(this.doc.presence.cachedOps[1].op).to.equal(op1);
           done();
         }.bind(this),
 
@@ -498,10 +498,10 @@ types.register(presenceType.type3);
         },
         this.doc.submitOp.bind(this.doc, op2),
         function(done) {
-          expect(this.doc.cachedOps.length).to.equal(3);
-          expect(this.doc.cachedOps[0].create).to.equal(true);
-          expect(this.doc.cachedOps[1].op).to.equal(op1);
-          expect(this.doc.cachedOps[2].op).to.equal(op2);
+          expect(this.doc.presence.cachedOps.length).to.equal(3);
+          expect(this.doc.presence.cachedOps[0].create).to.equal(true);
+          expect(this.doc.presence.cachedOps[1].op).to.equal(op1);
+          expect(this.doc.presence.cachedOps[2].op).to.equal(op2);
           done();
         }.bind(this),
 
@@ -512,9 +512,9 @@ types.register(presenceType.type3);
         },
         this.doc.submitOp.bind(this.doc, op3),
         function(done) {
-          expect(this.doc.cachedOps.length).to.equal(2);
-          expect(this.doc.cachedOps[0].op).to.equal(op2);
-          expect(this.doc.cachedOps[1].op).to.equal(op3);
+          expect(this.doc.presence.cachedOps.length).to.equal(2);
+          expect(this.doc.presence.cachedOps[0].op).to.equal(op2);
+          expect(this.doc.presence.cachedOps[1].op).to.equal(op3);
           clock.uninstall();
           done();
         }.bind(this)
