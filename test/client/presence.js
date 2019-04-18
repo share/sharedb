@@ -3,6 +3,7 @@ var lolex = require('lolex');
 var util = require('../util');
 var errorHandler = util.errorHandler;
 var Backend = require('../../lib/backend');
+var DummyPresence = require('../../lib/presence/dummy');
 var StatelessPresence = require('../../lib/presence/stateless');
 var ShareDBError = require('../../lib/error');
 var expect = require('expect.js');
@@ -13,11 +14,11 @@ types.register(presenceType.type2);
 types.register(presenceType.type3);
 
 describe('client presence', function() {
-  it('does not expose doc.presence if enablePresence is false', function() {
+  it('should use DummyPresence if Presence option not provided', function() {
     var backend = new Backend();
     var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
-    expect(typeof doc.presence).to.equal('undefined');
+    expect(doc.presence instanceof DummyPresence);
   });
 });
 
