@@ -85,7 +85,7 @@ describe('client presence', function() {
       ], allDone);
     });
 
-    it('waits for pending ops before processing future presence', function(allDone) {
+    it.skip('waits for pending ops before processing future presence', function(allDone) {
       async.series([
         this.doc.create.bind(this.doc, [], typeName),
         this.doc.subscribe.bind(this.doc),
