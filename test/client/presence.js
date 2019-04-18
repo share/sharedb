@@ -28,16 +28,13 @@ describe('client presence', function() {
   'unwrapped-presence'
 ].forEach(function(typeName) {
 
-  // TODO get all these working
-  return;
-
   function p(index) {
     return typeName === 'unwrapped-presence' ? index : { index: index };
   }
 
   describe('client presence (' + typeName + ')', function() {
     beforeEach(function() {
-      this.backend = new Backend({ presence: new StatelessPresence() });
+      this.backend = new Backend({ Presence: StatelessPresence });
       this.connection = this.backend.connect();
       this.connection2 = this.backend.connect();
       this.doc = this.connection.get('dogs', 'fido');
@@ -55,7 +52,7 @@ describe('client presence', function() {
         this.doc2.subscribe.bind(this.doc2),
         function(done) {
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           this.doc2.once('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
@@ -76,7 +73,7 @@ describe('client presence', function() {
           this.doc.submitOp({ index: 0, value: 'a' }, errorHandler(done));
           this.doc.submitOp({ index: 1, value: 'b' }, errorHandler(done));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           this.doc2.once('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             expect(submitted).to.equal(true);
@@ -104,7 +101,7 @@ describe('client presence', function() {
           // A hack to send presence for a future version.
           this.doc.version += 2;
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), function(err) {
+          this.doc.presence.submit(p(1), function(err) {
             if (err) return done(err);
             this.doc.version -= 2;
             this.doc.submitOp({ index: 0, value: 'a' }, errorHandler(done));
@@ -133,7 +130,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0), errorHandler(done));
+          this.doc.presence.submit(p(0), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -157,7 +154,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -181,7 +178,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'c' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -205,7 +202,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0), errorHandler(done));
+          this.doc.presence.submit(p(0), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -229,7 +226,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -253,7 +250,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'c' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -275,7 +272,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0), errorHandler(done));
+          this.doc.presence.submit(p(0), errorHandler(done));
         }.bind(this),
         function(done) {
           this.doc2.on('presence', function(srcList, submitted) {
@@ -288,7 +285,7 @@ describe('client presence', function() {
           // A hack to send presence for an older version.
           this.doc.version = 2;
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -309,7 +306,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0), errorHandler(done));
+          this.doc.presence.submit(p(0), errorHandler(done));
         }.bind(this),
         function(done) {
           this.doc2.presence.cachedOps = [];
@@ -324,7 +321,7 @@ describe('client presence', function() {
           this.doc.version = 1;
           this.doc.data = [ 'a' ];
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -334,8 +331,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(0)),
         setTimeout,
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
@@ -355,8 +352,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(0)),
         setTimeout,
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
@@ -376,8 +373,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a', 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(2)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(2)),
         setTimeout,
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
@@ -397,8 +394,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a', 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(2)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(2)),
         setTimeout,
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
@@ -418,8 +415,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a', 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(1)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(1)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
@@ -439,8 +436,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a', 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(1)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(1)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
@@ -540,7 +537,7 @@ describe('client presence', function() {
       async.series([
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
         this.doc2.subscribe.bind(this.doc2),
         function(done) {
           this.doc2.on('presence', function(srcList, submitted) {
@@ -557,7 +554,7 @@ describe('client presence', function() {
               done();
             }
           }.bind(this));
-          this.doc2.submitPresence(p(1), errorHandler(done));
+          this.doc2.presence.submit(p(1), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -566,7 +563,7 @@ describe('client presence', function() {
       async.series([
         this.doc.subscribe.bind(this.doc),
         function(done) {
-          this.doc.submitPresence(p(0), function(err) {
+          this.doc.presence.submit(p(0), function(err) {
             expect(err).to.be.an(Error);
             expect(err.code).to.equal(4015);
             done();
@@ -584,7 +581,7 @@ describe('client presence', function() {
             expect(err.code).to.equal(4015);
             done();
           });
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
         }.bind(this)
       ], allDone);
     });
@@ -594,7 +591,7 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, {}),
         this.doc.subscribe.bind(this.doc),
         function(done) {
-          this.doc.submitPresence(p(0), function(err) {
+          this.doc.presence.submit(p(0), function(err) {
             expect(err).to.be.an(Error);
             expect(err.code).to.equal(4027);
             done();
@@ -613,7 +610,7 @@ describe('client presence', function() {
             expect(err.code).to.equal(4027);
             done();
           });
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
         }.bind(this)
       ], allDone);
     });
@@ -621,7 +618,7 @@ describe('client presence', function() {
     it('submits null presence', function(allDone) {
       async.series([
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, null)
+        this.doc.presence.submit.bind(this.doc, null)
       ], allDone);
     });
 
@@ -638,9 +635,9 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0), errorHandler(done));
-          this.doc.submitPresence(p(1), errorHandler(done));
-          this.doc.submitPresence(p(2), errorHandler(done));
+          this.doc.presence.submit(p(0), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
+          this.doc.presence.submit(p(2), errorHandler(done));
         }.bind(this)
       ], allDone);
     });
@@ -657,7 +654,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           setTimeout(function() {
             this.doc.subscribe(function(err) {
               if (err) return done(err);
@@ -681,7 +678,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.connection.close();
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           process.nextTick(function() {
             this.backend.connect(this.connection);
             this.doc.presence.requestReply = false;
@@ -703,7 +700,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
         }.bind(this)
       ], allDone);
     });
@@ -714,7 +711,7 @@ describe('client presence', function() {
         this.doc.subscribe.bind(this.doc),
         function(done) {
           expect(this.doc.hasPending()).to.equal(false);
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
           expect(this.doc.hasPending()).to.equal(true);
           expect(!!this.doc.presence.pending).to.equal(true);
           expect(!!this.doc.presence.inflight).to.equal(false);
@@ -735,7 +732,7 @@ describe('client presence', function() {
         this.doc.subscribe.bind(this.doc),
         function(done) {
           expect(this.doc.hasPending()).to.equal(false);
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
           expect(this.doc.hasPending()).to.equal(true);
           expect(!!this.doc.presence.pending).to.equal(true);
           expect(!!this.doc.presence.inflight).to.equal(false);
@@ -761,20 +758,20 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
         setTimeout,
         function(done) {
           expect(this.doc2.presence.current[this.connection.id]).to.eql(p(0));
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             // The call to `del` transforms the presence and fires the event.
-            // The call to `submitPresence` does not fire the event because presence is already null.
+            // The call to `presence.submit` does not fire the event because presence is already null.
             expect(submitted).to.equal(false);
             expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           this.doc2.del(errorHandler(done));
         }.bind(this)
       ], allDone);
@@ -785,8 +782,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           expect(this.doc.presence.current['']).to.eql(p(0));
@@ -812,8 +809,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           expect(this.doc.presence.current['']).to.eql(p(0));
@@ -839,8 +836,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           expect(this.doc.presence.current['']).to.eql(p(0));
@@ -866,8 +863,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           expect(this.doc.presence.current['']).to.eql(p(0));
@@ -898,9 +895,9 @@ describe('client presence', function() {
             if (err) return done(err);
             if (++called === 2) done();
           }
-          this.doc.submitPresence(p(0), callback);
+          this.doc.presence.submit(p(0), callback);
           process.nextTick(function() {
-            this.doc.submitPresence(p(1), callback);
+            this.doc.presence.submit(p(1), callback);
             this.connection.close();
             process.nextTick(function() {
               this.backend.connect(this.connection);
@@ -920,9 +917,9 @@ describe('client presence', function() {
             if (err) return done(err);
             if (++called === 2) done();
           }
-          this.doc.submitPresence(p(0), callback);
+          this.doc.presence.submit(p(0), callback);
           process.nextTick(function() {
-            this.doc.submitPresence(p(1), callback);
+            this.doc.presence.submit(p(1), callback);
             this.doc.unsubscribe(errorHandler(done));
             process.nextTick(function() {
               this.doc.subscribe(errorHandler(done));
@@ -937,8 +934,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           expect(this.doc.presence.current['']).to.eql(p(0));
@@ -963,8 +960,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(1)),
         setTimeout,
         function(done) {
           expect(this.doc.presence.current['']).to.eql(p(0));
@@ -996,7 +993,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(0), errorHandler(done));
+          this.doc.presence.submit(p(0), errorHandler(done));
           this.doc2.submitOp({ index: 1, value: 'b' }, errorHandler(done))
           this.doc2.submitOp({ index: 2, value: 'c' }, errorHandler(done))
         }.bind(this)
@@ -1016,7 +1013,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           this.doc2.submitOp({ index: 1, value: 'c' }, errorHandler(done))
           this.doc2.submitOp({ index: 1, value: 'b' }, errorHandler(done))
         }.bind(this)
@@ -1036,7 +1033,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(1), errorHandler(done));
+          this.doc.presence.submit(p(1), errorHandler(done));
           this.doc2.submitOp({ index: 0, value: 'b' }, errorHandler(done))
           this.doc2.submitOp({ index: 0, value: 'a' }, errorHandler(done))
         }.bind(this)
@@ -1048,19 +1045,19 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(1)),
         setTimeout,
         function(done) {
           this.doc2.on('presence', function(srcList, submitted) {
             expect(srcList).to.eql([ this.connection.id ]);
             // The call to `del` transforms the presence and fires the event.
-            // The call to `submitPresence` does not fire the event because presence is already null.
+            // The call to `presence.submit` does not fire the event because presence is already null.
             expect(submitted).to.equal(false);
             expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(2), errorHandler(done));
+          this.doc.presence.submit(p(2), errorHandler(done));
           this.doc2.del(errorHandler(done));
           this.doc2.create([ 'c' ], typeName, errorHandler(done));
         }.bind(this)
@@ -1072,7 +1069,7 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(1)),
         setTimeout,
         function(done) {
           var firstCall = true;
@@ -1080,13 +1077,13 @@ describe('client presence', function() {
             if (firstCall) return firstCall = false;
             expect(srcList).to.eql([ this.connection.id ]);
             // The call to `del` transforms the presence and fires the event.
-            // The call to `submitPresence` does not fire the event because presence is already null.
+            // The call to `presence.submit` does not fire the event because presence is already null.
             expect(submitted).to.equal(false);
             expect(this.doc2.presence.current).to.not.have.key(this.connection.id);
             done();
           }.bind(this));
           this.doc.presence.requestReply = false;
-          this.doc.submitPresence(p(2), errorHandler(done));
+          this.doc.presence.submit(p(2), errorHandler(done));
           this.doc2.submitOp({ index: 0, value: 'b' }, errorHandler(done));
           this.doc2.del(errorHandler(done));
           this.doc2.create([ 'c' ], typeName, errorHandler(done));
@@ -1098,7 +1095,7 @@ describe('client presence', function() {
       async.series([
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(1)),
         function(done) {
           this.doc.on('presence', function(srcList, submitted) {
             if (typeName === 'wrapped-presence-no-compare') {
@@ -1110,7 +1107,7 @@ describe('client presence', function() {
               done(new Error('Unexpected presence event'));
             }
           }.bind(this));
-          this.doc.submitPresence(p(1), typeName === 'wrapped-presence-no-compare' ? errorHandler(done) : done);
+          this.doc.presence.submit(p(1), typeName === 'wrapped-presence-no-compare' ? errorHandler(done) : done);
         }.bind(this)
       ], allDone);
     });
@@ -1120,7 +1117,7 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(1)),
+        this.doc.presence.submit.bind(this.doc, p(1)),
         setTimeout,
         function(done) {
           this.doc2.on('presence', function(srcList, submitted) {
@@ -1133,7 +1130,7 @@ describe('client presence', function() {
               done(new Error('Unexpected presence event'));
             }
           }.bind(this));
-          this.doc.submitPresence(p(1), typeName === 'wrapped-presence-no-compare' ? errorHandler(done) : done);
+          this.doc.presence.submit(p(1), typeName === 'wrapped-presence-no-compare' ? errorHandler(done) : done);
         }.bind(this)
       ], allDone);
     });
@@ -1148,7 +1145,7 @@ describe('client presence', function() {
         }.bind(this),
         function(done) {
           this.doc.on('error', done);
-          this.doc.submitPresence(p(0), function(err) {
+          this.doc.presence.submit(p(0), function(err) {
             expect(err).to.be.an(Error);
             expect(err.code).to.equal(4025);
             done();
@@ -1171,7 +1168,7 @@ describe('client presence', function() {
             expect(err.code).to.equal(4025);
             done();
           }.bind(this));
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
         }.bind(this)
       ], allDone);
     });
@@ -1180,12 +1177,12 @@ describe('client presence', function() {
       async.series([
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
         setTimeout,
         function(done) {
           this.doc.on('error', done);
           this.connection.seq--;
-          this.doc.submitPresence(p(1), function(err) {
+          this.doc.presence.submit(p(1), function(err) {
             expect(err).to.be.an(Error);
             expect(err.code).to.equal(4026);
             done();
@@ -1198,7 +1195,7 @@ describe('client presence', function() {
       async.series([
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
         setTimeout,
         function(done) {
           this.doc.on('error', function(err) {
@@ -1207,7 +1204,7 @@ describe('client presence', function() {
             done();
           }.bind(this));
           this.connection.seq--;
-          this.doc.submitPresence(p(1));
+          this.doc.presence.submit(p(1));
         }.bind(this)
       ], allDone);
     });
@@ -1216,14 +1213,14 @@ describe('client presence', function() {
       async.series([
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
         setTimeout,
         function(done) {
           this.doc.on('error', done);
           // Decremented sequence number would cause the server to return an error, however,
           // the message won't be sent to the server at all because the presence data has not changed.
           this.connection.seq--;
-          this.doc.submitPresence(p(0), function(err) {
+          this.doc.presence.submit(p(0), function(err) {
             if (typeName === 'wrapped-presence-no-compare') {
               // The OT type does not support comparing presence.
               expect(err).to.be.an(Error);
@@ -1241,7 +1238,7 @@ describe('client presence', function() {
       async.series([
         this.doc.create.bind(this.doc, [ 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
-        this.doc.submitPresence.bind(this.doc, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
         setTimeout,
         function(done) {
           this.doc.on('error', function(err) {
@@ -1257,7 +1254,7 @@ describe('client presence', function() {
           // Decremented sequence number would cause the server to return an error, however,
           // the message won't be sent to the server at all because the presence data has not changed.
           this.connection.seq--;
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
           if (typeName !== 'wrapped-presence-no-compare') {
             process.nextTick(done);
           }
@@ -1279,7 +1276,7 @@ describe('client presence', function() {
             sendPresence.apply(this, arguments);
           };
           this.doc.on('error', done);
-          this.doc.submitPresence(p(0), function(err) {
+          this.doc.presence.submit(p(0), function(err) {
             expect(err).to.be.an(Error);
             expect(err.code).to.equal(-1);
             done();
@@ -1306,7 +1303,7 @@ describe('client presence', function() {
             expect(err.code).to.equal(-1);
             done();
           }.bind(this));
-          this.doc.submitPresence(p(0));
+          this.doc.presence.submit(p(0));
         }.bind(this)
       ], allDone);
     });
@@ -1316,8 +1313,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a', 'b', 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(0)),
         setTimeout,
         function(done) {
           // A hack to allow testing of hard rollback of both inflight and pending presence.
@@ -1330,9 +1327,9 @@ describe('client presence', function() {
           };
           process.nextTick(done);
         }.bind(this),
-        this.doc.submitPresence.bind(this.doc, p(1)), // presence.inflight
+        this.doc.presence.submit.bind(this.doc, p(1)), // presence.inflight
         process.nextTick, // wait for "presence" event
-        this.doc.submitPresence.bind(this.doc, p(2)), // presence.pending
+        this.doc.presence.submit.bind(this.doc, p(2)), // presence.pending
         process.nextTick, // wait for "presence" event
         function(done) {
           var presenceEmitted = false;
@@ -1363,8 +1360,8 @@ describe('client presence', function() {
         this.doc.create.bind(this.doc, [ 'a', 'b', 'c' ], typeName),
         this.doc.subscribe.bind(this.doc),
         this.doc2.subscribe.bind(this.doc2),
-        this.doc.submitPresence.bind(this.doc, p(0)),
-        this.doc2.submitPresence.bind(this.doc2, p(0)),
+        this.doc.presence.submit.bind(this.doc, p(0)),
+        this.doc2.presence.submit.bind(this.doc2, p(0)),
         setTimeout,
         function(done) {
           // A hack to allow testing of hard rollback of both inflight and pending presence.
@@ -1387,9 +1384,9 @@ describe('client presence', function() {
             if (++called < 3) return;
             done();
           }
-          this.doc.submitPresence(p(1), callback); // presence.inflight
+          this.doc.presence.submit(p(1), callback); // presence.inflight
           process.nextTick(function() { // wait for presence event
-            this.doc.submitPresence(p(2), callback); // presence.pending
+            this.doc.presence.submit(p(2), callback); // presence.pending
             process.nextTick(function() { // wait for presence event
               this.doc.on('presence', function(srcList, submitted) {
                 expect(presenceEmitted).to.equal(false);
@@ -1428,7 +1425,7 @@ describe('client presence', function() {
           this.doc2.subscribe.bind(this.doc2),
           function(done) {
             this.doc2.presence.requestReply = false;
-            this.doc2.submitPresence(p(0), done);
+            this.doc2.presence.submit(p(0), done);
           }.bind(this),
           setTimeout,
           this.doc2.submitOp.bind(this.doc2, { index: 1, value: 'b' }), // forces processing of all received presence
