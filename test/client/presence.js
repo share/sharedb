@@ -3,6 +3,7 @@ var lolex = require('lolex');
 var util = require('../util');
 var errorHandler = util.errorHandler;
 var Backend = require('../../lib/backend');
+var StatelessPresence = require('../../lib/presence/stateless');
 var ShareDBError = require('../../lib/error');
 var expect = require('expect.js');
 var types = require('../../lib/types');
@@ -31,7 +32,7 @@ describe('client presence', function() {
 
   describe('client presence (' + typeName + ')', function() {
     beforeEach(function() {
-      this.backend = new Backend({ enablePresence: true });
+      this.backend = new Backend({ Presence: StatelessPresence });
       this.connection = this.backend.connect();
       this.connection2 = this.backend.connect();
       this.doc = this.connection.get('dogs', 'fido');
