@@ -98,8 +98,8 @@ __Options__
 * `options.pubsub` _(instance of `ShareDB.PubSub`)_
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
-* `options.enablePresence` _(optional boolean)_
-  Enable user presence synchronization.
+* `options.presence` _(instance of `ShareDB.Presence`)_
+  Enable user presence synchronization. If not specified, presence features are not enabled.
 
 #### Database Adapters
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
