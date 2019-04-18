@@ -3,6 +3,7 @@ var lolex = require('lolex');
 var util = require('../util');
 var errorHandler = util.errorHandler;
 var Backend = require('../../lib/backend');
+var Presence = require('../../lib/presence');
 var DummyPresence = require('../../lib/presence/dummy');
 var StatelessPresence = require('../../lib/presence/stateless');
 var ShareDBError = require('../../lib/error');
@@ -18,7 +19,15 @@ describe('client presence', function() {
     var backend = new Backend();
     var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
-    expect(doc.presence instanceof DummyPresence);
+    expect(doc.presence instanceof DummyPresence).to.be(true);
+  });
+
+  it('DummyPresence should subclass Presence', function() {
+    expect(DummyPresence.prototype instanceof Presence).to.be(true);
+  });
+
+  it('StatelessPresence should subclass Presence', function() {
+    expect(StatelessPresence.prototype instanceof Presence).to.be(true);
   });
 });
 
