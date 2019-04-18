@@ -1452,5 +1452,16 @@ describe('client presence', function() {
     it('ignores an old message (cache not expired, presence.seq < cachedPresence.seq)', testReceivedMessageExpiry(false, true));
     it('processes an old message (cache expired, presence.seq === cachedPresence.seq)', testReceivedMessageExpiry(true, false));
     it('processes an old message (cache expired, presence.seq < cachedPresence.seq)', testReceivedMessageExpiry(true, true));
+
+    it('invokes presence.destroy inside doc.destroy', function(done) {
+      var presence = this.doc.presence;
+      presence.cachedOps = ['foo'];
+      presence.received = { bar: true };
+      this.doc.destroy(function(err) {
+        expect(presence.cachedOps).to.eql([]);
+        expect(presence.received).to.eql({});
+        done();
+      });
+    });
   });
 });
