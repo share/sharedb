@@ -3,9 +3,9 @@ var lolex = require('lolex');
 var util = require('../util');
 var errorHandler = util.errorHandler;
 var Backend = require('../../lib/backend');
-var Presence = require('../../lib/presence');
-var DummyPresence = require('../../lib/presence/dummy');
-var StatelessPresence = require('../../lib/presence/stateless');
+var presence = require('../../lib/presence');
+var dummyPresence = require('../../lib/presence/dummy');
+var statelessPresence = require('../../lib/presence/stateless');
 var ShareDBError = require('../../lib/error');
 var expect = require('expect.js');
 var types = require('../../lib/types');
@@ -15,19 +15,19 @@ types.register(presenceType.type2);
 types.register(presenceType.type3);
 
 describe('client presence', function() {
-  it('should use DummyPresence if Presence option not provided', function() {
+  it('should use dummyPresence.DocPresence if presence option not provided', function() {
     var backend = new Backend();
     var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
-    expect(doc.presence instanceof DummyPresence).to.be(true);
+    expect(doc.presence instanceof dummyPresence.DocPresence).to.be(true);
   });
 
   it('DummyPresence should subclass Presence', function() {
-    expect(DummyPresence.prototype instanceof Presence).to.be(true);
+    expect(dummyPresence.DocPresence.prototype instanceof presence.DocPresence).to.be(true);
   });
 
   it('StatelessPresence should subclass Presence', function() {
-    expect(StatelessPresence.prototype instanceof Presence).to.be(true);
+    expect(statelessPresence.DocPresence.prototype instanceof presence.DocPresence).to.be(true);
   });
 });
 
@@ -42,7 +42,7 @@ describe('client presence', function() {
 
   describe('client presence (' + typeName + ')', function() {
     beforeEach(function() {
-      this.backend = new Backend({ Presence: StatelessPresence });
+      this.backend = new Backend({ presence: statelessPresence });
       this.connection = this.backend.connect();
       this.connection2 = this.backend.connect();
       this.doc = this.connection.get('dogs', 'fido');
