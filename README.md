@@ -78,7 +78,9 @@ default, ShareDB stores all operations forever - nothing is truly deleted.
 
 ShareDB supports synchronization of user presence data such as cursor positions and text selections. This feature is opt-in, not enabled by default. To enable this feature, pass a presence implementation as the `presence` option to the ShareDB constructor.
 
-ShareDB includes an implementation of presence called `StatelessPresence`. This provides an implementation of presence that works out of the box, but it has some scalability problems. Each time a client joins a document, this implementation requests current presence information from all other clients, via the server, which may be problematic in terms of performance when a large number of users are present on the same documentsimultaneously. If you don't expect too many simultaneous users, this should work well. The server does not store any state at all regarding presence (it exists only in clients), hence the name "Stateless Presence".
+ShareDB includes an implementation of presence called `StatelessPresence`. This provides an implementation of presence that works out of the box, but it has some scalability problems. Each time a client joins a document, this implementation requests current presence information from all other clients, via the server. This approach may be problematic in terms of performance when a large number of users are present on the same document simultaneously. If you don't expect too many simultaneous users per document, `StatelessPresence` should work well. The server does not store any state at all regarding presence (it exists only in clients), hence the name "Stateless Presence".
+
+In `StatelessPresence`, presence data represents a user and is automatically synchronized between all clients subscribed to the same document. Its format is defined by the document's [OT Type](https://github.com/ottypes/docs) (specifically, by [`transformPresence`, `createPresence`, and `comparePresence`](https://github.com/teamwork/ot-docs#optional-properties)). All clients can modify their own presence data and receive a read-only version of other client's data. Presence data is automatically cleared when a client unsubscribes from the document or disconnects. It is also automatically transformed against applied operations, so that it still makes sense in the context of a modified document, for example a cursor position may be automatically advanced when a user types at the beginning of a text document.
 
 To use `StatelessPresence`, pass it into the ShareDB constructor like this:
 
@@ -87,8 +89,6 @@ var ShareDB = require('sharedb');
 var statelessPresence = require('sharedb/lib/presence/stateless');
 var share = new ShareDB({ presence: statelessPresence })`).
 ```
-
-Presence data represents a user and is automatically synchronized between all clients subscribed to the same document. Its format is defined by the document's [OT Type](https://github.com/ottypes/docs), for example it may contain a user ID and a cursor position in a text document. All clients can modify their own presence data and receive a read-only version of other client's data. Presence data is automatically cleared when a client unsubscribes from the document or disconnects. It is also automatically transformed against applied operations, so that it still makes sense in the context of a modified document, for example a cursor position may be automatically advanced when a user types at the beginning of a text document.
 
 ## Server API
 
