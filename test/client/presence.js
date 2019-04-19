@@ -15,11 +15,18 @@ types.register(presenceType.type2);
 types.register(presenceType.type3);
 
 describe('client presence', function() {
-  it('should use dummyPresence.DocPresence if presence option not provided', function() {
+  it('should use dummyPresence if presence option not provided', function() {
     var backend = new Backend();
     var connection = backend.connect();
     var doc = connection.get('dogs', 'fido');
     expect(doc._docPresence instanceof dummyPresence.DocPresence).to.be(true);
+  });
+
+  it('should use presence option if provided', function() {
+    var backend = new Backend({ presence: statelessPresence });
+    var connection = backend.connect();
+    var doc = connection.get('dogs', 'fido');
+    expect(doc._docPresence instanceof statelessPresence.DocPresence).to.be(true);
   });
 
   it('DummyPresence should subclass Presence', function() {

@@ -108,8 +108,8 @@ __Options__
 * `options.pubsub` _(instance of `ShareDB.PubSub`)_
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
-* `options.presence` _(implementation of presence API)_
-  Enable user presence synchronization.
+* `options.presence` _(implementation of presence classes)_
+  Enable user presence synchronization. The value of `options.presence` option is expected to contain implementations of the classes `DocPresence`, `ConnectionPresence`, `AgentPresence`, and `BackendPresence`. Logic related to presence is encapsulated within these classes, so it is possible develop additional third party presence implementations external to ShareDB.
 
 #### Database Adapters
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
@@ -327,8 +327,8 @@ Unique document ID
 `doc.data` _(Object)_
 Document contents. Available after document is fetched or subscribed to.
 
-`doc.presence.current` _(Object)_
-Each property under `doc.presence.current` contains presence data shared by a client subscribed to this document. The property name is an empty string for this client's data and connection IDs for other clients' data.
+`doc.presence` _(Object)_
+Each property under `doc.presence` contains presence data shared by a client subscribed to this document. The property name is an empty string for this client's data and connection IDs for other clients' data. The structure of the presence object is defined by the OT type of the document (for example, in [ot-rich-text](https://github.com/Teamwork/ot-rich-text#presence) and [@datavis-tech/json0](https://github.com/datavis-tech/json0#presence)).
 
 `doc.fetch(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server.
