@@ -2,7 +2,7 @@
 
 ![Demo](demo.gif)
 
-This is a port of [https://github.com/percolatestudio/react-leaderboard](Leaderboard) to
+This is a port of [Leaderboard](https://github.com/percolatestudio/react-leaderboard) to
 ShareDB.
 
 In this demo, data is not persisted. To persist data, run a Mongo
