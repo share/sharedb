@@ -3,7 +3,7 @@ var ShareDB = require("sharedb");
 var connect = require("connect");
 var serveStatic = require('serve-static');
 var ShareDBMingoMemory = require('sharedb-mingo-memory');
-var WebSocketJSONStream = require('websocket-json-stream');
+var WebSocketJSONStream = require('@teamwork/websocket-json-stream');
 var WebSocket = require('ws');
 var util = require('util');
 

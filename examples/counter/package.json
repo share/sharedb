@@ -17,7 +17,7 @@
   "dependencies": {
     "express": "^4.14.0",
     "sharedb": "^1.0.0-beta",
-    "websocket-json-stream": "^0.0.1",
+    "@teamwork/websocket-json-stream": "^2.0.0",
     "ws": "^1.1.0"
   },
   "devDependencies": {
