@@ -24,7 +24,7 @@
     "sharedb-mingo-memory": "^1.0.0-beta",
     "through2": "^2.0.1",
     "underscore": "^1.8.3",
-    "websocket-json-stream": "^0.0.3",
+    "@teamwork/websocket-json-stream": "^2.0.0",
     "ws": "^1.1.0"
   },
   "devDependencies": {

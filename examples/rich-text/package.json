@@ -18,7 +18,7 @@
     "quill": "^1.0.0-beta.11",
     "rich-text": "^3.0.1",
     "sharedb": "^1.0.0-beta",
-    "websocket-json-stream": "^0.0.1",
+    "@teamwork/websocket-json-stream": "^2.0.0",
     "ws": "^1.1.0"
   },
   "devDependencies": {
