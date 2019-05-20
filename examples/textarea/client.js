@@ -8,21 +8,21 @@ var connection = new sharedb.Connection(socket);
 
 var element = document.querySelector('textarea');
 var statusSpan = document.getElementById('status-span');
-status.innerHTML = "Not Connected"
+statusSpan.innerHTML = "Not Connected"
 
 element.style.backgroundColor = "gray";
 socket.onopen = function(){
-  status.innerHTML = "Connected"
+  statusSpan.innerHTML = "Connected"
   element.style.backgroundColor = "white";
 };
 
 socket.onclose = function(){
-  status.innerHTML = "Closed"
+  statusSpan.innerHTML = "Closed"
   element.style.backgroundColor = "gray";
 };
 
 socket.onerror = function() {
-  status.innerHTML = "Error"
+  statusSpan.innerHTML = "Error"
   element.style.backgroundColor = "red";
 }
 
