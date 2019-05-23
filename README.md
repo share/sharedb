@@ -467,6 +467,7 @@ Additional fields may be added to the error object for debugging context dependi
 * 4022 - Database adapter does not support queries
 * 4023 - Cannot project snapshots of this type
 * 4024 - Invalid version
+* 4025 - Passing options to subscribe has not been implemented
 
 ### 5000 - Internal error
 
