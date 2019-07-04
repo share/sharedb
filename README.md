@@ -407,6 +407,165 @@ after a sequence of diffs are handled.
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
 
+### Class: `Backend`
+
+#### `connect`
+
+```javascript
+backend.connect(connection: Connection, req: Object): Connection;
+```
+
+Connects to ShareDB and returns an instance of a [`Connection`](#class-sharedbconnection)
+
+* `connection` _Connection (optional)_: a [`Connection`](#class-sharedbconnection) instance to bind to the `Backend`
+* `req` _Object (optional)_: a connection context object that can contain information such as cookies or session data that will be available in the [middleware](#middlewares)
+
+Returns a [`Connection`](#class-sharedbconnection).
+
+#### `listen`
+
+```javascript
+backend.listen(stream: Stream, req: Object): Agent;
+```
+
+Registers a `Stream` with the backend.
+
+* `stream` _Stream_: a [`Stream`](https://nodejs.org/api/stream.html) (or `Stream`-like object) that will be used to communicate between the `Agent` and the `Backend`
+* `req` _Object (optional)_: a connection context object that can contain information such as cookies or session data that will be available in the [middleware](#middlewares)
+
+Returns an `Agent`, which is also available in the [middleware](#middlewares).
+
+#### `close`
+
+```javascript
+backend.close(callback: Function): void;
+```
+
+Disconnects ShareDB and all of its underlying services (database, pubsub, etc.).
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void` that will be called once the services have stopped, or with an `error` if at least one of them could not be stopped
+
+#### `use`
+
+```javascript
+backend.use(action: string | string[], middleware: Function): Backend;
+```
+
+Adds [middleware](#middlewares) to the `Backend`.
+
+* `action` _string | string[]_: an action, or array of action names defining when to apply the middleware
+* `middleware` _Function_: a middleware function with the signature `function (context: Object, callback: Function): void;`. See [middleware](#middlewares) for more details
+
+Returns the `Backend` instance.
+
+#### `addProjection`
+
+```javascript
+backend.addProjection(name: string, collection: string, fields: Object): void;
+```
+
+Adds a [projection](#projections).
+
+* `name` _string_: the name of the projection
+* `collection` _string_: the name of the collection on which to apply the projection
+* `fields` _Object_: a declaration of which fields to include in the projection, such as `{ field1: true }`. Defining sub-field projections is not supported.
+
+#### `submit`
+
+```javascript
+backend.submit(agent: Agent, index: string, id: string, op: Object, options: Object, callback: Function): void;
+```
+
+Submits an operation to the `Backend`.
+
+* `agent` _Agent_: connection agent to pass to the middleware
+* `index` _string_: the name of the target collection or projection
+* `id` _string_: the document ID
+* `op` _Object_: the operation to submit
+<!-- TODO: What does this options object do? -->
+* `options` _Object_: ???
+<!-- TODO: Check that I understand this properly -->
+* `callback` _Function_: a callback with the signature `function (error: Error, ops: Object[]): void;`, where `ops` are the ops that were actually submitted to ShareDB after transforming them up to work on the latest version of the document (which may be different to the op that was originally submitted)
+
+#### `getOps`
+
+```javascript
+backend.getOps(agent: Agent, index: string, id: string, from: number, to: number, options: Object, callback: Function): void;
+```
+
+Fetches the ops for a document between the requested version numbers, where the `from` value is inclusive, but the `to` value is non-inclusive.
+
+* `agent` _Agent_: connection agent to pass to the middleware
+* `index` _string_: the name of the target collection or projection
+* `id` _string_: the document ID
+* `from` _number_: the first op version to fetch. If set to `null`, then ops will be fetched from the earliest version
+* `to` _number_: The last op version. This version will _not_ be fetched (ie `to` is non-inclusive). If set to `null`, then ops will be fetched up to the latest version
+* `options`: _Object (optional)_: options can be passed directly to the database driver's `getOps` inside the `opsOptions` property: `{opsOptions: {metadata: true}}`
+* `callback`: _Function_: a callback with the signature `function (error: Error, ops: Object[]): void;`, where `ops` is an array of the requested ops
+
+#### `getOpsBulk`
+
+```javascript
+backend.getOpsBulk(agent: Agent, index: string, fromMap: Object, toMap: Object, options: Object, callback: Function): void;
+```
+
+Fetches the ops for multiple documents in a collection between the requested version numbers, where the `from` value is inclusive, but the `to` value is non-inclusive.
+
+* `agent` _Agent_: connection agent to pass to the middleware
+* `index` _string_: the name of the target collection or projection
+* `id` _string_: the document ID
+* `fromMap` _Object_: an object whose keys are the IDs of the target documents. The values are the first versions requested of each document. For example, `{abc: 3}` will fetch ops for document with ID `abc` from version `3` (inclusive)
+* `toMap` _Object_: an object whose keys are the IDs of the target documents. The values are the last versions requested of each document (non-inclusive). For example, `{abc: 3}` will fetch ops for document with ID `abc` up to version `3` (_not_ inclusive)
+* `options`: _Object (optional)_: options can be passed directly to the database driver's `getOpsBulk` inside the `opsOptions` property: `{opsOptions: {metadata: true}}`
+* `callback`: _Function_: a callback with the signature `function (error: Error, opsMap: Object): void;`, where `opsMap` is an object whose keys are the IDs of the requested documents, and their values are the arrays of requested ops, eg `{abc: []}`
+
+#### `fetch`
+
+```javascript
+backend.fetch(agent: Agent, index: string, id: string, options: Object, callback: Function): void;
+```
+
+Fetch the current snapshot of a document.
+
+* `agent` _Agent_: connection agent to pass to the middleware
+* `index` _string_: the name of the target collection or projection
+* `id` _string_: the document ID
+* `options`: _Object (optional)_: options can be passed directly to the database driver's `fetch` inside the `snapshotOptions` property: `{snapshotOptions: {metadata: true}}`
+* `callback`: _Function_: a callback with the signature `function (error: Error, snapshot: Snapshot): void;`, where `snapshot` is the requested snapshot
+
+#### `fetchBulk`
+
+```javascript
+backend.fetchBulk(agent: Agent, index: string, ids: string[], options: Object, callback: Function): void;
+```
+
+Fetch multiple document snapshots from a collection.
+
+* `agent` _Agent_: connection agent to pass to the middleware
+* `index` _string_: the name of the target collection or projection
+* `ids` _string[]_: array of document IDs
+* `options`: _Object (optional)_: options can be passed directly to the database driver's `fetchBulk` inside the `snapshotOptions` property: `{snapshotOptions: {metadata: true}}`
+* `callback`: _Function_: a callback with the signature `function (error: Error, snapshotMap: Object): void;`, where `snapshotMap` is an object whose keys are the requested IDs, and the values are the requested `Snapshot`s
+
+<!-- TODO: Is it okay to have ignored `subscribe`, `subscribeBulk`, `querySubscribe`? -->
+
+<!-- TODO: Should we ignore `queryFetch`? -->
+
+#### `queryFetch`
+
+```javascript
+backend.queryFetch(agent: Agent, index: string, query: Object, options: Object, callback: Function): void;
+```
+
+Fetch snapshots that match the provided query.
+
+* `agent` _Agent_: connection agent to pass to the middleware
+* `index` _string_: the name of the target collection or projection
+* `query` _Object_: a query object, whose format will depend on the database adapter being used
+<!-- TODO: I don't think options are used? -->
+* `options` _Object_: ???
+* `callback` _Function_: a callback with the signature `function (error: Error, snapshots: Snapshot[], extra: Object): void;`, where `snapshots` is an array of the snapshots matching the query, and `extra` is an (optional) object that the database adapter might return with more information about the results (such as counts)
+
 ### Logging
 
 By default, ShareDB logs to `console`. This can be overridden if you wish to silence logs, or to log to your own logging driver or alert service.
