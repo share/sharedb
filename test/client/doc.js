@@ -1,5 +1,6 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
+var sinon = require('sinon');
 var util = require('../util')
 
 describe('Doc', function() {
@@ -163,6 +164,42 @@ describe('Doc', function() {
         expect(doc.data).eql({color: 'gray', weight: 40});
         verifyConsistency(doc, doc2, doc3, handlers, done);
       });
+    });
+
+    it('remote multi component ops are emit only one of `before op batch` and `after op batch` events', function(done) {
+      var doc = this.doc;
+      var doc2 = this.doc2;
+      var doc3 = this.doc3;
+
+      var receivedOps = [];
+
+      var beforeOpBatchHandler = sinon.fake();
+      var afterOpBatchHandler = sinon.fake();
+
+      doc.on('before op', beforeOpBatchHandler);
+      doc.on('after op', afterOpBatchHandler);
+      doc.on('op', function(op, source) {
+        receivedOps.push(op);
+      });
+
+      var remoteOp = [
+        {p: ['tricks'], oi: ['fetching']},
+        {p: ['tricks', 0], li: 'stand'},
+        {p: ['tricks', 1], li: 'shake'},
+        {p: ['tricks', 2, 5], sd: 'ing'},
+        {p: ['tricks', 0], lm: 2}
+      ];
+
+      doc2.submitOp(remoteOp, function(err) {
+        if (err) return done(err);
+        doc.fetch();
+        verifyConsistency(doc, doc2, doc3, [], done);
+      });
+
+      expect(beforeOpBatchHandler.calledOnce);
+      expect(afterOpBatchHandler.calledOnce);
+      expect(receivedOps.length == remoteOp.length);
+
     });
 
     it('remote multi component ops are transformed by ops submitted in `op` event handlers', function(done) {
