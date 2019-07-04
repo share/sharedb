@@ -3,7 +3,6 @@ var ot = require('../lib/ot');
 var type = require('../lib/types').defaultType;
 
 describe('ot', function() {
-
   describe('checkOp', function() {
     it('fails if op is not an object', function() {
       expect(ot.checkOp('hi')).ok();
@@ -28,7 +27,7 @@ describe('ot', function() {
     });
 
     it('fails if the type is missing', function() {
-      expect(ot.checkOp({create:{type: 'something that does not exist'}})).ok();
+      expect(ot.checkOp({create: {type: 'something that does not exist'}})).ok();
     });
 
     it('accepts valid create operations', function() {
@@ -37,11 +36,11 @@ describe('ot', function() {
     });
 
     it('accepts valid delete operations', function() {
-      expect(ot.checkOp({del:true})).equal();
+      expect(ot.checkOp({del: true})).equal();
     });
 
     it('accepts valid ops', function() {
-      expect(ot.checkOp({op:[1,2,3]})).equal();
+      expect(ot.checkOp({op: [1, 2, 3]})).equal();
     });
   });
 
@@ -106,11 +105,11 @@ describe('ot', function() {
 
   describe('op', function() {
     it('fails if the document does not exist', function() {
-      expect(ot.apply({v: 6}, {v: 6, op: [1,2,3]})).ok();
+      expect(ot.apply({v: 6}, {v: 6, op: [1, 2, 3]})).ok();
     });
 
     it('fails if the type is missing', function() {
-      expect(ot.apply({v: 6, type: 'some non existant type'}, {v: 6, op: [1,2,3]})).ok();
+      expect(ot.apply({v: 6, type: 'some non existant type'}, {v: 6, op: [1, 2, 3]})).ok();
     });
 
     it('applies the operation to the document data', function() {
@@ -238,5 +237,4 @@ describe('ot', function() {
       expect(op).eql({});
     });
   });
-
 });

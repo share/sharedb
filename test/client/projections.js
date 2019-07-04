@@ -1,9 +1,10 @@
+// FIXME: fix this indentation
+/* eslint-disable indent */
 var expect = require('expect.js');
 var util = require('../util');
 
 module.exports = function() {
 describe('client projections', function() {
-
   beforeEach(function(done) {
     this.backend.addProjection('dogs_summary', 'dogs', {age: true, owner: true});
     this.connection = this.backend.connect();
@@ -56,7 +57,12 @@ describe('client projections', function() {
 
     it('parent field replace', function(done) {
       test.call(this,
-        {p: [], oi: {age: 2, color: 'brown', owner: false}, od: {age: 3, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}}},
+        {
+          p: [],
+          oi: {age: 2, color: 'brown', owner: false},
+          od: {age: 3, color: 'gold', owner: {name: 'jim'},
+          litter: {count: 4}}
+        },
         {age: 2, owner: false},
         done
       );
@@ -324,6 +330,5 @@ describe('client projections', function() {
       });
     });
   });
-
 });
 };

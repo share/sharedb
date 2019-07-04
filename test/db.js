@@ -790,9 +790,9 @@ module.exports = function(options) {
         // sorts by foo first, then bar
         var snapshots = [
           {type: 'json0', id: '0', v: 1, data: {foo: 1, bar: 1}, m: null},
-          {type: 'json0', id: '1', v: 1, data: { foo: 2, bar: 1 }, m: null},
-          {type: 'json0', id: '2', v: 1, data: { foo: 1, bar: 2 }, m: null},
-          {type: 'json0', id: '3', v: 1, data: { foo: 2, bar: 2 }, m: null}
+          {type: 'json0', id: '1', v: 1, data: {foo: 2, bar: 1}, m: null},
+          {type: 'json0', id: '2', v: 1, data: {foo: 1, bar: 2}, m: null},
+          {type: 'json0', id: '3', v: 1, data: {foo: 2, bar: 2}, m: null}
         ];
         var db = this.db;
         var dbQuery = getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]});

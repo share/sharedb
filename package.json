@@ -13,17 +13,17 @@
   },
   "devDependencies": {
     "coveralls": "^2.11.8",
+    "eslint": "^5.16.0",
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.2",
-    "jshint": "^2.9.2",
     "lolex": "^3.0.0",
     "mocha": "^5.2.0",
     "sinon": "^6.1.5"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha && npm run jshint",
+    "test": "./node_modules/.bin/mocha && npm run lint",
     "test-cover": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha",
-    "jshint": "./node_modules/.bin/jshint lib/*.js test/*.js"
+    "lint": "./node_modules/.bin/eslint 'lib/**/*.js' 'test/**/*.js'"
   },
   "repository": {
     "type": "git",

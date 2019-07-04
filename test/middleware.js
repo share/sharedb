@@ -1,11 +1,9 @@
-var async = require('async');
 var Backend = require('../lib/backend');
 var expect = require('expect.js');
 var util = require('./util');
 var types = require('../lib/types');
 
 describe('middleware', function() {
-
   beforeEach(function() {
     this.backend = new Backend();
   });
@@ -22,16 +20,13 @@ describe('middleware', function() {
   }
 
   describe('use', function() {
-
     it('returns itself to allow chaining', function() {
       var response = this.backend.use('submit', function(request, next) {});
       expect(response).equal(this.backend);
     });
-
   });
 
   describe('connect', function() {
-
     it('passes the agent on connect', function(done) {
       var clientId;
       this.backend.use('connect', function(request, next) {
@@ -57,7 +52,6 @@ describe('middleware', function() {
         done();
       });
     });
-
   });
 
   function testReadDoc(expectFidoOnly, expectFidoAndSpot) {
@@ -136,7 +130,6 @@ describe('middleware', function() {
 
       function expectFidoAndSpot(backend, done) {
         var doneAfter = util.callAfter(2, done);
-        var i = 0;
         backend.use('doc', function(request, next) {
           doneAfter();
           if (doneAfter.called === 1) {
@@ -305,5 +298,4 @@ describe('middleware', function() {
       });
     });
   });
-
 });

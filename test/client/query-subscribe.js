@@ -1,3 +1,5 @@
+// FIXME: fix this indentation
+/* eslint-disable indent */
 var expect = require('expect.js');
 var async = require('async');
 var util = require('../util');
@@ -31,8 +33,12 @@ describe('client query subscribe', function() {
     var connection = this.backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -55,8 +61,12 @@ describe('client query subscribe', function() {
     var connection = this.backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -80,8 +90,12 @@ describe('client query subscribe', function() {
     var connection2 = this.backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -102,8 +116,12 @@ describe('client query subscribe', function() {
     var connection2 = this.backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -123,8 +141,12 @@ describe('client query subscribe', function() {
     var connection2 = backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -147,8 +169,12 @@ describe('client query subscribe', function() {
     var connection2 = backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -188,8 +214,12 @@ describe('client query subscribe', function() {
     var connection = this.backend.connect();
     var matchAllDbQuery = this.matchAllDbQuery;
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
@@ -360,8 +390,12 @@ describe('client query subscribe', function() {
   it('changing a filtered property removes from a subscribed query', function(done) {
     var connection = this.backend.connect();
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 3}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 3}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var dbQuery = getQuery({query: {age: 3}});
@@ -387,8 +421,12 @@ describe('client query subscribe', function() {
   it('changing a filtered property inserts to a subscribed query', function(done) {
     var connection = this.backend.connect();
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var dbQuery = getQuery({query: {age: 3}});
@@ -415,8 +453,12 @@ describe('client query subscribe', function() {
     var connection = this.backend.connect();
 
     async.parallel([
-      function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-      function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); }
+      function(cb) {
+        connection.get('dogs', 'fido').create({age: 3}, cb);
+      },
+      function(cb) {
+        connection.get('dogs', 'spot').create({age: 5}, cb);
+      }
     ], function(err) {
       if (err) return done(err);
       var dbQuery = getQuery({query: {}, sort: [['age', 1]]});
@@ -441,6 +483,5 @@ describe('client query subscribe', function() {
       });
     });
   });
-
 });
 };

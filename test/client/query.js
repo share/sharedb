@@ -1,3 +1,5 @@
+// FIXME: fix this indentation
+/* eslint-disable indent */
 var expect = require('expect.js');
 var async = require('async');
 var util = require('../util');
@@ -25,9 +27,15 @@ describe('client query', function() {
       var connection = this.backend.connect();
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
+        function(cb) {
+          connection.get('dogs', 'fido').create({age: 3}, cb);
+        },
+        function(cb) {
+          connection.get('dogs', 'spot').create({age: 5}, cb);
+        },
+        function(cb) {
+          connection.get('cats', 'finn').create({age: 2}, cb);
+        }
       ], function(err) {
         if (err) return done(err);
         connection[method]('dogs', matchAllDbQuery, null, function(err, results) {
@@ -45,9 +53,15 @@ describe('client query', function() {
       var connection2 = this.backend.connect();
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
+        function(cb) {
+          connection.get('dogs', 'fido').create({age: 3}, cb);
+        },
+        function(cb) {
+          connection.get('dogs', 'spot').create({age: 5}, cb);
+        },
+        function(cb) {
+          connection.get('cats', 'finn').create({age: 2}, cb);
+        }
       ], function(err) {
         if (err) return done(err);
         connection2[method]('dogs', matchAllDbQuery, null, function(err, results) {
@@ -65,9 +79,15 @@ describe('client query', function() {
       var connection2 = this.backend.connect();
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
+        function(cb) {
+          connection.get('dogs', 'fido').create({age: 3}, cb);
+        },
+        function(cb) {
+          connection.get('dogs', 'spot').create({age: 5}, cb);
+        },
+        function(cb) {
+          connection.get('cats', 'finn').create({age: 2}, cb);
+        }
       ], function(err) {
         if (err) return done(err);
         connection2.get('dogs', 'fido').fetch(function(err) {
@@ -88,9 +108,15 @@ describe('client query', function() {
       var connection2 = this.backend.connect();
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
+        function(cb) {
+          connection.get('dogs', 'fido').create({age: 3}, cb);
+        },
+        function(cb) {
+          connection.get('dogs', 'spot').create({age: 5}, cb);
+        },
+        function(cb) {
+          connection.get('cats', 'finn').create({age: 2}, cb);
+        }
       ], function(err) {
         if (err) return done(err);
         connection2.get('dogs', 'fido').fetch(function(err) {
@@ -116,8 +142,6 @@ describe('client query', function() {
         });
       });
     });
-
   });
-
 });
 };

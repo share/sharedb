@@ -1,9 +1,10 @@
+// FIXME: fix this indentation
+/* eslint-disable indent */
 var expect = require('expect.js');
 var async = require('async');
 
 module.exports = function() {
 describe('client subscribe', function() {
-
   it('can call bulk without doing any actions', function() {
     var connection = this.backend.connect();
     connection.startBulk();
@@ -31,8 +32,12 @@ describe('client subscribe', function() {
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         async.parallel([
-          function(cb) { doc2[method](cb); },
-          function(cb) { doc2[method](cb); }
+          function(cb) {
+            doc2[method](cb);
+          },
+          function(cb) {
+            doc2[method](cb);
+          }
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
@@ -49,8 +54,12 @@ describe('client subscribe', function() {
         if (err) return done(err);
         doc2.connection.startBulk();
         async.parallel([
-          function(cb) { doc2[method](cb); },
-          function(cb) { doc2[method](cb); }
+          function(cb) {
+            doc2[method](cb);
+          },
+          function(cb) {
+            doc2[method](cb);
+          }
         ], function(err) {
           if (err) return done(err);
           expect(doc2.version).eql(1);
@@ -65,9 +74,15 @@ describe('client subscribe', function() {
       var connection = this.backend.connect();
       var connection2 = this.backend.connect();
       async.parallel([
-        function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-        function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
-        function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
+        function(cb) {
+          connection.get('dogs', 'fido').create({age: 3}, cb);
+        },
+        function(cb) {
+          connection.get('dogs', 'spot').create({age: 5}, cb);
+        },
+        function(cb) {
+          connection.get('cats', 'finn').create({age: 2}, cb);
+        }
       ], function(err) {
         if (err) return done(err);
         var fido = connection2.get('dogs', 'fido');
@@ -75,9 +90,15 @@ describe('client subscribe', function() {
         var finn = connection2.get('cats', 'finn');
         connection2.startBulk();
         async.parallel([
-          function(cb) { fido[method](cb); },
-          function(cb) { spot[method](cb); },
-          function(cb) { finn[method](cb); }
+          function(cb) {
+            fido[method](cb);
+          },
+          function(cb) {
+            spot[method](cb);
+          },
+          function(cb) {
+            finn[method](cb);
+          }
         ], function(err) {
           if (err) return done(err);
           expect(fido.data).eql({age: 3});
@@ -97,9 +118,15 @@ describe('client subscribe', function() {
       var finn = connection2.get('cats', 'finn');
       connection2.startBulk();
       async.parallel([
-        function(cb) { fido[method](cb); },
-        function(cb) { spot[method](cb); },
-        function(cb) { finn[method](cb); }
+        function(cb) {
+          fido[method](cb);
+        },
+        function(cb) {
+         spot[method](cb);
+        },
+        function(cb) {
+          finn[method](cb);
+        }
       ], function(err) {
         if (err) return done(err);
         expect(fido.version).equal(0);
@@ -110,16 +137,28 @@ describe('client subscribe', function() {
         expect(finn.data).equal(undefined);
 
         async.parallel([
-          function(cb) { connection.get('dogs', 'fido').create({age: 3}, cb); },
-          function(cb) { connection.get('dogs', 'spot').create({age: 5}, cb); },
-          function(cb) { connection.get('cats', 'finn').create({age: 2}, cb); }
+          function(cb) {
+            connection.get('dogs', 'fido').create({age: 3}, cb);
+          },
+          function(cb) {
+            connection.get('dogs', 'spot').create({age: 5}, cb);
+          },
+          function(cb) {
+            connection.get('cats', 'finn').create({age: 2}, cb);
+          }
         ], function(err) {
           if (err) return done(err);
           connection2.startBulk();
           async.parallel([
-            function(cb) { fido[method](cb); },
-            function(cb) { spot[method](cb); },
-            function(cb) { finn[method](cb); }
+            function(cb) {
+              fido[method](cb);
+            },
+            function(cb) {
+              spot[method](cb);
+            },
+            function(cb) {
+              finn[method](cb);
+            }
           ], function(err) {
             if (err) return done(err);
             expect(fido.data).eql({age: 3});
@@ -129,24 +168,42 @@ describe('client subscribe', function() {
             // Test sending a fetch without any new ops being created
             connection2.startBulk();
             async.parallel([
-              function(cb) { fido[method](cb); },
-              function(cb) { spot[method](cb); },
-              function(cb) { finn[method](cb); }
+              function(cb) {
+                fido[method](cb);
+              },
+              function(cb) {
+                spot[method](cb);
+              },
+              function(cb) {
+                finn[method](cb);
+              }
             ], function(err) {
               if (err) return done(err);
 
               // Create new ops and test if they are received
               async.parallel([
-                function(cb) { connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}], cb); },
-                function(cb) { connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}], cb); },
-                function(cb) { connection.get('cats', 'finn').submitOp([{p: ['age'], na: 1}], cb); }
+                function(cb) {
+                  connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}], cb);
+                },
+                function(cb) {
+                  connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}], cb);
+                },
+                function(cb) {
+                  connection.get('cats', 'finn').submitOp([{p: ['age'], na: 1}], cb);
+                }
               ], function(err) {
                 if (err) return done(err);
                 connection2.startBulk();
                 async.parallel([
-                  function(cb) { fido[method](cb); },
-                  function(cb) { spot[method](cb); },
-                  function(cb) { finn[method](cb); }
+                  function(cb) {
+                   fido[method](cb);
+                  },
+                  function(cb) {
+                    spot[method](cb);
+                  },
+                  function(cb) {
+                    finn[method](cb);
+                  }
                 ], function(err) {
                   if (err) return done(err);
                   expect(fido.data).eql({age: 4});
@@ -302,7 +359,6 @@ describe('client subscribe', function() {
   });
 
   it('unsubscribe calls back immediately on disconnect', function(done) {
-    var backend = this.backend;
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.subscribe(function(err) {
       if (err) return done(err);
@@ -312,7 +368,6 @@ describe('client subscribe', function() {
   });
 
   it('unsubscribe calls back immediately when already disconnected', function(done) {
-    var backend = this.backend;
     var doc = this.backend.connect().get('dogs', 'fido');
     doc.subscribe(function(err) {
       if (err) return done(err);
@@ -445,14 +500,22 @@ describe('client subscribe', function() {
     doc.create({age: 3}, function(err) {
       if (err) return done(err);
       async.parallel([
-        function(cb) { fido.subscribe(cb); },
-        function(cb) { spot.subscribe(cb); }
+        function(cb) {
+          fido.subscribe(cb);
+        },
+        function(cb) {
+          spot.subscribe(cb);
+        }
       ], function(err) {
         if (err) return done(err);
         fido.connection.startBulk();
         async.parallel([
-          function(cb) { fido.unsubscribe(cb); },
-          function(cb) { spot.unsubscribe(cb); }
+          function(cb) {
+            fido.unsubscribe(cb);
+          },
+          function(cb) {
+            spot.unsubscribe(cb);
+          }
         ], function(err) {
           if (err) return done(err);
           fido.on('op', function(op, context) {

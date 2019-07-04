@@ -3,7 +3,6 @@ var Backend = require('../../lib/backend');
 var Connection = require('../../lib/client/connection');
 
 describe('client connection', function() {
-
   beforeEach(function() {
     this.backend = new Backend();
   });
@@ -42,8 +41,8 @@ describe('client connection', function() {
       request.agent.close();
       next();
     });
-    var connection = this.backend.connect();
-  })
+    this.backend.connect();
+  });
 
   it('emits stopped event on call to agent.close()', function(done) {
     this.backend.use('connect', function(request, next) {
@@ -105,7 +104,7 @@ describe('client connection', function() {
       var backend = this.backend;
       var connection = backend.connect();
       connection.on('connected', function() {
-        connection.socket.stream.emit('close')
+        connection.socket.stream.emit('close');
         expect(backend.agentsCount).equal(0);
         done();
       });
@@ -115,8 +114,8 @@ describe('client connection', function() {
       var backend = this.backend;
       var connection = backend.connect();
       connection.on('connected', function() {
-        connection.socket.stream.emit('end')
-        connection.socket.stream.emit('close')
+        connection.socket.stream.emit('end');
+        connection.socket.stream.emit('close');
         expect(backend.agentsCount).equal(0);
         done();
       });
@@ -128,39 +127,38 @@ describe('client connection', function() {
         next({message: 'Error'});
       });
       expect(backend.agentsCount).equal(0);
-      var connection = backend.connect();
+      backend.connect();
       expect(backend.agentsCount).equal(0);
     });
   });
 
   describe('state management using setSocket', function() {
-
-    it('initial connection.state is connecting, if socket.readyState is CONNECTING', function () {
-        // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-connecting
-        var socket = {readyState: 0};
-        var connection = new Connection(socket);
-        expect(connection.state).equal('connecting');
+    it('initial connection.state is connecting, if socket.readyState is CONNECTING', function() {
+      // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-connecting
+      var socket = {readyState: 0};
+      var connection = new Connection(socket);
+      expect(connection.state).equal('connecting');
     });
 
-    it('initial connection.state is connecting, if socket.readyState is OPEN', function () {
-        // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-open
-        var socket = {readyState: 1};
-        var connection = new Connection(socket);
-        expect(connection.state).equal('connecting');
+    it('initial connection.state is connecting, if socket.readyState is OPEN', function() {
+      // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-open
+      var socket = {readyState: 1};
+      var connection = new Connection(socket);
+      expect(connection.state).equal('connecting');
     });
 
-    it('initial connection.state is disconnected, if socket.readyState is CLOSING', function () {
-        // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-closing
-        var socket = {readyState: 2};
-        var connection = new Connection(socket);
-        expect(connection.state).equal('disconnected');
+    it('initial connection.state is disconnected, if socket.readyState is CLOSING', function() {
+      // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-closing
+      var socket = {readyState: 2};
+      var connection = new Connection(socket);
+      expect(connection.state).equal('disconnected');
     });
 
-    it('initial connection.state is disconnected, if socket.readyState is CLOSED', function () {
-        // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-closed
-        var socket = {readyState: 3};
-        var connection = new Connection(socket);
-        expect(connection.state).equal('disconnected');
+    it('initial connection.state is disconnected, if socket.readyState is CLOSED', function() {
+      // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-closed
+      var socket = {readyState: 3};
+      var connection = new Connection(socket);
+      expect(connection.state).equal('disconnected');
     });
 
     it('initial state is connecting', function() {
@@ -198,7 +196,5 @@ describe('client connection', function() {
         done();
       });
     });
-
   });
-
 });

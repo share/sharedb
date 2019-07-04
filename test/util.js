@@ -52,7 +52,7 @@ exports.callInSeries = function(callbacks, args) {
 
   var callback = callbacks.shift();
   if (callbacks.length) {
-    args.push(function () {
+    args.push(function() {
       var args = Array.from(arguments);
       exports.callInSeries(callbacks, args);
     });

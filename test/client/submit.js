@@ -1,3 +1,5 @@
+// FIXME: fix this indentation
+/* eslint-disable indent */
 var async = require('async');
 var expect = require('expect.js');
 var types = require('../../lib/types');
@@ -9,7 +11,6 @@ types.register(numberType.type);
 
 module.exports = function() {
 describe('client submit', function() {
-
   it('can fetch an uncreated doc', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
     expect(doc.data).equal(undefined);
@@ -527,7 +528,7 @@ describe('client submit', function() {
         // other fetches the snapshot to apply to). By storing the callbacks, we can then
         // manually trigger the callbacks, first calling doc, and when we know that's been committed,
         // we then commit doc2.
-        backend.use('commit', function (request, callback) {
+        backend.use('commit', function(request, callback) {
           if (request.op.op[0].na === 2) docCallback = callback;
           if (request.op.op[0].na === 7) doc2Callback = callback;
 
@@ -538,14 +539,14 @@ describe('client submit', function() {
             docCallback();
           }
         });
-        doc.submitOp({p: ['age'], na: 2}, function (error) {
+        doc.submitOp({p: ['age'], na: 2}, function(error) {
           if (error) return done(error);
           // When we know the first op has been committed, we try to commit the second op, which will
           // fail because it's working on an out-of-date snapshot. It will retry, but exceed the
           // maxSubmitRetries limit of 0
           doc2Callback();
         });
-        doc2.submitOp({p: ['age'], na: 7}, function (error) {
+        doc2.submitOp({p: ['age'], na: 7}, function(error) {
           expect(error).ok();
           done();
         });
@@ -563,8 +564,12 @@ describe('client submit', function() {
         doc2.submitOp({p: ['age'], na: 1}, function(err) {
           if (err) return done(err);
           async.parallel([
-            function(cb) { doc.del(cb); },
-            function(cb) { doc.create({age: 5}, cb); }
+            function(cb) {
+              doc.del(cb);
+            },
+            function(cb) {
+              doc.create({age: 5}, cb);
+            }
           ], function(err) {
             if (err) return done(err);
             expect(doc.version).equal(4);
@@ -586,8 +591,12 @@ describe('client submit', function() {
         doc2.del(function(err) {
           if (err) return done(err);
           async.parallel([
-            function(cb) { doc.del(cb); },
-            function(cb) { doc.create({age: 5}, cb); }
+            function(cb) {
+              doc.del(cb);
+            },
+            function(cb) {
+              doc.create({age: 5}, cb);
+            }
           ], function(err) {
             if (err) return done(err);
             expect(doc.version).equal(4);
@@ -722,8 +731,12 @@ describe('client submit', function() {
             expect(doc2.version).equal(3);
 
             async.parallel([
-              function(cb) { doc.fetch(cb); },
-              function(cb) { doc2.fetch(cb); }
+              function(cb) {
+                doc.fetch(cb);
+              },
+              function(cb) {
+                doc2.fetch(cb);
+              }
             ], function(err) {
               if (err) return done(err);
               expect(doc.data).eql({age: 9, color: 'gold', sex: 'female'});
@@ -1067,7 +1080,7 @@ describe('client submit', function() {
 
   it('allows snapshot and op to be a non-object', function(done) {
     var doc = this.backend.connect().get('dogs', 'fido');
-    doc.create(5, numberType.type.uri, function (err) {
+    doc.create(5, numberType.type.uri, function(err) {
       if (err) return done(err);
       expect(doc.data).to.equal(5);
       doc.submitOp(2, function(err) {
@@ -1105,7 +1118,6 @@ describe('client submit', function() {
     it('deserializes on fetch', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       var doc2 = this.backend.connect().get('dogs', 'fido');
-      var backend = this.backend;
       doc.create([3], deserializedType.type.uri, function(err) {
         if (err) return done(err);
         doc2.fetch(function(err) {
@@ -1132,7 +1144,6 @@ describe('client submit', function() {
     it('server fetches and transforms by already committed op', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       var doc2 = this.backend.connect().get('dogs', 'fido');
-      var backend = this.backend;
       doc.create([3], deserializedType.type.uri, function(err) {
         if (err) return done(err);
         doc2.fetch(function(err) {
@@ -1171,6 +1182,5 @@ describe('client submit', function() {
       });
     });
   });
-
 });
 };

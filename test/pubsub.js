@@ -49,7 +49,6 @@ module.exports = function(create) {
       pubsub.subscribe('y', function(err, stream) {
         pubsub.subscribe('y', function(err, stream) {
           if (err) done(err);
-          var emitted;
           stream.on('data', function(data) {
             expect(data).eql({test: true});
             done();

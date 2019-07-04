@@ -2,23 +2,23 @@ var Logger = require('../lib/logger/logger');
 var expect = require('expect.js');
 var sinon = require('sinon');
 
-describe('Logger', function () {
-  describe('Stubbing console.warn', function () {
-    beforeEach(function () {
+describe('Logger', function() {
+  describe('Stubbing console.warn', function() {
+    beforeEach(function() {
       sinon.stub(console, 'warn');
     });
 
-    afterEach(function () {
+    afterEach(function() {
       sinon.restore();
     });
 
-    it('logs to console by default', function () {
+    it('logs to console by default', function() {
       var logger = new Logger();
       logger.warn('warning');
       expect(console.warn.calledOnceWithExactly('warning')).to.be(true);
     });
 
-    it('overrides console', function () {
+    it('overrides console', function() {
       var customWarn = sinon.stub();
       var logger = new Logger();
       logger.setMethods({
@@ -31,7 +31,7 @@ describe('Logger', function () {
       expect(customWarn.calledOnceWithExactly('warning')).to.be(true);
     });
 
-    it('only overrides if provided with a method', function () {
+    it('only overrides if provided with a method', function() {
       var badWarn = 'not a function';
       var logger = new Logger();
       logger.setMethods({
