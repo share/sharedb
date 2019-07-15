@@ -306,7 +306,7 @@ module.exports = function(options) {
         if (err) return done(err);
         connection.get('dogs', 'fido').create({});
       });
-      query.on('insert', function(docs, index) {
+      query.on('insert', function(docs) {
         expect(util.pluck(docs, 'id')).eql(['fido']);
         done();
       });
@@ -320,7 +320,7 @@ module.exports = function(options) {
         if (err) return done(err);
         connection.get('dogs', 'fido').create({});
       });
-      query.on('insert', function(docs, index) {
+      query.on('insert', function(docs) {
         expect(util.pluck(docs, 'id')).eql(['fido']);
         done();
       });

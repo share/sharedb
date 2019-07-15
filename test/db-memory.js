@@ -64,7 +64,7 @@ function BasicQueryableMemoryDB() {
 BasicQueryableMemoryDB.prototype = Object.create(MemoryDB.prototype);
 BasicQueryableMemoryDB.prototype.constructor = BasicQueryableMemoryDB;
 
-BasicQueryableMemoryDB.prototype._querySync = function(snapshots, query, options) {
+BasicQueryableMemoryDB.prototype._querySync = function(snapshots, query) {
   if (query.filter) {
     snapshots = snapshots.filter(function(snapshot) {
       for (var queryKey in query.filter) {

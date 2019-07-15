@@ -227,7 +227,8 @@ describe('SnapshotTimestampRequest', function() {
     it('starts pending, and finishes not pending', function(done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshotByTimestamp('books', 'time-machine', null, function(error, snapshot) {
+      connection.fetchSnapshotByTimestamp('books', 'time-machine', null, function(error) {
+        if (error) return done(error);
         expect(connection.hasPending()).to.be(false);
         done();
       });
@@ -357,7 +358,7 @@ describe('SnapshotTimestampRequest', function() {
           }
         ];
 
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, function(error, snapshot) {
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, function(error) {
           expect(error.message).to.be('foo');
           done();
         });

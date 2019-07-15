@@ -165,7 +165,8 @@ describe('SnapshotVersionRequest', function() {
     it('starts pending, and finishes not pending', function(done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshot('books', 'don-quixote', null, function(error, snapshot) {
+      connection.fetchSnapshot('books', 'don-quixote', null, function(error) {
+        if (error) return done(error);
         expect(connection.hasPending()).to.be(false);
         done();
       });
@@ -295,7 +296,7 @@ describe('SnapshotVersionRequest', function() {
           }
         ];
 
-        backend.connect().fetchSnapshot('books', 'don-quixote', 0, function(error, snapshot) {
+        backend.connect().fetchSnapshot('books', 'don-quixote', 0, function(error) {
           expect(error.message).to.be('foo');
           done();
         });

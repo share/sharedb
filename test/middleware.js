@@ -21,7 +21,7 @@ describe('middleware', function() {
 
   describe('use', function() {
     it('returns itself to allow chaining', function() {
-      var response = this.backend.use('submit', function(request, next) {});
+      var response = this.backend.use('submit', function() {});
       expect(response).equal(this.backend);
     });
   });

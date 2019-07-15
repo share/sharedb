@@ -18,6 +18,6 @@ function apply(snapshot, op) {
   return snapshot + op;
 }
 
-function transform(op1, op2, side) {
+function transform(op1) {
   return op1;
 }

@@ -24,6 +24,8 @@ const SHAREDB_RULES = {
       ignoreUrls: true,
     }
   ],
+  // Google overrides the default ESLint behaviour here, which is slightly better for catching erroneously unused variables
+  'no-unused-vars': ['error', {vars: 'all', args: 'after-used'}],
   // as-needed quote props are easier to write
   'quote-props': ['error', 'as-needed'],
   'require-jsdoc': 'off',
