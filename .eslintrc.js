@@ -26,6 +26,8 @@ const SHAREDB_RULES = {
   ],
   // Google overrides the default ESLint behaviour here, which is slightly better for catching erroneously unused variables
   'no-unused-vars': ['error', {vars: 'all', args: 'after-used'}],
+  // It's more readable to ensure we only have one statement per line
+  'max-statements-per-line': ['error', {max: 1}],
   // as-needed quote props are easier to write
   'quote-props': ['error', 'as-needed'],
   'require-jsdoc': 'off',
