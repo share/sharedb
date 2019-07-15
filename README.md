@@ -91,6 +91,8 @@ __Options__
 * `options.pubsub` _(instance of `ShareDB.PubSub`)_
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
+* `options.milestoneDb` _(instance of ShareDB.MilestoneDB`)_
+  Store snapshots of documents at a specified interval of versions
 
 #### Database Adapters
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
@@ -108,6 +110,10 @@ __Options__
 
 Community Provided Pub/Sub Adapters
 * [wsbus](https://github.com/dmapper/sharedb-wsbus-pubsub)
+
+#### Milestone Adapters
+
+* [`sharedb-milestone-mongo`](https://github.com/share/sharedb-milestone-mongo), backed by Mongo
 
 ### Listening to WebSocket connections
 
@@ -409,13 +415,30 @@ after a sequence of diffs are handled.
 
 ### Class: `Backend`
 
+`Backend` represents the server-side instance of ShareDB. It is primarily responsible for connecting to clients, and sending requests to the database adapters. It is also responsible for some configuration, such as setting up [middleware](#middlewares) and [projections](#projections).
+
+#### `constructor`
+
+```javascript
+new Backend(options: Object);
+```
+
+Constructs a new `Backend` instance, with the provided options:
+
+* `db` _DB (optional)_: an instance of a ShareDB [database adapter](#database-adapters) that provides the data store for ShareDB. If omitted, a new, non-persistent, in-memory adapter will be created, which should _not_ be used in production, but may be useful for testing
+* `pubsub` _PubSub (optional)_: an instance of a ShareDB [Pub/Sub adapter](#pubsub-adapters) that provides a channel for notifying other ShareDB instances of changes to data. If omitted, a new, in-memory adapter will be created. Unlike the database adapter, the in-memory instance _may_ be used in a production environment where pub/sub state need only persist across a single, stand-alone server
+* `milestoneDb` _MilestoneDB (optional)_: an instance of a ShareDB [milestone adapter](#milestone-adapters) that provides the data store for milestone snapshots, which are historical snapshots of documents stored at a specified version interval. If omitted, this functionality will not be enabled
+* `extraDbs` _Object (optional)_: an object whose values are extra `DB` instances which can be [queried](#class-sharedbquery). The keys are the names that can be passed into the query options `db` field
+* `suppressPublish` _boolean (optional)_: if set to `true`, any changes committed will _not_ be published on `pubsub`
+* `maxSubmitRetries` _number (optional)_: the number of times to allow a submit to be retried. If omitted, the request will retry an unlimited number of times
+
 #### `connect`
 
 ```javascript
 backend.connect(connection: Connection, req: Object): Connection;
 ```
 
-Connects to ShareDB and returns an instance of a [`Connection`](#class-sharedbconnection)
+Connects to ShareDB and returns an instance of a [`Connection`](#class-sharedbconnection). This is the server-side equivalent of `new ShareDBClient.Connection(socket)` in the browser.
 
 * `connection` _Connection (optional)_: a [`Connection`](#class-sharedbconnection) instance to bind to the `Backend`
 * `req` _Object (optional)_: a connection context object that can contain information such as cookies or session data that will be available in the [middleware](#middlewares)
@@ -428,12 +451,12 @@ Returns a [`Connection`](#class-sharedbconnection).
 backend.listen(stream: Stream, req: Object): Agent;
 ```
 
-Registers a `Stream` with the backend.
+Registers a `Stream` with the backend. This should be called when the server receives a new connection from a client.
 
-* `stream` _Stream_: a [`Stream`](https://nodejs.org/api/stream.html) (or `Stream`-like object) that will be used to communicate between the `Agent` and the `Backend`
+* `stream` _Stream_: a [`Stream`](https://nodejs.org/api/stream.html) (or `Stream`-like object) that will be used to communicate between the new `Agent` and the `Backend`
 * `req` _Object (optional)_: a connection context object that can contain information such as cookies or session data that will be available in the [middleware](#middlewares)
 
-Returns an `Agent`, which is also available in the [middleware](#middlewares).
+Returns an [`Agent`](#class-agent), which is also available in the [middleware](#middlewares).
 
 #### `close`
 
@@ -478,14 +501,12 @@ backend.submit(agent: Agent, index: string, id: string, op: Object, options: Obj
 
 Submits an operation to the `Backend`.
 
-* `agent` _Agent_: connection agent to pass to the middleware
+* `agent` _[`Agent`](#class-agent)_: connection agent to pass to the middleware
 * `index` _string_: the name of the target collection or projection
 * `id` _string_: the document ID
 * `op` _Object_: the operation to submit
-<!-- TODO: What does this options object do? -->
-* `options` _Object_: ???
-<!-- TODO: Check that I understand this properly -->
-* `callback` _Function_: a callback with the signature `function (error: Error, ops: Object[]): void;`, where `ops` are the ops that were actually submitted to ShareDB after transforming them up to work on the latest version of the document (which may be different to the op that was originally submitted)
+* `options` _Object_: these options are passed through to the database adapter's `commit` method, so any options that are valid there can be used here
+* `callback` _Function_: a callback with the signature `function (error: Error, ops: Object[]): void;`, where `ops` are the ops committed by other clients between the submitted `op` being submitted and committed
 
 #### `getOps`
 
@@ -495,7 +516,7 @@ backend.getOps(agent: Agent, index: string, id: string, from: number, to: number
 
 Fetches the ops for a document between the requested version numbers, where the `from` value is inclusive, but the `to` value is non-inclusive.
 
-* `agent` _Agent_: connection agent to pass to the middleware
+* `agent` _[`Agent`](#class-agent)_: connection agent to pass to the middleware
 * `index` _string_: the name of the target collection or projection
 * `id` _string_: the document ID
 * `from` _number_: the first op version to fetch. If set to `null`, then ops will be fetched from the earliest version
@@ -511,7 +532,7 @@ backend.getOpsBulk(agent: Agent, index: string, fromMap: Object, toMap: Object, 
 
 Fetches the ops for multiple documents in a collection between the requested version numbers, where the `from` value is inclusive, but the `to` value is non-inclusive.
 
-* `agent` _Agent_: connection agent to pass to the middleware
+* `agent` _[`Agent`](#class-agent)_: connection agent to pass to the middleware
 * `index` _string_: the name of the target collection or projection
 * `id` _string_: the document ID
 * `fromMap` _Object_: an object whose keys are the IDs of the target documents. The values are the first versions requested of each document. For example, `{abc: 3}` will fetch ops for document with ID `abc` from version `3` (inclusive)
@@ -527,7 +548,7 @@ backend.fetch(agent: Agent, index: string, id: string, options: Object, callback
 
 Fetch the current snapshot of a document.
 
-* `agent` _Agent_: connection agent to pass to the middleware
+* `agent` _[`Agent`](#class-agent)_: connection agent to pass to the middleware
 * `index` _string_: the name of the target collection or projection
 * `id` _string_: the document ID
 * `options`: _Object (optional)_: options can be passed directly to the database driver's `fetch` inside the `snapshotOptions` property: `{snapshotOptions: {metadata: true}}`
@@ -541,15 +562,11 @@ backend.fetchBulk(agent: Agent, index: string, ids: string[], options: Object, c
 
 Fetch multiple document snapshots from a collection.
 
-* `agent` _Agent_: connection agent to pass to the middleware
+* `agent` _[`Agent`](#class-agent)_: connection agent to pass to the middleware
 * `index` _string_: the name of the target collection or projection
 * `ids` _string[]_: array of document IDs
 * `options`: _Object (optional)_: options can be passed directly to the database driver's `fetchBulk` inside the `snapshotOptions` property: `{snapshotOptions: {metadata: true}}`
 * `callback`: _Function_: a callback with the signature `function (error: Error, snapshotMap: Object): void;`, where `snapshotMap` is an object whose keys are the requested IDs, and the values are the requested `Snapshot`s
-
-<!-- TODO: Is it okay to have ignored `subscribe`, `subscribeBulk`, `querySubscribe`? -->
-
-<!-- TODO: Should we ignore `queryFetch`? -->
 
 #### `queryFetch`
 
@@ -557,14 +574,50 @@ Fetch multiple document snapshots from a collection.
 backend.queryFetch(agent: Agent, index: string, query: Object, options: Object, callback: Function): void;
 ```
 
-Fetch snapshots that match the provided query.
+Fetch snapshots that match the provided query. In most cases, querying the backing database directly should be preferred, but `queryFetch` can be used in order to apply middleware, whilst avoiding the overheads associated with using a `Doc` instance.
 
-* `agent` _Agent_: connection agent to pass to the middleware
+* `agent` _[`Agent`](#class-agent)_: connection agent to pass to the middleware
 * `index` _string_: the name of the target collection or projection
 * `query` _Object_: a query object, whose format will depend on the database adapter being used
-<!-- TODO: I don't think options are used? -->
-* `options` _Object_: ???
+* `options` _Object_: an object that may contain a `db` property, which specifies which database to run the query against. These extra databases can be attached via the `extraDbs` option in the `Backend` constructor
 * `callback` _Function_: a callback with the signature `function (error: Error, snapshots: Snapshot[], extra: Object): void;`, where `snapshots` is an array of the snapshots matching the query, and `extra` is an (optional) object that the database adapter might return with more information about the results (such as counts)
+
+### Class: `Agent`
+
+An `Agent` is the representation of a client's `Connection` state on the server. If the `Connection` was created through `backend.connect` (ie the client is running on the server), then the `Agent` associated with a `Connection` can be accessed through a direct reference: `connection.agent`.
+
+The `Agent` will be made available in all [middleware](#middlewares) requests. The `agent.custom` field is an object that can be used for storing arbitrary information for use in middleware. For example:
+
+```javascript
+backend.useMiddleware('connect', function (request, callback) {
+  // Best practice to clone to prevent mutating the object after connection.
+  // You may also want to consider a deep clone, depending on the shape of request.req.
+  Object.assign(request.agent.custom, request.req);
+  callback();
+});
+
+backend.useMiddleware('readSnapshots', function (request, callback) {
+  var connectionInfo = request.agent.custom;
+  var snapshots = request.snapshots;
+
+  // Use the information provided at connection to determine if a user can access snapshots.
+  // This should also be checked when fetching and submitting ops.
+  if (!userCanAccessSnapshots(connectionInfo, snapshots)) {
+    return callback(new Error('Authentication error'));
+  }
+
+  callback();
+});
+
+// Here you should determine what permissions a user has, probably by reading a cookie and
+// potentially making some database request to check which documents they can access, or which
+// roles they have, etc. If doing this asynchronously, make sure you call backend.connect
+// after the permissions have been fetched.
+var connectionInfo = getUserPermissions();
+// Pass info in as the second argument. This will be made available as request.req in the
+// 'connection' middleware.
+var connection = backend.connect(null, connectionInfo);
+```
 
 ### Logging
 
