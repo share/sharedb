@@ -24,7 +24,8 @@
   "scripts": {
     "test": "./node_modules/.bin/mocha && npm run lint",
     "test-cover": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha",
-    "lint": "./node_modules/.bin/eslint 'lib/**/*.js' 'test/**/*.js'"
+    "lint": "./node_modules/.bin/eslint --ignore-path .gitignore '**/*.js'",
+    "lint:fix": "npm run lint -- --fix"
   },
   "repository": {
     "type": "git",
