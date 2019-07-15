@@ -340,7 +340,7 @@ describe('SnapshotTimestampRequest', function() {
           function(request, callback) {
             request.snapshots[0].data.title = 'Alice in Wonderland';
             callback();
-          },
+          }
         ];
 
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', function(error, snapshot) {
@@ -354,7 +354,7 @@ describe('SnapshotTimestampRequest', function() {
         backend.middleware[backend.MIDDLEWARE_ACTIONS.readSnapshots] = [
           function(request, callback) {
             callback({message: 'foo'});
-          },
+          }
         ];
 
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, function(error, snapshot) {

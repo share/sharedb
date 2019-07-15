@@ -14,6 +14,7 @@
   "devDependencies": {
     "coveralls": "^2.11.8",
     "eslint": "^5.16.0",
+    "eslint-config-google": "^0.13.0",
     "expect.js": "^0.3.1",
     "istanbul": "^0.4.2",
     "lolex": "^3.0.0",

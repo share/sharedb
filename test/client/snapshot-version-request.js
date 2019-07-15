@@ -278,7 +278,7 @@ describe('SnapshotVersionRequest', function() {
           function(request, callback) {
             request.snapshots[0].data.title = 'Alice in Wonderland';
             callback();
-          },
+          }
         ];
 
         backend.connect().fetchSnapshot('books', 'don-quixote', function(error, snapshot) {
@@ -292,7 +292,7 @@ describe('SnapshotVersionRequest', function() {
         backend.middleware[backend.MIDDLEWARE_ACTIONS.readSnapshots] = [
           function(request, callback) {
             callback({message: 'foo'});
-          },
+          }
         ];
 
         backend.connect().fetchSnapshot('books', 'don-quixote', 0, function(error, snapshot) {
@@ -353,7 +353,7 @@ describe('SnapshotVersionRequest', function() {
           v: 1,
           type: 'http://sharejs.org/types/JSONv0',
           data: {
-            title: 'Catch 22',
+            title: 'Catch 22'
           },
           m: null
         });
@@ -386,7 +386,7 @@ describe('SnapshotVersionRequest', function() {
           v: 3,
           type: 'http://sharejs.org/types/JSONv0',
           data: {
-            title: 'The Restaurant at the End of the Universe',
+            title: 'The Restaurant at the End of the Universe'
           },
           m: null
         });

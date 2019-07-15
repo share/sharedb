@@ -576,7 +576,7 @@ module.exports = function() {
           if (err) return done(err);
           var expected = [
             [{p: ['age'], na: 1}],
-            [{p: ['age'], na: 5}],
+            [{p: ['age'], na: 5}]
           ];
           doc2.on('op', function(op, context) {
             var item = expected.shift();
