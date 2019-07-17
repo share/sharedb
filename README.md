@@ -19,6 +19,7 @@ tracker](https://github.com/share/sharedb/issues).
 
 - Realtime synchronization of any JSON document
 - Concurrent multi-user collaboration
+- Realtime synchronization of any ephemeral "presence" data
 - Synchronous editing API with asynchronous eventual consistency
 - Realtime query subscriptions
 - Simple integration with any database - [MongoDB](https://github.com/share/sharedb-mongo), [PostgresQL](https://github.com/share/sharedb-postgres) (experimental)
@@ -73,6 +74,22 @@ initial data. Then you can submit editing operations on the document (using
 OT). Finally you can delete the document with a delete operation. By
 default, ShareDB stores all operations forever - nothing is truly deleted.
 
+## User Presence Synchronization
+
+ShareDB supports synchronization of user presence data such as cursor positions and text selections. This feature is opt-in, not enabled by default. To enable this feature, pass a presence implementation as the `presence` option to the ShareDB constructor.
+
+ShareDB includes an implementation of presence called `StatelessPresence`. This provides an implementation of presence that works out of the box, but it has some scalability problems. Each time a client joins a document, this implementation requests current presence information from all other clients, via the server. This approach may be problematic in terms of performance when a large number of users are present on the same document simultaneously. If you don't expect too many simultaneous users per document, `StatelessPresence` should work well. The server does not store any state at all regarding presence (it exists only in clients), hence the name "Stateless Presence".
+
+In `StatelessPresence`, presence data represents a user and is automatically synchronized between all clients subscribed to the same document. Its format is defined by the document's [OT Type](https://github.com/ottypes/docs) (specifically, by [`transformPresence`, `createPresence`, and `comparePresence`](https://github.com/teamwork/ot-docs#optional-properties)). All clients can modify their own presence data and receive a read-only version of other client's data. Presence data is automatically cleared when a client unsubscribes from the document or disconnects. It is also automatically transformed against applied operations, so that it still makes sense in the context of a modified document, for example a cursor position may be automatically advanced when a user types at the beginning of a text document.
+
+To use `StatelessPresence`, pass it into the ShareDB constructor like this:
+
+```js
+var ShareDB = require('sharedb');
+var statelessPresence = require('sharedb/lib/presence/stateless');
+var share = new ShareDB({ presence: statelessPresence })`).
+```
+
 ## Server API
 
 ### Initialization
@@ -91,6 +108,8 @@ __Options__
 * `options.pubsub` _(instance of `ShareDB.PubSub`)_
   Notify other ShareDB processes when data changes
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
+* `options.presence` _(implementation of presence classes)_
+  Enable user presence synchronization. The value of `options.presence` option is expected to contain implementations of the classes `DocPresence`, `ConnectionPresence`, `AgentPresence`, and `BackendPresence`. Logic related to presence is encapsulated within these classes, so it is possible develop additional third party presence implementations external to ShareDB.
 
 #### Database Adapters
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries
@@ -308,6 +327,9 @@ Unique document ID
 `doc.data` _(Object)_
 Document contents. Available after document is fetched or subscribed to.
 
+`doc.presence` _(Object)_
+Each property under `doc.presence` contains presence data shared by a client subscribed to this document. The property name is an empty string for this client's data and connection IDs for other clients' data. The structure of the presence object is defined by the OT type of the document (for example, in [ot-rich-text](https://github.com/Teamwork/ot-rich-text#presence) and [@datavis-tech/json0](https://github.com/datavis-tech/json0#presence)).
+
 `doc.fetch(function(err) {...})`
 Populate the fields on `doc` with a snapshot of the document from the server.
 
@@ -336,6 +358,9 @@ An operation was applied to the data. `source` will be `false` for ops received 
 
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+
+`doc.on('presence', function(srcList, submitted) {...})`
+Presence data has changed. `srcList` is an Array of `doc.presence` property names for which values have changed. `submitted` is `true`, if the event is the result of new presence data being submitted by the local or remote user, otherwise it is `false` - eg if the presence data was transformed against an operation or was cleared on unsubscribe, disconnect or roll-back.
 
 `doc.on('error', function(err) {...})`
 There was an error fetching the document or applying an operation.
@@ -369,6 +394,11 @@ Invokes the given callback function after
  * all pending fetch, subscribe, and unsubscribe requests have been resolved.
 
 Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
+
+`doc.submitPresence(presenceData[, function(err) {...}])`
+Set local presence data and publish it for other clients.
+`presenceData` structure depends on the document type.
+Presence is synchronized only when subscribed to the document.
 
 ### Class: `ShareDB.Query`
 
@@ -468,6 +498,9 @@ Additional fields may be added to the error object for debugging context dependi
 * 4023 - Cannot project snapshots of this type
 * 4024 - Invalid version
 * 4025 - Passing options to subscribe has not been implemented
+* 4026 - Not subscribed to document
+* 4027 - Presence data superseded
+* 4028 - OT Type does not support presence
 
 ### 5000 - Internal error
 
