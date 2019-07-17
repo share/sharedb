@@ -6,7 +6,7 @@ var MemoryDb = require('../../lib/db/memory');
 var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
 var sinon = require('sinon');
 
-describe('SnapshotTimestampRequest', function () {
+describe('SnapshotTimestampRequest', function() {
   var backend;
   var clock;
   var day0 = new Date(2017, 11, 31).getTime();
@@ -17,17 +17,17 @@ describe('SnapshotTimestampRequest', function () {
   var day5 = new Date(2018, 0, 5).getTime();
   var ONE_DAY = 1000 * 60 * 60 * 24;
 
-  beforeEach(function () {
-    clock = lolex.install({ now: day1 });
+  beforeEach(function() {
+    clock = lolex.install({now: day1});
     backend = new Backend();
   });
 
-  afterEach(function (done) {
+  afterEach(function(done) {
     clock.uninstall();
     backend.close(done);
   });
 
-  describe('a document with some simple versions separated by a day', function () {
+  describe('a document with some simple versions separated by a day', function() {
     var v0 = {
       id: 'time-machine',
       v: 0,
@@ -68,30 +68,30 @@ describe('SnapshotTimestampRequest', function () {
       m: null
     };
 
-    beforeEach(function (done) {
+    beforeEach(function(done) {
       var doc = backend.connect().get('books', 'time-machine');
       util.callInSeries([
-        function (next) {
-          doc.create({ title: 'The Time Machine' }, next);
+        function(next) {
+          doc.create({title: 'The Time Machine'}, next);
         },
-        function (next) {
+        function(next) {
           clock.tick(ONE_DAY);
-          doc.submitOp({ p: ['author'], oi: 'HG Wells' }, next);
+          doc.submitOp({p: ['author'], oi: 'HG Wells'}, next);
         },
-        function (next) {
+        function(next) {
           clock.tick(ONE_DAY);
-          doc.submitOp({ p: ['author'], od: 'HG Wells', oi: 'H.G. Wells' }, next);
+          doc.submitOp({p: ['author'], od: 'HG Wells', oi: 'H.G. Wells'}, next);
         },
         done
       ]);
     });
 
-    it('fetches the version at exactly day 1', function (done) {
+    it('fetches the version at exactly day 1', function(done) {
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v1);
           next();
         },
@@ -99,12 +99,12 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('fetches the version at exactly day 2', function (done) {
+    it('fetches the version at exactly day 2', function(done) {
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day2, next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v2);
           next();
         },
@@ -112,12 +112,12 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('fetches the version at exactly day 3', function (done) {
+    it('fetches the version at exactly day 3', function(done) {
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day3, next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v3);
           next();
         },
@@ -125,13 +125,13 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('fetches the day 2 version when asking for a time halfway between days 2 and 3', function (done) {
+    it('fetches the day 2 version when asking for a time halfway between days 2 and 3', function(done) {
       var halfwayBetweenDays2and3 = (day2 + day3) * 0.5;
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', halfwayBetweenDays2and3, next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v2);
           next();
         },
@@ -139,12 +139,12 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('fetches the day 3 version when asking for a time after day 3', function (done) {
+    it('fetches the day 3 version when asking for a time after day 3', function(done) {
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day4, next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v3);
           next();
         },
@@ -152,12 +152,12 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('fetches the most recent version when not specifying a timestamp', function (done) {
+    it('fetches the most recent version when not specifying a timestamp', function(done) {
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v3);
           next();
         },
@@ -165,12 +165,12 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('fetches an empty snapshot if the timestamp is before the document creation', function (done) {
+    it('fetches an empty snapshot if the timestamp is before the document creation', function(done) {
       util.callInSeries([
-        function (next) {
+        function(next) {
           backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day0, next);
         },
-        function (snapshot, next) {
+        function(snapshot, next) {
           expect(snapshot).to.eql(v0);
           next();
         },
@@ -178,40 +178,40 @@ describe('SnapshotTimestampRequest', function () {
       ]);
     });
 
-    it('throws if the timestamp is undefined', function () {
-      var fetch = function () {
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', undefined, function () {});
+    it('throws if the timestamp is undefined', function() {
+      var fetch = function() {
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', undefined, function() {});
       };
 
       expect(fetch).to.throwError();
     });
 
-    it('throws without a callback', function () {
-      var fetch = function () {
+    it('throws without a callback', function() {
+      var fetch = function() {
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine');
       };
 
       expect(fetch).to.throwError();
     });
 
-    it('throws if the timestamp is -1', function () {
-      var fetch = function () {
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', -1, function () { });
+    it('throws if the timestamp is -1', function() {
+      var fetch = function() {
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', -1, function() { });
       };
 
       expect(fetch).to.throwError();
     });
 
-    it('errors if the timestamp is a string', function () {
-      var fetch = function () {
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', 'foo', function () { });
-      }
+    it('errors if the timestamp is a string', function() {
+      var fetch = function() {
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', 'foo', function() { });
+      };
 
       expect(fetch).to.throwError();
     });
 
-    it('returns an empty snapshot if trying to fetch a non-existent document', function (done) {
-      backend.connect().fetchSnapshotByTimestamp('books', 'does-not-exist', day1, function (error, snapshot) {
+    it('returns an empty snapshot if trying to fetch a non-existent document', function(done) {
+      backend.connect().fetchSnapshotByTimestamp('books', 'does-not-exist', day1, function(error, snapshot) {
         if (error) return done(error);
         expect(snapshot).to.eql({
           id: 'does-not-exist',
@@ -224,10 +224,11 @@ describe('SnapshotTimestampRequest', function () {
       });
     });
 
-    it('starts pending, and finishes not pending', function (done) {
+    it('starts pending, and finishes not pending', function(done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshotByTimestamp('books', 'time-machine', null, function (error, snapshot) {
+      connection.fetchSnapshotByTimestamp('books', 'time-machine', null, function(error) {
+        if (error) return done(error);
         expect(connection.hasPending()).to.be(false);
         done();
       });
@@ -235,10 +236,10 @@ describe('SnapshotTimestampRequest', function () {
       expect(connection.hasPending()).to.be(true);
     });
 
-    it('deletes the request from the connection', function (done) {
+    it('deletes the request from the connection', function(done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshotByTimestamp('books', 'time-machine', function (error) {
+      connection.fetchSnapshotByTimestamp('books', 'time-machine', function(error) {
         if (error) return done(error);
         expect(connection._snapshotRequests).to.eql({});
         done();
@@ -247,10 +248,10 @@ describe('SnapshotTimestampRequest', function () {
       expect(connection._snapshotRequests).to.not.eql({});
     });
 
-    it('emits a ready event when done', function (done) {
+    it('emits a ready event when done', function(done) {
       var connection = backend.connect();
 
-      connection.fetchSnapshotByTimestamp('books', 'time-machine', function (error) {
+      connection.fetchSnapshotByTimestamp('books', 'time-machine', function(error) {
         if (error) return done(error);
       });
 
@@ -258,22 +259,22 @@ describe('SnapshotTimestampRequest', function () {
       snapshotRequest.on('ready', done);
     });
 
-    it('fires the connection.whenNothingPending', function (done) {
+    it('fires the connection.whenNothingPending', function(done) {
       var connection = backend.connect();
       var snapshotFetched = false;
 
-      connection.fetchSnapshotByTimestamp('books', 'time-machine', function (error) {
+      connection.fetchSnapshotByTimestamp('books', 'time-machine', function(error) {
         if (error) return done(error);
         snapshotFetched = true;
       });
 
-      connection.whenNothingPending(function () {
+      connection.whenNothingPending(function() {
         expect(snapshotFetched).to.be(true);
         done();
       });
     });
 
-    it('can drop its connection and reconnect, and the callback is just called once', function (done) {
+    it('can drop its connection and reconnect, and the callback is just called once', function(done) {
       var connection = backend.connect();
 
       // Here we hook into middleware to make sure that we get the following flow:
@@ -286,7 +287,7 @@ describe('SnapshotTimestampRequest', function () {
       // - This time the fetch operation is allowed to complete (because of the connectionInterrupted flag)
       // - The done callback is called just once (if it's called twice, then mocha will complain)
       var connectionInterrupted = false;
-      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function (request, callback) {
+      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function(request, callback) {
         if (!connectionInterrupted) {
           connection.close();
           backend.connect(connection);
@@ -299,7 +300,7 @@ describe('SnapshotTimestampRequest', function () {
       connection.fetchSnapshotByTimestamp('books', 'time-machine', done);
     });
 
-    it('cannot send the same request twice over a connection', function (done) {
+    it('cannot send the same request twice over a connection', function(done) {
       var connection = backend.connect();
 
       // Here we hook into the middleware to make sure that we get the following flow:
@@ -310,7 +311,7 @@ describe('SnapshotTimestampRequest', function () {
       // - The done callback is call just once, because the second request does not get sent
       //   (if the done callback is called twice, then mocha will complain)
       var hasResent = false;
-      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function (request, callback) {
+      backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function(request, callback) {
         if (!hasResent) {
           connection._snapshotRequests[1]._onConnectionStateChanged();
           hasResent = true;
@@ -322,55 +323,55 @@ describe('SnapshotTimestampRequest', function () {
       connection.fetchSnapshotByTimestamp('books', 'time-machine', done);
     });
 
-    describe('readSnapshots middleware', function () {
-      it('triggers the middleware', function (done) {
+    describe('readSnapshots middleware', function() {
+      it('triggers the middleware', function(done) {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
-          function (request) {
+          function(request) {
             expect(request.snapshots[0]).to.eql(v3);
             expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.byTimestamp);
             done();
           }
         );
 
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day3, function () { });
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day3, function() { });
       });
 
-      it('can have its snapshot manipulated in the middleware', function (done) {
+      it('can have its snapshot manipulated in the middleware', function(done) {
         backend.middleware[backend.MIDDLEWARE_ACTIONS.readSnapshots] = [
-          function (request, callback) {
+          function(request, callback) {
             request.snapshots[0].data.title = 'Alice in Wonderland';
             callback();
-          },
+          }
         ];
 
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', function (error, snapshot) {
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', function(error, snapshot) {
           if (error) return done(error);
           expect(snapshot.data.title).to.be('Alice in Wonderland');
           done();
         });
       });
 
-      it('respects errors thrown in the middleware', function (done) {
+      it('respects errors thrown in the middleware', function(done) {
         backend.middleware[backend.MIDDLEWARE_ACTIONS.readSnapshots] = [
-          function (request, callback) {
-            callback({ message: 'foo' });
-          },
+          function(request, callback) {
+            callback({message: 'foo'});
+          }
         ];
 
-        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, function (error, snapshot) {
+        backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, function(error) {
           expect(error.message).to.be('foo');
           done();
         });
       });
     });
 
-    describe('with a registered projection', function () {
-      beforeEach(function () {
-        backend.addProjection('bookTitles', 'books', { title: true });
+    describe('with a registered projection', function() {
+      beforeEach(function() {
+        backend.addProjection('bookTitles', 'books', {title: true});
       });
 
-      it('applies the projection to a snapshot', function (done) {
-        backend.connect().fetchSnapshotByTimestamp('bookTitles', 'time-machine', day2, function (error, snapshot) {
+      it('applies the projection to a snapshot', function(done) {
+        backend.connect().fetchSnapshotByTimestamp('bookTitles', 'time-machine', day2, function(error, snapshot) {
           if (error) return done(error);
 
           expect(snapshot.data.title).to.be('The Time Machine');
@@ -381,13 +382,13 @@ describe('SnapshotTimestampRequest', function () {
     });
   });
 
-  describe('milestone snapshots enabled for every other version', function () {
+  describe('milestone snapshots enabled for every other version', function() {
     var milestoneDb;
     var db;
     var backendWithMilestones;
 
-    beforeEach(function () {
-      var options = { interval: 2 };
+    beforeEach(function() {
+      var options = {interval: 2};
       db = new MemoryDb();
       milestoneDb = new MemoryMilestoneDb(options);
       backendWithMilestones = new Backend({
@@ -396,41 +397,41 @@ describe('SnapshotTimestampRequest', function () {
       });
     });
 
-    afterEach(function (done) {
+    afterEach(function(done) {
       backendWithMilestones.close(done);
     });
 
-    describe('a doc with some versions in the milestone database', function () {
-      beforeEach(function (done) {
+    describe('a doc with some versions in the milestone database', function() {
+      beforeEach(function(done) {
         clock.reset();
 
         var doc = backendWithMilestones.connect().get('books', 'mocking-bird');
 
         util.callInSeries([
-          function (next) {
-            doc.create({ title: 'To Kill a Mocking Bird' }, next);
+          function(next) {
+            doc.create({title: 'To Kill a Mocking Bird'}, next);
           },
-          function (next) {
+          function(next) {
             clock.tick(ONE_DAY);
-            doc.submitOp({ p: ['author'], oi: 'Harper Lea' }, next);
+            doc.submitOp({p: ['author'], oi: 'Harper Lea'}, next);
           },
-          function (next) {
+          function(next) {
             clock.tick(ONE_DAY);
-            doc.submitOp({ p: ['author'], od: 'Harper Lea', oi: 'Harper Lee' }, next);
+            doc.submitOp({p: ['author'], od: 'Harper Lea', oi: 'Harper Lee'}, next);
           },
-          function (next) {
+          function(next) {
             clock.tick(ONE_DAY);
-            doc.submitOp({ p: ['year'], oi: 1959 }, next);
+            doc.submitOp({p: ['year'], oi: 1959}, next);
           },
-          function (next) {
+          function(next) {
             clock.tick(ONE_DAY);
-            doc.submitOp({ p: ['year'], od: 1959, oi: 1960 }, next);
+            doc.submitOp({p: ['year'], od: 1959, oi: 1960}, next);
           },
           done
         ]);
       });
 
-      it('fetches a snapshot between two milestones using the milestones', function (done) {
+      it('fetches a snapshot between two milestones using the milestones', function(done) {
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
         sinon.spy(db, 'getOps');
@@ -445,35 +446,35 @@ describe('SnapshotTimestampRequest', function () {
             expect(db.getOps.calledWith('books', 'mocking-bird', 2, 4)).to.be(true);
 
             expect(snapshot.v).to.be(3);
-            expect(snapshot.data).to.eql({ title: 'To Kill a Mocking Bird', author: 'Harper Lee' });
+            expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lee'});
             done();
           });
       });
 
-      it('fetches a snapshot that matches a milestone snapshot', function (done) {
+      it('fetches a snapshot that matches a milestone snapshot', function(done) {
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
 
         backendWithMilestones.connect()
-          .fetchSnapshotByTimestamp('books', 'mocking-bird', day2, function (error, snapshot) {
+          .fetchSnapshotByTimestamp('books', 'mocking-bird', day2, function(error, snapshot) {
             if (error) return done(error);
 
             expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);
             expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.be(true);
 
             expect(snapshot.v).to.be(2);
-            expect(snapshot.data).to.eql({ title: 'To Kill a Mocking Bird', author: 'Harper Lea' });
+            expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lea'});
             done();
           });
       });
 
-      it('fetches a snapshot before any milestones', function (done) {
+      it('fetches a snapshot before any milestones', function(done) {
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
         sinon.spy(db, 'getOps');
 
         backendWithMilestones.connect()
-          .fetchSnapshotByTimestamp('books', 'mocking-bird', day1, function (error, snapshot) {
+          .fetchSnapshotByTimestamp('books', 'mocking-bird', day1, function(error, snapshot) {
             if (error) return done(error);
 
             expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);
@@ -481,18 +482,18 @@ describe('SnapshotTimestampRequest', function () {
             expect(db.getOps.calledWith('books', 'mocking-bird', 0, 2)).to.be(true);
 
             expect(snapshot.v).to.be(1);
-            expect(snapshot.data).to.eql({ title: 'To Kill a Mocking Bird' });
+            expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird'});
             done();
           });
       });
 
-      it('fetches a snapshot after any milestones', function (done) {
+      it('fetches a snapshot after any milestones', function(done) {
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
         sinon.spy(db, 'getOps');
 
         backendWithMilestones.connect()
-          .fetchSnapshotByTimestamp('books', 'mocking-bird', day5, function (error, snapshot) {
+          .fetchSnapshotByTimestamp('books', 'mocking-bird', day5, function(error, snapshot) {
             if (error) return done(error);
 
             expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);

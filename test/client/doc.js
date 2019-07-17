@@ -1,9 +1,8 @@
 var Backend = require('../../lib/backend');
 var expect = require('expect.js');
-var util = require('../util')
+var util = require('../util');
 
 describe('Doc', function() {
-
   beforeEach(function() {
     this.backend = new Backend();
     this.connection = this.backend.connect();
@@ -51,7 +50,6 @@ describe('Doc', function() {
   });
 
   describe('applyStack', function() {
-
     beforeEach(function(done) {
       this.doc = this.connection.get('dogs', 'fido');
       this.doc2 = this.backend.connect().get('dogs', 'fido');
@@ -221,24 +219,23 @@ describe('Doc', function() {
         verifyConsistency(doc, doc2, doc3, handlers, done);
       });
     });
-
   });
 
   describe('submitting ops in callbacks', function() {
-    beforeEach(function () {
+    beforeEach(function() {
       this.doc = this.connection.get('dogs', 'scooby');
     });
 
     it('succeeds with valid op', function(done) {
       var doc = this.doc;
-      doc.create({ name: 'Scooby Doo' }, function(error) {
+      doc.create({name: 'Scooby Doo'}, function(error) {
         expect(error).to.not.be.ok();
         // Build valid op that deletes a substring at index 0 of name.
-        var textOpComponents = [{ p: 0, d: 'Scooby '}];
-        var op = [{ p: ['name'], t: 'text0', o: textOpComponents }];
+        var textOpComponents = [{p: 0, d: 'Scooby '}];
+        var op = [{p: ['name'], t: 'text0', o: textOpComponents}];
         doc.submitOp(op, function(error) {
           if (error) return done(error);
-          expect(doc.data).eql({ name: 'Doo' });
+          expect(doc.data).eql({name: 'Doo'});
           done();
         });
       });
@@ -246,11 +243,11 @@ describe('Doc', function() {
 
     it('fails with invalid op', function(done) {
       var doc = this.doc;
-      doc.create({ name: 'Scooby Doo' }, function(error) {
+      doc.create({name: 'Scooby Doo'}, function(error) {
         expect(error).to.not.be.ok();
         // Build op that tries to delete an invalid substring at index 0 of name.
-        var textOpComponents = [{ p: 0, d: 'invalid'}];
-        var op = [{ p: ['name'], t: 'text0', o: textOpComponents }];
+        var textOpComponents = [{p: 0, d: 'invalid'}];
+        var op = [{p: ['name'], t: 'text0', o: textOpComponents}];
         doc.submitOp(op, function(error) {
           expect(error).to.be.ok();
           done();
@@ -259,48 +256,48 @@ describe('Doc', function() {
     });
   });
 
-  describe('submitting an invalid op', function () {
+  describe('submitting an invalid op', function() {
     var doc;
     var invalidOp;
     var validOp;
 
-    beforeEach(function (done) {
+    beforeEach(function(done) {
       // This op is invalid because we try to perform a list deletion
       // on something that isn't a list
       invalidOp = {p: ['name'], ld: 'Scooby'};
 
-      validOp = {p:['snacks'], oi: true};
+      validOp = {p: ['snacks'], oi: true};
 
       doc = this.connection.get('dogs', 'scooby');
-      doc.create({ name: 'Scooby' }, function (error) {
+      doc.create({name: 'Scooby'}, function(error) {
         if (error) return done(error);
         doc.whenNothingPending(done);
       });
     });
 
-    it('returns an error to the submitOp callback', function (done) {
-      doc.submitOp(invalidOp, function (error) {
+    it('returns an error to the submitOp callback', function(done) {
+      doc.submitOp(invalidOp, function(error) {
         expect(error.message).to.equal('Referenced element not a list');
         done();
       });
     });
 
-    it('rolls the doc back to a usable state', function (done) {
+    it('rolls the doc back to a usable state', function(done) {
       util.callInSeries([
-        function (next) {
-          doc.submitOp(invalidOp, function (error) {
+        function(next) {
+          doc.submitOp(invalidOp, function(error) {
             expect(error).to.be.ok();
             next();
           });
         },
-        function (next) {
+        function(next) {
           doc.whenNothingPending(next);
         },
-        function (next) {
+        function(next) {
           expect(doc.data).to.eql({name: 'Scooby'});
           doc.submitOp(validOp, next);
         },
-        function (next) {
+        function(next) {
           expect(doc.data).to.eql({name: 'Scooby', snacks: true});
           next();
         },
@@ -308,7 +305,7 @@ describe('Doc', function() {
       ]);
     });
 
-    it('rescues an irreversible op collision', function (done) {
+    it('rescues an irreversible op collision', function(done) {
       // This test case attempts to reconstruct the following corner case, with
       // two independent references to the same document. We submit two simultaneous, but
       // incompatible operations (eg one of them changes the data structure the other op is
@@ -321,9 +318,9 @@ describe('Doc', function() {
 
       var pauseSubmit = false;
       var fireSubmit;
-      this.backend.use('submit', function (request, callback) {
+      this.backend.use('submit', function(request, callback) {
         if (pauseSubmit) {
-          fireSubmit = function () {
+          fireSubmit = function() {
             pauseSubmit = false;
             callback();
           };
@@ -334,26 +331,26 @@ describe('Doc', function() {
       });
 
       util.callInSeries([
-        function (next) {
+        function(next) {
           doc1.create({colours: ['white']}, next);
         },
-        function (next) {
+        function(next) {
           doc1.whenNothingPending(next);
         },
-        function (next) {
+        function(next) {
           doc2.fetch(next);
         },
-        function (next) {
+        function(next) {
           doc2.whenNothingPending(next);
         },
         // Both documents start off at the same v1 state, with colours as a list
-        function (next) {
+        function(next) {
           expect(doc1.data).to.eql({colours: ['white']});
           expect(doc2.data).to.eql({colours: ['white']});
           next();
         },
         // doc1 successfully submits an op which changes our list into a string in v2
-        function (next) {
+        function(next) {
           doc1.submitOp({p: ['colours'], oi: 'white,black'}, next);
         },
         // This next step is a little fiddly. We abuse the middleware to pause the op submission and
@@ -365,21 +362,21 @@ describe('Doc', function() {
         // 5. doc2 attempts to roll back the inflight op by turning a list insertion into a list deletion
         // 6. doc2 applies this list deletion to a field that is no longer a list
         // 7. type.apply throws, because this is an invalid op
-        function (next) {
+        function(next) {
           pauseSubmit = true;
-          doc2.submitOp({p: ['colours', '0'], li: 'black'}, function (error) {
+          doc2.submitOp({p: ['colours', '0'], li: 'black'}, function(error) {
             expect(error.message).to.equal('Referenced element not a list');
             next();
           });
 
-          doc2.fetch(function (error) {
+          doc2.fetch(function(error) {
             if (error) return next(error);
             fireSubmit();
           });
         },
         // Validate that - despite the error in doc2.submitOp - doc2 has been returned to a
         // workable state in v2
-        function (next) {
+        function(next) {
           expect(doc1.data).to.eql({colours: 'white,black'});
           expect(doc2.data).to.eql(doc1.data);
           doc2.submitOp({p: ['colours'], oi: 'white,black,red'}, next);

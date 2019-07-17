@@ -2,7 +2,6 @@ var expect = require('expect.js');
 var Backend = require('../../lib/backend');
 
 describe('client connection', function() {
-
   beforeEach(function() {
     this.backend = new Backend();
   });
@@ -89,5 +88,4 @@ describe('client connection', function() {
       });
     });
   });
-
 });

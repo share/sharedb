@@ -38,7 +38,7 @@ module.exports = function(create) {
 
     it('publish optional callback returns', function(done) {
       var pubsub = this.pubsub;
-      pubsub.subscribe('x', function(err, stream) {
+      pubsub.subscribe('x', function(err) {
         if (err) done(err);
         pubsub.publish(['x'], {test: true}, done);
       });
@@ -46,10 +46,10 @@ module.exports = function(create) {
 
     it('can subscribe to a channel twice', function(done) {
       var pubsub = this.pubsub;
-      pubsub.subscribe('y', function(err, stream) {
+      pubsub.subscribe('y', function(err) {
+        if (err) done(err);
         pubsub.subscribe('y', function(err, stream) {
           if (err) done(err);
-          var emitted;
           stream.on('data', function(data) {
             expect(data).eql({test: true});
             done();
