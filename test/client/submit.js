@@ -1097,7 +1097,7 @@ module.exports = function() {
         done();
       });
     });
-  
+
     it('hasWritePending is false when submimtOp\'s callback is executed', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
@@ -1109,7 +1109,7 @@ module.exports = function() {
         });
       });
     });
-  
+
     it('hasWritePending is false when del\'s callback is executed', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {

@@ -48,17 +48,17 @@ function apply(snapshot, op) {
 function transform(op1, op2, side) {
   return op1.index < op2.index || (op1.index === op2.index && side === 'left')
     ? op1
-    : { index: op1.index + 1, value: op1.value };
+    : {index: op1.index + 1, value: op1.value};
 }
 
 function createPresence(data) {
-  return { index: (data && data.index) | 0 };
+  return {index: (data && data.index) | 0};
 }
 
 function transformPresence(presence, op, isOwnOperation) {
   return presence.index < op.index || (presence.index === op.index && !isOwnOperation)
     ? presence
-    : { index: presence.index + 1 };
+    : {index: presence.index + 1};
 }
 
 function comparePresence(presence1, presence2) {
