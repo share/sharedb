@@ -321,6 +321,9 @@ Populate the fields on `doc` with a snapshot of the document from the server.
 Populate the fields on `doc` with a snapshot of the document from the server, and
 fire events on subsequent changes.
 
+`doc.unsubscribe(function (err) {...})`	
+Stop listening for document updates. The document data at the time of unsubscribing remains in memory, but no longer stays up-to-date. Resubscribe with `doc.subscribe`.
+
 `doc.ingestSnapshot(snapshot, callback)`
 Ingest snapshot data. The `snapshot` param must include the fields `v` (doc version), `data`, and `type` (OT type). This method is generally called interally as a result of fetch or subscribe and not directly from user code. However, it may still be called directly from user code to pass data that was transferred to the client external to the client's ShareDB connection, such as snapshot data sent along with server rendering of a webpage.
 
