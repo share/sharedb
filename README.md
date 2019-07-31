@@ -321,9 +321,6 @@ Populate the fields on `doc` with a snapshot of the document from the server.
 Populate the fields on `doc` with a snapshot of the document from the server, and
 fire events on subsequent changes.
 
-`doc.unsubscribe(function (err) {...})`
-Stop listening for document updates. The document data at the time of unsubscribing remains in memory, but no longer stays up-to-date. Resubscribe with `doc.subscribe`.
-
 `doc.ingestSnapshot(snapshot, callback)`
 Ingest snapshot data. The `snapshot` param must include the fields `v` (doc version), `data`, and `type` (OT type). This method is generally called interally as a result of fetch or subscribe and not directly from user code. However, it may still be called directly from user code to pass data that was transferred to the client external to the client's ShareDB connection, such as snapshot data sent along with server rendering of a webpage.
 
@@ -416,14 +413,15 @@ after a sequence of diffs are handled.
 `query.on('extra', function() {...}))`
 (Only fires on subscription queries) `query.extra` changed.
 
-### Class: `Backend`
+### Class: `ShareDB.Backend`
 
 `Backend` represents the server-side instance of ShareDB. It is primarily responsible for connecting to clients, and sending requests to the database adapters. It is also responsible for some configuration, such as setting up [middleware](#middlewares) and [projections](#projections).
 
 #### `constructor`
 
 ```javascript
-new Backend(options: Object);
+var Backend = require('sharedb');
+var backend = new Backend(options);
 ```
 
 Constructs a new `Backend` instance, with the provided options:
@@ -438,10 +436,16 @@ Constructs a new `Backend` instance, with the provided options:
 #### `connect`
 
 ```javascript
-backend.connect(connection: Connection, req: Object): Connection;
+var connection = backend.connect();
 ```
 
 Connects to ShareDB and returns an instance of a [`Connection`](#class-sharedbconnection). This is the server-side equivalent of `new ShareDBClient.Connection(socket)` in the browser.
+
+This method also supports infrequently used optional arguments:
+
+```javascript
+var connection = backend.connect(connection, req);
+```
 
 * `connection` _Connection (optional)_: a [`Connection`](#class-sharedbconnection) instance to bind to the `Backend`
 * `req` _Object (optional)_: a connection context object that can contain information such as cookies or session data that will be available in the [middleware](#middlewares)
@@ -451,7 +455,7 @@ Returns a [`Connection`](#class-sharedbconnection).
 #### `listen`
 
 ```javascript
-backend.listen(stream: Stream, req: Object): Agent;
+var agent = backend.listen(stream, req);
 ```
 
 Registers a `Stream` with the backend. This should be called when the server receives a new connection from a client.
@@ -464,7 +468,7 @@ Returns an [`Agent`](#class-agent), which is also available in the [middleware](
 #### `close`
 
 ```javascript
-backend.close(callback: Function): void;
+backend.close(callback);
 ```
 
 Disconnects ShareDB and all of its underlying services (database, pubsub, etc.).
@@ -474,7 +478,7 @@ Disconnects ShareDB and all of its underlying services (database, pubsub, etc.).
 #### `use`
 
 ```javascript
-backend.use(action: string | string[], middleware: Function): Backend;
+backend.use(action, middleware);
 ```
 
 Adds [middleware](#middlewares) to the `Backend`.
@@ -482,12 +486,12 @@ Adds [middleware](#middlewares) to the `Backend`.
 * `action` _string | string[]_: an action, or array of action names defining when to apply the middleware
 * `middleware` _Function_: a middleware function with the signature `function (context: Object, callback: Function): void;`. See [middleware](#middlewares) for more details
 
-Returns the `Backend` instance.
+Returns the `Backend` instance, which allows for multiple chained calls.
 
 #### `addProjection`
 
 ```javascript
-backend.addProjection(name: string, collection: string, fields: Object): void;
+backend.addProjection(name, collection, fields);
 ```
 
 Adds a [projection](#projections).
@@ -499,7 +503,7 @@ Adds a [projection](#projections).
 #### `submit`
 
 ```javascript
-backend.submit(agent: Agent, index: string, id: string, op: Object, options: Object, callback: Function): void;
+backend.submit(agent, index, id, op, options, callback);
 ```
 
 Submits an operation to the `Backend`.
@@ -514,7 +518,7 @@ Submits an operation to the `Backend`.
 #### `getOps`
 
 ```javascript
-backend.getOps(agent: Agent, index: string, id: string, from: number, to: number, options: Object, callback: Function): void;
+backend.getOps(agent, index, id, from, to, options, callback);
 ```
 
 Fetches the ops for a document between the requested version numbers, where the `from` value is inclusive, but the `to` value is non-inclusive.
@@ -530,7 +534,7 @@ Fetches the ops for a document between the requested version numbers, where the 
 #### `getOpsBulk`
 
 ```javascript
-backend.getOpsBulk(agent: Agent, index: string, fromMap: Object, toMap: Object, options: Object, callback: Function): void;
+backend.getOpsBulk(agent, index, fromMap, toMap, options, callback);
 ```
 
 Fetches the ops for multiple documents in a collection between the requested version numbers, where the `from` value is inclusive, but the `to` value is non-inclusive.
@@ -546,7 +550,7 @@ Fetches the ops for multiple documents in a collection between the requested ver
 #### `fetch`
 
 ```javascript
-backend.fetch(agent: Agent, index: string, id: string, options: Object, callback: Function): void;
+backend.fetch(agent, index, id, options, callback);
 ```
 
 Fetch the current snapshot of a document.
@@ -560,7 +564,7 @@ Fetch the current snapshot of a document.
 #### `fetchBulk`
 
 ```javascript
-backend.fetchBulk(agent: Agent, index: string, ids: string[], options: Object, callback: Function): void;
+backend.fetchBulk(agent, index, ids, options, callback);
 ```
 
 Fetch multiple document snapshots from a collection.
@@ -574,7 +578,7 @@ Fetch multiple document snapshots from a collection.
 #### `queryFetch`
 
 ```javascript
-backend.queryFetch(agent: Agent, index: string, query: Object, options: Object, callback: Function): void;
+backend.queryFetch(agent, index, query, options, callback);
 ```
 
 Fetch snapshots that match the provided query. In most cases, querying the backing database directly should be preferred, but `queryFetch` can be used in order to apply middleware, whilst avoiding the overheads associated with using a `Doc` instance.
@@ -585,7 +589,7 @@ Fetch snapshots that match the provided query. In most cases, querying the backi
 * `options` _Object_: an object that may contain a `db` property, which specifies which database to run the query against. These extra databases can be attached via the `extraDbs` option in the `Backend` constructor
 * `callback` _Function_: a callback with the signature `function (error: Error, snapshots: Snapshot[], extra: Object): void;`, where `snapshots` is an array of the snapshots matching the query, and `extra` is an (optional) object that the database adapter might return with more information about the results (such as counts)
 
-### Class: `Agent`
+### Class: `ShareDB.Agent`
 
 An `Agent` is the representation of a client's `Connection` state on the server. If the `Connection` was created through `backend.connect` (ie the client is running on the server), then the `Agent` associated with a `Connection` can be accessed through a direct reference: `connection.agent`.
 
