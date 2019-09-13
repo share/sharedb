@@ -651,69 +651,14 @@ ShareDB only supports the following logger methods:
   - `error`
 
 
-## Error codes
+## Errors
 
 ShareDB returns errors as plain JavaScript objects with the format:
 ```
 {
-  code: 5000,
+  code: 'ERR_UNKNOWN_ERROR',
   message: 'ShareDB internal error'
 }
 ```
 
 Additional fields may be added to the error object for debugging context depending on the error. Common additional fields include `collection`, `id`, and `op`.
-
-### 4000 - Bad request
-
-* 4001 - Unknown error type
-* 4002 - Database adapter does not support subscribe
-* 4003 - Database adapter not found
-* 4004 - Missing op
-* 4005 - Op must be an array
-* 4006 - Create data in op must be an object
-* 4007 - Create op missing type
-* 4008 - Unknown type
-* 4009 - del value must be true
-* 4010 - Missing op, create or del
-* 4011 - Invalid src
-* 4012 - Invalid seq
-* 4013 - Found seq but not src
-* 4014 - op.m invalid
-* 4015 - Document does not exist
-* 4016 - Document already exists
-* 4017 - Document was deleted
-* 4018 - Document was created remotely
-* 4019 - Invalid protocol version
-* 4020 - Invalid default type
-* 4021 - Invalid client id
-* 4022 - Database adapter does not support queries
-* 4023 - Cannot project snapshots of this type
-* 4024 - Invalid version
-* 4025 - Passing options to subscribe has not been implemented
-
-### 5000 - Internal error
-
-The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the `42xx` and `52xx` codes are reserved for use by ShareDB PubSub adapters.
-
-* 5001 - No new ops returned when retrying unsuccessful submit
-* 5002 - Missing snapshot
-* 5003 - Snapshot and op version don't match
-* 5004 - Missing op
-* 5005 - Missing document
-* 5006 - Version mismatch
-* 5007 - Invalid state transition
-* 5008 - Missing version in snapshot
-* 5009 - Cannot ingest snapshot with null version
-* 5010 - No op to send
-* 5011 - Commit DB method unimplemented
-* 5012 - getSnapshot DB method unimplemented
-* 5013 - getOps DB method unimplemented
-* 5014 - queryPollDoc DB method unimplemented
-* 5015 - _subscribe PubSub method unimplemented
-* 5016 - _unsubscribe PubSub method unimplemented
-* 5017 - _publish PubSub method unimplemented
-* 5018 - Required QueryEmitter listener not assigned
-* 5019 - getMilestoneSnapshot MilestoneDB method unimplemented
-* 5020 - saveMilestoneSnapshot MilestoneDB method unimplemented
-* 5021 - getMilestoneSnapshotAtOrBeforeTime MilestoneDB method unimplemented
-* 5022 - getMilestoneSnapshotAtOrAfterTime MilestoneDB method unimplemented
