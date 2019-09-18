@@ -768,7 +768,7 @@ module.exports = function() {
 
     it('snapshot fetch does not revert the version of deleted doc without pending ops', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
-      this.backend.use('doc', function(request, next) {
+      this.backend.use('readSnapshots', function(request, next) {
         doc.create({age: 3});
         doc.del(next);
       });
@@ -781,7 +781,7 @@ module.exports = function() {
 
     it('snapshot fetch does not revert the version of deleted doc with pending ops', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
-      this.backend.use('doc', function(request, next) {
+      this.backend.use('readSnapshots', function(request, next) {
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           next();
