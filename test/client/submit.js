@@ -637,7 +637,7 @@ module.exports = function() {
             if (err) return done(err);
             doc.pause();
             doc.submitOp({p: ['age'], na: 1}, function(err) {
-              expect(err.code).to.equal('ERR_DOCUMENT_WAS_DELETED');
+              expect(err.code).to.equal('ERR_DOC_WAS_DELETED');
               expect(doc.version).equal(2);
               expect(doc.data).eql(undefined);
               done();
@@ -661,7 +661,7 @@ module.exports = function() {
               if (err) return done(err);
               doc.pause();
               doc.create({age: 9}, function(err) {
-                expect(err.code).to.equal('ERR_DOCUMENT_CREATED_REMOTELY');
+                expect(err.code).to.equal('ERR_DOC_ALREADY_CREATED');
                 expect(doc.version).equal(3);
                 expect(doc.data).eql({age: 5});
                 done();
