@@ -152,7 +152,7 @@ Register a new middleware.
     before being committed to the database
   * `'commit'`: An operation was applied to a snapshot; The operation
     and new snapshot are about to be written to the database.
-  * `'afterSubmit'`: An operation was successfully submitted to
+  * `'afterWrite'`: An operation was successfully written to
     the database.
   * `'receive'`: Received a message from a client
   * `'reply'`: About to send a non-error reply to a client message
@@ -321,7 +321,7 @@ Populate the fields on `doc` with a snapshot of the document from the server.
 Populate the fields on `doc` with a snapshot of the document from the server, and
 fire events on subsequent changes.
 
-`doc.unsubscribe(function (err) {...})`	
+`doc.unsubscribe(function (err) {...})`
 Stop listening for document updates. The document data at the time of unsubscribing remains in memory, but no longer stays up-to-date. Resubscribe with `doc.subscribe`.
 
 `doc.ingestSnapshot(snapshot, callback)`

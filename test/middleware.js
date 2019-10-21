@@ -283,8 +283,8 @@ describe('middleware', function() {
   });
 
   describe('submit lifecycle', function() {
-    // DEPRECATED: 'after submit' is a synonym for 'afterSubmit'
-    ['submit', 'apply', 'commit', 'afterSubmit', 'after submit'].forEach(function(action) {
+    // DEPRECATED: 'after submit' and 'afterSubmit' are synonyms for 'afterWrite'
+    ['submit', 'apply', 'commit', 'afterWrite', 'afterSubmit', 'after submit'].forEach(function(action) {
       it(action + ' gets options passed to backend.submit', function(done) {
         var doneAfter = util.callAfter(1, done);
         this.backend.use(action, function(request, next) {
