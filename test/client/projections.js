@@ -206,6 +206,30 @@ module.exports = function(options) {
         });
       }
       queryUpdateTests(test);
+
+      it('query subscribe on projection will update based on fields not in projection', function(done) {
+        // Create a query on a field not in the projection. The query doesn't
+        // match the doc created in beforeEach
+        var fido = this.connection.get('dogs', 'fido');
+        var connection2 = this.backend.connect();
+        var dbQuery = getQuery({query: {color: 'black'}});
+        var query = connection2.createSubscribeQuery('dogs_summary', dbQuery, null, function(err, results) {
+          if (err) return done(err);
+          expect(results).to.have.length(0);
+
+          // Submit an op on a field not in the projection, where the op should
+          // cause the doc to be included in the query results
+          fido.submitOp({p: ['color'], od: 'gold', oi: 'black'}, null, function(err) {
+            if (err) return done(err);
+            setTimeout(function() {
+              expect(query.results).to.have.length(1);
+              expect(query.results[0].id).to.equal('fido');
+              expect(query.results[0].data).to.eql({age: 3, owner: {name: 'jim'}});
+              done();
+            }, 10);
+          });
+        });
+      });
     });
 
     describe('fetch query', function() {
