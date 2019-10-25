@@ -24,6 +24,11 @@ describe('middleware', function() {
       var response = this.backend.use('submit', function() {});
       expect(response).equal(this.backend);
     });
+
+    it('accepts an array of action names', function() {
+      var response = this.backend.use(['submit', 'connect'], function() {});
+      expect(response).equal(this.backend);
+    });
   });
 
   describe('connect', function() {
