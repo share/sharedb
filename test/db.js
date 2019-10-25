@@ -36,7 +36,7 @@ module.exports = function(options) {
       });
     });
 
-    require('./client/projections')();
+    require('./client/projections')({getQuery: getQuery});
     require('./client/query-subscribe')({getQuery: getQuery});
     require('./client/query')({getQuery: getQuery});
     require('./client/submit')();
