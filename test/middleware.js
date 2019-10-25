@@ -1,5 +1,5 @@
 var Backend = require('../lib/backend');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var util = require('./util');
 var types = require('../lib/types');
 

@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var util = require('../util');
 
 module.exports = function() {
@@ -240,7 +240,7 @@ module.exports = function() {
         projected.fetch(function(err) {
           if (err) return done(err);
           projected.submitOp(op, function(err) {
-            expect(err).ok();
+            expect(err).ok;
             doc.fetch(function(err) {
               if (err) return done(err);
               expect(doc.data).eql({age: 3, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}});
@@ -318,7 +318,7 @@ module.exports = function() {
         var projected = this.backend.connect().get('dogs_summary', 'spot');
         var data = {age: 5, foo: 'bar'};
         projected.create(data, function(err) {
-          expect(err).ok();
+          expect(err).ok;
           doc.fetch(function(err) {
             if (err) return done(err);
             expect(doc.data).eql(undefined);

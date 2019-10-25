@@ -1,5 +1,5 @@
 var Backend = require('../lib/backend');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 
 describe('Backend', function() {
   var backend;
@@ -39,8 +39,8 @@ describe('Backend', function() {
         backend.getOps(null, 'books', '1984', 0, null, options, function(error, ops) {
           if (error) return done(error);
           expect(ops).to.have.length(2);
-          expect(ops[0].m).to.be.ok();
-          expect(ops[1].m).to.be.ok();
+          expect(ops[0].m).to.be.ok;
+          expect(ops[1].m).to.be.ok;
           done();
         });
       });
@@ -64,7 +64,7 @@ describe('Backend', function() {
         };
         backend.fetch(null, 'books', '1984', options, function(error, doc) {
           if (error) return done(error);
-          expect(doc.m).to.be.ok();
+          expect(doc.m).to.be.ok;
           done();
         });
       });
@@ -74,7 +74,7 @@ describe('Backend', function() {
       it('subscribes to the document', function(done) {
         backend.subscribe(null, 'books', '1984', null, function(error, stream, snapshot) {
           if (error) return done(error);
-          expect(stream.open).to.be(true);
+          expect(stream.open).to.equal(true);
           expect(snapshot.data).to.eql({
             title: '1984',
             author: 'George Orwell'
@@ -95,7 +95,7 @@ describe('Backend', function() {
           opsOptions: {metadata: true}
         };
         backend.subscribe(null, 'books', '1984', null, options, function(error) {
-          expect(error.code).to.be(4025);
+          expect(error.code).to.equal(4025);
           done();
         });
       });
