@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "arraydiff": "^0.1.1",
-    "async": "^3.1.0",
+    "async": "^1.4.2",
     "fast-deep-equal": "^2.0.1",
     "hat": "0.0.3",
     "make-error": "^1.1.1",
