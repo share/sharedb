@@ -78,7 +78,7 @@ module.exports = function(create) {
 
     it('can emit events', function(done) {
       this.pubsub.on('error', function(err) {
-        expect(err).ok;
+        expect(err).instanceOf(Error);
         expect(err.message).equal('test error');
         done();
       });
