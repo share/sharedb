@@ -339,7 +339,7 @@ module.exports = function() {
           doc.pause();
           var calls = 0;
           doc.create({age: 3}, function(err) {
-            expect(err).ok;
+            expect(err).instanceOf(Error);
             calls++;
           });
           doc[method](function(err) {

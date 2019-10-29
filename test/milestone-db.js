@@ -269,35 +269,35 @@ module.exports = function(options) {
 
     it('errors when fetching an undefined version', function(done) {
       db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
 
     it('errors when fetching version -1', function(done) {
       db.getMilestoneSnapshot('books', 'catcher-in-the-rye', -1, function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
 
     it('errors when fetching version "foo"', function(done) {
       db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 'foo', function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
 
     it('errors when fetching a null collection', function(done) {
       db.getMilestoneSnapshot(null, 'catcher-in-the-rye', 1, function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
 
     it('errors when fetching a null ID', function(done) {
       db.getMilestoneSnapshot('books', null, 1, function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
@@ -312,7 +312,7 @@ module.exports = function(options) {
       );
 
       db.saveMilestoneSnapshot(null, snapshot, function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
@@ -367,7 +367,7 @@ module.exports = function(options) {
 
     it('errors when the snapshot is undefined', function(done) {
       db.saveMilestoneSnapshot('books', undefined, function(error) {
-        expect(error).to.be.ok;
+        expect(error).instanceOf(Error);
         done();
       });
     });
@@ -471,14 +471,14 @@ module.exports = function(options) {
 
         it('returns an error for a string timestamp', function(done) {
           db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
 
         it('returns an error for a negative timestamp', function(done) {
           db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', -1, function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
@@ -498,14 +498,14 @@ module.exports = function(options) {
 
         it('errors if no collection is provided', function(done) {
           db.getMilestoneSnapshotAtOrBeforeTime(undefined, 'catcher-in-the-rye', 0, function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
 
         it('errors if no ID is provided', function(done) {
           db.getMilestoneSnapshotAtOrBeforeTime('books', undefined, 0, function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
@@ -553,14 +553,14 @@ module.exports = function(options) {
 
         it('returns an error for a string timestamp', function(done) {
           db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
 
         it('returns an error for a negative timestamp', function(done) {
           db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', -1, function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
@@ -580,14 +580,14 @@ module.exports = function(options) {
 
         it('errors if no collection is provided', function(done) {
           db.getMilestoneSnapshotAtOrAfterTime(undefined, 'catcher-in-the-rye', 0, function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });
 
         it('errors if no ID is provided', function(done) {
           db.getMilestoneSnapshotAtOrAfterTime('books', undefined, 0, function(error) {
-            expect(error).to.be.ok;
+            expect(error).instanceOf(Error);
             done();
           });
         });

@@ -96,7 +96,7 @@ module.exports = function() {
         if (err) return done(err);
         doc.version++;
         doc.submitOp({p: ['age'], na: 2}, function(err) {
-          expect(err).ok;
+          expect(err).instanceOf(Error);
           done();
         });
       });
@@ -105,7 +105,7 @@ module.exports = function() {
     it('cannot submit op on an uncreated doc', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.submitOp({p: ['age'], na: 2}, function(err) {
-        expect(err).ok;
+        expect(err).instanceOf(Error);
         done();
       });
     });
@@ -113,7 +113,7 @@ module.exports = function() {
     it('cannot delete an uncreated doc', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.del(function(err) {
-        expect(err).ok;
+        expect(err).instanceOf(Error);
         done();
       });
     });
@@ -207,7 +207,7 @@ module.exports = function() {
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc.create({age: 4}, function(err) {
-          expect(err).ok;
+          expect(err).instanceOf(Error);
           expect(doc.version).equal(1);
           expect(doc.data).eql({age: 3});
           done();
@@ -221,7 +221,7 @@ module.exports = function() {
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.create({age: 4}, function(err) {
-          expect(err).ok;
+          expect(err).instanceOf(Error);
           expect(doc2.version).equal(1);
           expect(doc2.data).eql({age: 3});
           done();
@@ -262,7 +262,7 @@ module.exports = function() {
           doc.submitOp({p: ['age'], na: 1}, function(err) {
             if (err) return done(err);
             doc2.submitOp({p: ['age'], na: 2}, function(err) {
-              expect(err).ok;
+              expect(err).instanceOf(Error);
               done();
             });
           });
@@ -287,7 +287,7 @@ module.exports = function() {
           doc.submitOp({p: ['age'], na: 1}, function(err) {
             if (err) return done(err);
             doc2.submitOp({p: ['age'], na: 2}, function(err) {
-              expect(err).ok;
+              expect(err).instanceOf(Error);
               done();
             });
           });
@@ -432,7 +432,7 @@ module.exports = function() {
           expect(doc.version).eql(1);
           expect(doc.data).eql({age: 3});
         } else {
-          expect(err).ok;
+          expect(err).instanceOf(Error);
           expect(doc.version).eql(1);
           expect(doc.data).eql({age: 5});
           done();
@@ -445,7 +445,7 @@ module.exports = function() {
           expect(doc2.version).eql(1);
           expect(doc2.data).eql({age: 5});
         } else {
-          expect(err).ok;
+          expect(err).instanceOf(Error);
           expect(doc2.version).eql(1);
           expect(doc2.data).eql({age: 3});
           done();
@@ -545,7 +545,7 @@ module.exports = function() {
             doc2Callback();
           });
           doc2.submitOp({p: ['age'], na: 7}, function(err) {
-            expect(err).ok;
+            expect(err).instanceOf(Error);
             done();
           });
         });
@@ -616,7 +616,7 @@ module.exports = function() {
           doc2.del(function(err) {
             if (err) return done(err);
             doc.submitOp({p: ['age'], na: 1}, function(err) {
-              expect(err).ok;
+              expect(err).instanceOf(Error);
               expect(doc.version).equal(1);
               expect(doc.data).eql({age: 3});
               done();
@@ -1070,7 +1070,7 @@ module.exports = function() {
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc._submit({}, null, function(err) {
-          expect(err).ok;
+          expect(err).instanceOf(Error);
           done();
         });
       });
