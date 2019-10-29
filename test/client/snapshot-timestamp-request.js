@@ -1,5 +1,5 @@
 var Backend = require('../../lib/backend');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var util = require('../util');
 var lolex = require('lolex');
 var MemoryDb = require('../../lib/db/memory');
@@ -183,7 +183,7 @@ describe('SnapshotTimestampRequest', function() {
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', undefined, function() {});
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('throws without a callback', function() {
@@ -191,7 +191,7 @@ describe('SnapshotTimestampRequest', function() {
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine');
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('throws if the timestamp is -1', function() {
@@ -199,7 +199,7 @@ describe('SnapshotTimestampRequest', function() {
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', -1, function() { });
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('errors if the timestamp is a string', function() {
@@ -207,7 +207,7 @@ describe('SnapshotTimestampRequest', function() {
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', 'foo', function() { });
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('returns an empty snapshot if trying to fetch a non-existent document', function(done) {
@@ -229,11 +229,11 @@ describe('SnapshotTimestampRequest', function() {
 
       connection.fetchSnapshotByTimestamp('books', 'time-machine', null, function(error) {
         if (error) return done(error);
-        expect(connection.hasPending()).to.be(false);
+        expect(connection.hasPending()).to.equal(false);
         done();
       });
 
-      expect(connection.hasPending()).to.be(true);
+      expect(connection.hasPending()).to.equal(true);
     });
 
     it('deletes the request from the connection', function(done) {
@@ -269,7 +269,7 @@ describe('SnapshotTimestampRequest', function() {
       });
 
       connection.whenNothingPending(function() {
-        expect(snapshotFetched).to.be(true);
+        expect(snapshotFetched).to.equal(true);
         done();
       });
     });
@@ -328,7 +328,7 @@ describe('SnapshotTimestampRequest', function() {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
           function(request) {
             expect(request.snapshots[0]).to.eql(v3);
-            expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.byTimestamp);
+            expect(request.snapshotType).to.equal(backend.SNAPSHOT_TYPES.byTimestamp);
             done();
           }
         );
@@ -346,7 +346,7 @@ describe('SnapshotTimestampRequest', function() {
 
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', function(error, snapshot) {
           if (error) return done(error);
-          expect(snapshot.data.title).to.be('Alice in Wonderland');
+          expect(snapshot.data.title).to.equal('Alice in Wonderland');
           done();
         });
       });
@@ -359,7 +359,7 @@ describe('SnapshotTimestampRequest', function() {
         ];
 
         backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, function(error) {
-          expect(error.message).to.be('foo');
+          expect(error.message).to.equal('foo');
           done();
         });
       });
@@ -374,8 +374,8 @@ describe('SnapshotTimestampRequest', function() {
         backend.connect().fetchSnapshotByTimestamp('bookTitles', 'time-machine', day2, function(error, snapshot) {
           if (error) return done(error);
 
-          expect(snapshot.data.title).to.be('The Time Machine');
-          expect(snapshot.data.author).to.be(undefined);
+          expect(snapshot.data.title).to.equal('The Time Machine');
+          expect(snapshot.data.author).to.equal(undefined);
           done();
         });
       });
@@ -441,11 +441,11 @@ describe('SnapshotTimestampRequest', function() {
           .fetchSnapshotByTimestamp('books', 'mocking-bird', halfwayBetweenDays3and4, function(error, snapshot) {
             if (error) return done(error);
 
-            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);
-            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.be(true);
-            expect(db.getOps.calledWith('books', 'mocking-bird', 2, 4)).to.be(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.equal(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.equal(true);
+            expect(db.getOps.calledWith('books', 'mocking-bird', 2, 4)).to.equal(true);
 
-            expect(snapshot.v).to.be(3);
+            expect(snapshot.v).to.equal(3);
             expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lee'});
             done();
           });
@@ -459,10 +459,10 @@ describe('SnapshotTimestampRequest', function() {
           .fetchSnapshotByTimestamp('books', 'mocking-bird', day2, function(error, snapshot) {
             if (error) return done(error);
 
-            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);
-            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.be(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.equal(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.equal(true);
 
-            expect(snapshot.v).to.be(2);
+            expect(snapshot.v).to.equal(2);
             expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lea'});
             done();
           });
@@ -477,11 +477,11 @@ describe('SnapshotTimestampRequest', function() {
           .fetchSnapshotByTimestamp('books', 'mocking-bird', day1, function(error, snapshot) {
             if (error) return done(error);
 
-            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);
-            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.be(true);
-            expect(db.getOps.calledWith('books', 'mocking-bird', 0, 2)).to.be(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.equal(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.equal(true);
+            expect(db.getOps.calledWith('books', 'mocking-bird', 0, 2)).to.equal(true);
 
-            expect(snapshot.v).to.be(1);
+            expect(snapshot.v).to.equal(1);
             expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird'});
             done();
           });
@@ -496,11 +496,11 @@ describe('SnapshotTimestampRequest', function() {
           .fetchSnapshotByTimestamp('books', 'mocking-bird', day5, function(error, snapshot) {
             if (error) return done(error);
 
-            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.be(true);
-            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.be(true);
-            expect(db.getOps.calledWith('books', 'mocking-bird', 4, null)).to.be(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.equal(true);
+            expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.equal(true);
+            expect(db.getOps.calledWith('books', 'mocking-bird', 4, null)).to.equal(true);
 
-            expect(snapshot.v).to.be(5);
+            expect(snapshot.v).to.equal(5);
             expect(snapshot.data).to.eql({
               title: 'To Kill a Mocking Bird',
               author: 'Harper Lee',

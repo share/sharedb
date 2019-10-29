@@ -1,33 +1,33 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var ot = require('../lib/ot');
 var type = require('../lib/types').defaultType;
 
 describe('ot', function() {
   describe('checkOp', function() {
     it('fails if op is not an object', function() {
-      expect(ot.checkOp('hi')).ok();
-      expect(ot.checkOp()).ok();
-      expect(ot.checkOp(123)).ok();
-      expect(ot.checkOp([])).ok();
+      expect(ot.checkOp('hi')).ok;
+      expect(ot.checkOp()).ok;
+      expect(ot.checkOp(123)).ok;
+      expect(ot.checkOp([])).ok;
     });
 
     it('fails if op data is missing op, create and del', function() {
-      expect(ot.checkOp({v: 5})).ok();
+      expect(ot.checkOp({v: 5})).ok;
     });
 
     it('fails if src/seq data is invalid', function() {
-      expect(ot.checkOp({del: true, v: 5, src: 'hi'})).ok();
-      expect(ot.checkOp({del: true, v: 5, seq: 123})).ok();
-      expect(ot.checkOp({del: true, v: 5, src: 'hi', seq: 'there'})).ok();
+      expect(ot.checkOp({del: true, v: 5, src: 'hi'})).ok;
+      expect(ot.checkOp({del: true, v: 5, seq: 123})).ok;
+      expect(ot.checkOp({del: true, v: 5, src: 'hi', seq: 'there'})).ok;
     });
 
     it('fails if a create operation is missing its type', function() {
-      expect(ot.checkOp({create: {}})).ok();
-      expect(ot.checkOp({create: 123})).ok();
+      expect(ot.checkOp({create: {}})).ok;
+      expect(ot.checkOp({create: 123})).ok;
     });
 
     it('fails if the type is missing', function() {
-      expect(ot.checkOp({create: {type: 'something that does not exist'}})).ok();
+      expect(ot.checkOp({create: {type: 'something that does not exist'}})).ok;
     });
 
     it('accepts valid create operations', function() {
@@ -54,12 +54,12 @@ describe('ot', function() {
 
   describe('apply', function() {
     it('fails if the versions dont match', function() {
-      expect(ot.apply({v: 0}, {v: 1, create: {type: type.uri}})).ok();
-      expect(ot.apply({v: 0}, {v: 1, del: true})).ok();
-      expect(ot.apply({v: 0}, {v: 1, op: []})).ok();
-      expect(ot.apply({v: 5}, {v: 4, create: {type: type.uri}})).ok();
-      expect(ot.apply({v: 5}, {v: 4, del: true})).ok();
-      expect(ot.apply({v: 5}, {v: 4, op: []})).ok();
+      expect(ot.apply({v: 0}, {v: 1, create: {type: type.uri}})).ok;
+      expect(ot.apply({v: 0}, {v: 1, del: true})).ok;
+      expect(ot.apply({v: 0}, {v: 1, op: []})).ok;
+      expect(ot.apply({v: 5}, {v: 4, create: {type: type.uri}})).ok;
+      expect(ot.apply({v: 5}, {v: 4, del: true})).ok;
+      expect(ot.apply({v: 5}, {v: 4, op: []})).ok;
     });
 
     it('allows the version field to be missing', function() {
@@ -71,7 +71,7 @@ describe('ot', function() {
   describe('create', function() {
     it('fails if the document already exists', function() {
       var doc = {v: 6, create: {type: type.uri}};
-      expect(ot.apply({v: 6, type: type.uri, data: 'hi'}, doc)).ok();
+      expect(ot.apply({v: 6, type: type.uri, data: 'hi'}, doc)).ok;
       // The doc should be unmodified
       expect(doc).eql({v: 6, create: {type: type.uri}});
     });
@@ -105,11 +105,11 @@ describe('ot', function() {
 
   describe('op', function() {
     it('fails if the document does not exist', function() {
-      expect(ot.apply({v: 6}, {v: 6, op: [1, 2, 3]})).ok();
+      expect(ot.apply({v: 6}, {v: 6, op: [1, 2, 3]})).ok;
     });
 
     it('fails if the type is missing', function() {
-      expect(ot.apply({v: 6, type: 'some non existant type'}, {v: 6, op: [1, 2, 3]})).ok();
+      expect(ot.apply({v: 6, type: 'some non existant type'}, {v: 6, op: [1, 2, 3]})).ok;
     });
 
     it('applies the operation to the document data', function() {
@@ -138,21 +138,21 @@ describe('ot', function() {
     it('fails if the version is specified on both and does not match', function() {
       var op1 = {v: 5, op: [{p: [10], si: 'hi'}]};
       var op2 = {v: 6, op: [{p: [5], si: 'abcde'}]};
-      expect(ot.transform(type.uri, op1, op2)).ok();
+      expect(ot.transform(type.uri, op1, op2)).ok;
       expect(op1).eql({v: 5, op: [{p: [10], si: 'hi'}]});
     });
 
     // There's 9 cases here.
     it('create by create fails', function() {
-      expect(ot.transform(null, {v: 10, create: {type: type.uri}}, {v: 10, create: {type: type.uri}})).ok();
+      expect(ot.transform(null, {v: 10, create: {type: type.uri}}, {v: 10, create: {type: type.uri}})).ok;
     });
 
     it('create by delete fails', function() {
-      expect(ot.transform(null, {create: {type: type.uri}}, {del: true})).ok();
+      expect(ot.transform(null, {create: {type: type.uri}}, {del: true})).ok;
     });
 
     it('create by op fails', function() {
-      expect(ot.transform(null, {v: 10, create: {type: type.uri}}, {v: 10, op: [15, 'hi']})).ok();
+      expect(ot.transform(null, {v: 10, create: {type: type.uri}}, {v: 10, op: [15, 'hi']})).ok;
     });
 
     it('create by noop ok', function() {
@@ -162,7 +162,7 @@ describe('ot', function() {
     });
 
     it('delete by create fails', function() {
-      expect(ot.transform(null, {del: true}, {create: {type: type.uri}})).ok();
+      expect(ot.transform(null, {del: true}, {create: {type: type.uri}})).ok;
     });
 
     it('delete by delete ok', function() {
@@ -198,11 +198,11 @@ describe('ot', function() {
     });
 
     it('op by create fails', function() {
-      expect(ot.transform(null, {op: {}}, {create: {type: type.uri}})).ok();
+      expect(ot.transform(null, {op: {}}, {create: {type: type.uri}})).ok;
     });
 
     it('op by delete fails', function() {
-      expect(ot.transform(type.uri, {v: 10, op: []}, {v: 10, del: true})).ok();
+      expect(ot.transform(type.uri, {v: 10, op: []}, {v: 10, del: true})).ok;
     });
 
     it('op by op ok', function() {

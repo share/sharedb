@@ -1,5 +1,5 @@
 var Backend = require('../../lib/backend');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var util = require('../util');
 
 describe('Doc', function() {
@@ -229,7 +229,7 @@ describe('Doc', function() {
     it('succeeds with valid op', function(done) {
       var doc = this.doc;
       doc.create({name: 'Scooby Doo'}, function(error) {
-        expect(error).to.not.be.ok();
+        expect(error).to.not.exist;
         // Build valid op that deletes a substring at index 0 of name.
         var textOpComponents = [{p: 0, d: 'Scooby '}];
         var op = [{p: ['name'], t: 'text0', o: textOpComponents}];
@@ -244,12 +244,12 @@ describe('Doc', function() {
     it('fails with invalid op', function(done) {
       var doc = this.doc;
       doc.create({name: 'Scooby Doo'}, function(error) {
-        expect(error).to.not.be.ok();
+        expect(error).to.not.exist;
         // Build op that tries to delete an invalid substring at index 0 of name.
         var textOpComponents = [{p: 0, d: 'invalid'}];
         var op = [{p: ['name'], t: 'text0', o: textOpComponents}];
         doc.submitOp(op, function(error) {
-          expect(error).to.be.ok();
+          expect(error).instanceOf(Error);
           done();
         });
       });
@@ -286,7 +286,7 @@ describe('Doc', function() {
       util.callInSeries([
         function(next) {
           doc.submitOp(invalidOp, function(error) {
-            expect(error).to.be.ok();
+            expect(error).instanceOf(Error);
             next();
           });
         },

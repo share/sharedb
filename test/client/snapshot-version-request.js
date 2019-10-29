@@ -1,5 +1,5 @@
 var Backend = require('../../lib/backend');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var MemoryDb = require('../../lib/db/memory');
 var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
 var sinon = require('sinon');
@@ -105,7 +105,7 @@ describe('SnapshotVersionRequest', function() {
         backend.connect().fetchSnapshot('books', 'don-quixote', undefined, function() {});
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('fetches the latest version when the optional version is not provided', function(done) {
@@ -121,7 +121,7 @@ describe('SnapshotVersionRequest', function() {
         backend.connect().fetchSnapshot('books', 'don-quixote');
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('throws if the version is -1', function() {
@@ -129,7 +129,7 @@ describe('SnapshotVersionRequest', function() {
         backend.connect().fetchSnapshot('books', 'don-quixote', -1, function() {});
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('errors if the version is a string', function() {
@@ -137,13 +137,13 @@ describe('SnapshotVersionRequest', function() {
         backend.connect().fetchSnapshot('books', 'don-quixote', 'foo', function() { });
       };
 
-      expect(fetch).to.throwError();
+      expect(fetch).to.throw(Error);
     });
 
     it('errors if asking for a version that does not exist', function(done) {
       backend.connect().fetchSnapshot('books', 'don-quixote', 4, function(error, snapshot) {
-        expect(error.code).to.be(4024);
-        expect(snapshot).to.be(undefined);
+        expect(error.code).to.equal(4024);
+        expect(snapshot).to.equal(undefined);
         done();
       });
     });
@@ -167,11 +167,11 @@ describe('SnapshotVersionRequest', function() {
 
       connection.fetchSnapshot('books', 'don-quixote', null, function(error) {
         if (error) return done(error);
-        expect(connection.hasPending()).to.be(false);
+        expect(connection.hasPending()).to.equal(false);
         done();
       });
 
-      expect(connection.hasPending()).to.be(true);
+      expect(connection.hasPending()).to.equal(true);
     });
 
     it('deletes the request from the connection', function(done) {
@@ -207,7 +207,7 @@ describe('SnapshotVersionRequest', function() {
       });
 
       connection.whenNothingPending(function() {
-        expect(snapshotFetched).to.be(true);
+        expect(snapshotFetched).to.equal(true);
         done();
       });
     });
@@ -266,7 +266,7 @@ describe('SnapshotVersionRequest', function() {
         backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots,
           function(request) {
             expect(request.snapshots[0]).to.eql(v3);
-            expect(request.snapshotType).to.be(backend.SNAPSHOT_TYPES.byVersion);
+            expect(request.snapshotType).to.equal(backend.SNAPSHOT_TYPES.byVersion);
             done();
           }
         );
@@ -284,7 +284,7 @@ describe('SnapshotVersionRequest', function() {
 
         backend.connect().fetchSnapshot('books', 'don-quixote', function(error, snapshot) {
           if (error) return done(error);
-          expect(snapshot.data.title).to.be('Alice in Wonderland');
+          expect(snapshot.data.title).to.equal('Alice in Wonderland');
           done();
         });
       });
@@ -297,7 +297,7 @@ describe('SnapshotVersionRequest', function() {
         ];
 
         backend.connect().fetchSnapshot('books', 'don-quixote', 0, function(error) {
-          expect(error.message).to.be('foo');
+          expect(error.message).to.equal('foo');
           done();
         });
       });
@@ -312,8 +312,8 @@ describe('SnapshotVersionRequest', function() {
         backend.connect().fetchSnapshot('bookTitles', 'don-quixote', 2, function(error, snapshot) {
           if (error) return done(error);
 
-          expect(snapshot.data.title).to.be('Don Quixote');
-          expect(snapshot.data.author).to.be(undefined);
+          expect(snapshot.data.title).to.equal('Don Quixote');
+          expect(snapshot.data.author).to.equal(undefined);
           done();
         });
       });
@@ -435,9 +435,9 @@ describe('SnapshotVersionRequest', function() {
           backendWithMilestones.connect().fetchSnapshot('books', 'mocking-bird', 3, next);
         },
         function(snapshot, next) {
-          expect(milestoneDb.getMilestoneSnapshot.calledOnce).to.be(true);
-          expect(db.getOps.calledWith('books', 'mocking-bird', 2, 3)).to.be(true);
-          expect(snapshot.v).to.be(3);
+          expect(milestoneDb.getMilestoneSnapshot.calledOnce).to.equal(true);
+          expect(db.getOps.calledWith('books', 'mocking-bird', 2, 3)).to.equal(true);
+          expect(snapshot.v).to.equal(3);
           expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lee'});
           next();
         },

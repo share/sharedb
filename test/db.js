@@ -1,5 +1,5 @@
 var async = require('async');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
 
@@ -87,7 +87,7 @@ module.exports = function(options) {
       function testCreateCommit(ops, snapshot) {
         expect(snapshot.v).eql(1);
         expect(ops.length).equal(1);
-        expect(ops[0].create).ok();
+        expect(ops[0].create).ok;
       }
 
       it('one commit succeeds from 2 simultaneous creates', function(done) {
@@ -117,8 +117,8 @@ module.exports = function(options) {
       function testOpCommit(ops, snapshot) {
         expect(snapshot.v).equal(2);
         expect(ops.length).equal(2);
-        expect(ops[0].create).ok();
-        expect(ops[1].op).ok();
+        expect(ops[0].create).ok;
+        expect(ops[1].op).ok;
       }
 
       function testDelCommit(ops, snapshot) {
@@ -126,7 +126,7 @@ module.exports = function(options) {
         expect(ops.length).equal(2);
         expect(snapshot.data).equal(undefined);
         expect(snapshot.type).equal(null);
-        expect(ops[0].create).ok();
+        expect(ops[0].create).ok;
         expect(ops[1].del).equal(true);
       }
 

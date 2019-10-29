@@ -1,5 +1,5 @@
 var Logger = require('../lib/logger/logger');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var sinon = require('sinon');
 
 describe('Logger', function() {
@@ -15,7 +15,7 @@ describe('Logger', function() {
     it('logs to console by default', function() {
       var logger = new Logger();
       logger.warn('warning');
-      expect(console.warn.calledOnceWithExactly('warning')).to.be(true);
+      expect(console.warn.calledOnceWithExactly('warning')).to.equal(true);
     });
 
     it('overrides console', function() {
@@ -27,8 +27,8 @@ describe('Logger', function() {
 
       logger.warn('warning');
 
-      expect(console.warn.notCalled).to.be(true);
-      expect(customWarn.calledOnceWithExactly('warning')).to.be(true);
+      expect(console.warn.notCalled).to.equal(true);
+      expect(customWarn.calledOnceWithExactly('warning')).to.equal(true);
     });
 
     it('only overrides if provided with a method', function() {
@@ -40,7 +40,7 @@ describe('Logger', function() {
 
       logger.warn('warning');
 
-      expect(console.warn.calledOnceWithExactly('warning')).to.be(true);
+      expect(console.warn.calledOnceWithExactly('warning')).to.equal(true);
     });
   });
 });

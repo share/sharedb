@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var DB = require('../lib/db');
 var BasicQueryableMemoryDB = require('./BasicQueryableMemoryDB');
 
@@ -16,7 +16,7 @@ describe('DB base class', function() {
   it('returns an error if db.commit() is unimplemented', function(done) {
     var db = new DB();
     db.commit('testcollection', 'test', {}, {}, null, function(err) {
-      expect(err).an(Error);
+      expect(err).instanceOf(Error);
       done();
     });
   });
@@ -24,7 +24,7 @@ describe('DB base class', function() {
   it('returns an error if db.getSnapshot() is unimplemented', function(done) {
     var db = new DB();
     db.getSnapshot('testcollection', 'foo', null, null, function(err) {
-      expect(err).an(Error);
+      expect(err).instanceOf(Error);
       done();
     });
   });
@@ -32,7 +32,7 @@ describe('DB base class', function() {
   it('returns an error if db.getOps() is unimplemented', function(done) {
     var db = new DB();
     db.getOps('testcollection', 'foo', 0, null, null, function(err) {
-      expect(err).an(Error);
+      expect(err).instanceOf(Error);
       done();
     });
   });
@@ -40,7 +40,7 @@ describe('DB base class', function() {
   it('returns an error if db.query() is unimplemented', function(done) {
     var db = new DB();
     db.query('testcollection', {x: 5}, null, null, function(err) {
-      expect(err).an(Error);
+      expect(err).instanceOf(Error);
       done();
     });
   });
@@ -48,7 +48,7 @@ describe('DB base class', function() {
   it('returns an error if db.queryPollDoc() is unimplemented', function(done) {
     var db = new DB();
     db.queryPollDoc('testcollection', 'foo', {x: 5}, null, function(err) {
-      expect(err).an(Error);
+      expect(err).instanceOf(Error);
       done();
     });
   });

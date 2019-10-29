@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var projections = require('../lib/projections');
 var type = require('../lib/types').defaultType.uri;
 
@@ -12,7 +12,7 @@ describe('projection utility methods', function() {
     it('throws on snapshots with the wrong type', function() {
       expect(function() {
         projections.projectSnapshot({}, {type: 'other', data: 123});
-      }).throwException();
+      }).throw(Error);
     });
 
     it('empty object filters out all properties', function() {
@@ -244,7 +244,7 @@ describe('projection utility methods', function() {
       it('throws on create ops with the wrong type', function() {
         expect(function() {
           projections.projectOp({}, {create: {type: 'other', data: 123}});
-        }).throwException();
+        }).throw(Error);
       });
 
       it('strips data in creates', function() {
