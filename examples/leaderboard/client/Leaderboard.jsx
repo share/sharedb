@@ -4,15 +4,18 @@ var React = require('react');
 var _ = require('underscore');
 var connection = require('./connection');
 
-var Leaderboard = React.createClass({
-  getInitialState: function() {
-    return {
+class Leaderboard extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
       selectedPlayerId: null,
       players: []
     };
-  },
+    this.handlePlayerSelected = this.handlePlayerSelected.bind(this);
+    this.handleAddPoints = this.handleAddPoints.bind(this);
+  }
 
-  componentDidMount: function() {
+  componentDidMount() {
     var comp = this;
     var query = connection.createSubscribeQuery('players', {$sort: {score: -1}});
     query.on('ready', update);
@@ -21,30 +24,30 @@ var Leaderboard = React.createClass({
     function update() {
       comp.setState({players: query.results});
     }
-  },
+  }
 
-  componentWillUnmount: function() {
+  componentWillUnmount() {
     query.destroy();
-  },
+  }
 
-  selectedPlayer: function() {
+  selectedPlayer() {
     return _.find(this.state.players, function(x) {
       return x.id === this.state.selectedPlayerId;
     }.bind(this));
-  },
+  }
 
-  handlePlayerSelected: function(id) {
+  handlePlayerSelected(id) {
     this.setState({selectedPlayerId: id});
-  },
+  }
 
-  handleAddPoints: function() {
+  handleAddPoints() {
     var op = [{p: ['score'], na: 5}];
     connection.get('players', this.state.selectedPlayerId).submitOp(op, function(err) {
       if (err) { console.error(err); return; }
     });
-  },
+  }
 
-  render: function() {
+  render() {
     return (
       <div>
         <div className="leaderboard">
@@ -54,7 +57,7 @@ var Leaderboard = React.createClass({
       </div>
     );
   }
-});
+}
 
 module.exports = Leaderboard;
 

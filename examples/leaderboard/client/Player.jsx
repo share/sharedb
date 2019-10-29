@@ -1,18 +1,18 @@
+var PropTypes = require('prop-types');
 var React = require('react');
 var classNames = require('classnames');
 
-var Player = React.createClass({
-  propTypes: {
-    doc: React.PropTypes.object.isRequired,
-    onPlayerSelected: React.PropTypes.func.isRequired,
-    selected: React.PropTypes.bool.isRequired
-  },
+class Player extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleClick = this.handleClick.bind(this);
+  }
 
-  handleClick: function(event) {
+  handleClick(event) {
     this.props.onPlayerSelected(this.props.doc.id);
-  },
+  }
 
-  componentDidMount: function() {
+  componentDidMount() {
     var comp = this;
     var doc = comp.props.doc;
     doc.subscribe();
@@ -22,13 +22,13 @@ var Player = React.createClass({
       // `comp.props.doc.data` is now updated. re-render component.
       comp.forceUpdate();
     }
-  },
+  }
 
-  componentWillUnmount: function() {
+  componentWillUnmount() {
     this.doc.unsubscribe();
-  },
+  }
 
-  render: function() {
+  render() {
     var classes = {
       'player': true,
       'selected': this.props.selected
@@ -41,6 +41,12 @@ var Player = React.createClass({
       </li>
     );
   }
-});
+}
+
+Player.propTypes = {
+  doc: PropTypes.object.isRequired,
+  onPlayerSelected: PropTypes.func.isRequired,
+  selected: PropTypes.bool.isRequired
+};
 
 module.exports = Player;
