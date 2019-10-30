@@ -2,8 +2,8 @@ var sharedb = require('sharedb/lib/client');
 var StringBinding = require('sharedb-string-binding');
 
 // Open WebSocket connection to ShareDB server
-var WebSocket = require('reconnecting-websocket');
-var socket = new WebSocket('ws://' + window.location.host);
+var ReconnectingWebSocket = require('reconnecting-websocket');
+var socket = new ReconnectingWebSocket('ws://' + window.location.host);
 var connection = new sharedb.Connection(socket);
 
 var element = document.querySelector('textarea');

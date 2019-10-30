@@ -1,10 +1,10 @@
 {
   "name": "sharedb-example-leaderboard",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "React Leaderboard backed by ShareDB",
   "main": "server.js",
   "scripts": {
-    "build": "mkdir -p dist/ && ./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client/index.jsx -o dist/bundle.js",
+    "build": "mkdir -p static/dist/ && ./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client/index.jsx -o static/dist/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server/index.js"
   },
@@ -15,21 +15,21 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@teamwork/websocket-json-stream": "^2.0.0",
     "classnames": "^2.2.5",
-    "connect": "^3.4.1",
-    "react": "^15.1.0",
-    "react-dom": "^15.1.0",
-    "serve-static": "^1.11.1",
+    "express": "^4.17.1",
+    "prop-types": "^15.7.2",
+    "react": "^16.11.0",
+    "react-dom": "^16.11.0",
+    "reconnecting-websocket": "^4.2.0",
     "sharedb": "^1.0.0-beta",
     "sharedb-mingo-memory": "^1.0.0-beta",
-    "through2": "^2.0.1",
     "underscore": "^1.8.3",
-    "@teamwork/websocket-json-stream": "^2.0.0",
-    "ws": "^1.1.0"
+    "ws": "^7.2.0"
   },
   "devDependencies": {
     "babel-preset-react": "^6.5.0",
     "babelify": "^7.3.0",
-    "browserify": "^13.0.1"
+    "browserify": "^16.5.0"
   }
 }
