@@ -83,6 +83,40 @@ module.exports = function(options) {
       });
     });
 
+    it('subscribed query removes document from results before sending delete op to other clients', function(done) {
+      var connection1 = this.backend.connect();
+      var connection2 = this.backend.connect();
+      var matchAllDbQuery = this.matchAllDbQuery;
+      async.parallel([
+        function(cb) {
+          connection1.get('dogs', 'fido').create({age: 3}, cb);
+        },
+        function(cb) {
+          connection1.get('dogs', 'spot').create({age: 5}, cb);
+        }
+      ], function(err) {
+        if (err) return done(err);
+        var query = connection2.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
+          if (err) return done(err);
+          connection1.get('dogs', 'fido').del();
+        });
+        var removed = false;
+        connection2.get('dogs', 'fido').on('del', function() {
+          expect(removed).equal(true);
+          done();
+        });
+        query.on('remove', function(docs, index) {
+          removed = true;
+          expect(util.pluck(docs, 'id')).eql(['fido']);
+          expect(util.pluck(docs, 'data')).eql([{age: 3}]);
+          expect(index).a('number');
+          var results = util.sortById(query.results);
+          expect(util.pluck(results, 'id')).eql(['spot']);
+          expect(util.pluck(results, 'data')).eql([{age: 5}]);
+        });
+      });
+    });
+
     it('subscribed query does not get updated after destroyed', function(done) {
       var connection = this.backend.connect();
       var connection2 = this.backend.connect();
