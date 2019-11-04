@@ -45,3 +45,9 @@ exports.errorHandler = function(callback) {
     if (error) callback(error);
   };
 };
+
+exports.errorHandler = function(callback) {
+  return function(error) {
+    if (error) callback(error);
+  };
+};

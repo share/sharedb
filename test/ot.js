@@ -1,6 +1,10 @@
 var expect = require('chai').expect;
 var ot = require('../lib/ot');
-var type = require('../lib/types').defaultType;
+var types = require('../lib/types');
+var type = types.defaultType;
+var presenceType = require('./client/presence/presence-test-type').type;
+
+types.register(presenceType);
 
 describe('ot', function() {
   describe('checkOp', function() {
@@ -235,6 +239,134 @@ describe('ot', function() {
       expect(op).eql({});
       expect(ot.transform(null, op, {})).equal();
       expect(op).eql({});
+    });
+  });
+
+  describe('transformPresence', function() {
+    it('transforms a presence by an op', function() {
+      var presence = {
+        p: {index: 5},
+        t: presenceType.uri,
+        v: 1
+      };
+
+      var op = {
+        op: {index: 2, value: 'foo'}
+      };
+      var error = ot.transformPresence(presence, op);
+
+      expect(error).to.be.undefined;
+      expect(presence).to.eql({
+        p: {index: 8},
+        t: presenceType.uri,
+        v: 2
+      });
+    });
+
+    it('nulls presence for a create op', function() {
+      var presence = {
+        p: {index: 5},
+        t: presenceType.uri,
+        v: 1
+      };
+
+      var op = {
+        create: {type: presenceType.uri, data: 'foo'}
+      };
+      var error = ot.transformPresence(presence, op);
+
+      expect(error).to.be.undefined;
+      expect(presence).to.eql({
+        p: null,
+        t: presenceType.uri,
+        v: 2
+      });
+    });
+
+    it('nulls presence for a delete op', function() {
+      var presence = {
+        p: {index: 5},
+        t: presenceType.uri,
+        v: 1
+      };
+
+      var op = {del: true};
+      var error = ot.transformPresence(presence, op);
+
+      expect(error).to.be.undefined;
+      expect(presence).to.eql({
+        p: null,
+        t: presenceType.uri,
+        v: 2
+      });
+    });
+
+    it('returns an error for an invalid op', function() {
+      var presence = {
+        p: {index: 5},
+        t: presenceType.uri,
+        v: 1
+      };
+
+      var op = {};
+      var error = ot.transformPresence(presence, op);
+
+      expect(error.code).to.eql('ERR_OT_OP_BADLY_FORMED');
+    });
+
+    it('considers isOwnOp', function() {
+      var presence = {
+        p: {index: 5},
+        t: presenceType.uri,
+        v: 1
+      };
+
+      var op = {
+        op: {index: 5, value: 'foo'}
+      };
+      var error = ot.transformPresence(presence, op, true);
+
+      expect(error).to.be.undefined;
+      expect(presence).to.eql({
+        p: {index: 8},
+        t: presenceType.uri,
+        v: 2
+      });
+    });
+
+    it('checks that the type supports presence', function() {
+      var presence = {
+        p: {index: 5},
+        t: type.uri,
+        v: 1
+      };
+
+      var op = {
+        op: {index: 5, value: 'foo'}
+      };
+      var error = ot.transformPresence(presence, op);
+
+      expect(error.code).to.eql('ERR_TYPE_DOES_NOT_SUPPORT_PRESENCE');
+    });
+
+    it('leaves a null presence untransformed', function() {
+      var presence = {
+        p: null,
+        t: presenceType.uri,
+        v: 2
+      };
+
+      var op = {
+        op: {index: 5, value: 'foo'}
+      };
+      var error = ot.transformPresence(presence, op);
+
+      expect(error).to.be.undefined;
+      expect(presence).to.eql({
+        p: null,
+        t: presenceType.uri,
+        v: 3
+      });
     });
   });
 });

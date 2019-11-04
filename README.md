@@ -158,6 +158,7 @@ Register a new middleware.
     the database.
   * `'receive'`: Received a message from a client
   * `'reply'`: About to send a non-error reply to a client message
+  * `'sendPresence'`: About to send presence information to a client
 * `fn` _(Function(context, callback))_
   Call this function at the time specified by `action`.
   * `context` will always have the following properties:
@@ -306,6 +307,20 @@ Get a read-only snapshot of a document at the requested version.
     data: any;          // the snapshot
   }
   ```
+
+`connection.getPresence(channel): Presence;`
+Get a [`Presence`](#class-sharedbpresence) instance that can be used to subscribe to presence information to other clients, and create instances of local presence.
+
+* `channel` _(String)_
+  Presence channel to subscribe to
+
+`connection.getDocPresence(collection, id): DocPresence;`
+Get a special [`DocPresence`](#class-sharedbdocpresence) instance that can be used to subscribe to presence information to other clients, and create instances of local presence. This is tied to a `Doc`, and all presence will be automatically transformed against ops to keep presence current. Note that the `Doc` must be of a type that supports presence.
+
+* `collection` _(String)_
+  Document collection
+* `id` _(String)_
+  Document ID
 
 ### Class: `ShareDB.Doc`
 
@@ -639,6 +654,109 @@ const connectionInfo = getUserPermissions();
 // 'connection' middleware.
 const connection = backend.connect(null, connectionInfo);
 ```
+
+### Class: `ShareDB.Presence`
+
+Representation of the presence data associated with a given channel.
+
+#### `subscribe`
+
+```javascript
+presence.subscribe(callback): void;
+```
+
+Subscribe to presence updates from other clients. Note that presence can be submitted without subscribing, but remote clients will not be able to re-request presence from you if you are not subscribed.
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
+
+#### `unsubscribe`
+
+```javascript
+presence.unsubscribe(callback): void;
+```
+
+Unsubscribe from presence updates from remote clients.
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
+
+#### `on`
+
+```javascript
+presence.on('receive', callback): void;
+```
+
+An update from a remote presence client has been received.
+
+* `callback` _Function_: callback for handling the received presence: `function (presenceId, presenceValue): void;`
+
+```javascript
+presence.on('error', callback): void;
+```
+
+A presence-related error has occurred.
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
+
+#### `create`
+
+```javascript
+presence.create(presenceId): LocalPresence;
+```
+
+Create an instance of [`LocalPresence`](#class-sharedblocalpresence), which can be used to represent local presence. Many or none such local presences may exist on a `Presence` instance.
+
+* `presenceId` _string_: a unique ID representing the local presence. Remember - depending on use-case - the same client might have multiple presences, so this might not necessarily be a user or client ID.
+
+#### `destroy`
+
+```javascript
+presence.destroy(callback);
+```
+
+Updates all remote clients with a `null` presence, and removes it from the `Connection` cache, so that it can be garbage-collected. This should be called when you are done with a presence, and no longer need to use it to fire updates.
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
+
+### Class: `ShareDB.DocPresence`
+
+Specialised case of [`Presence`](#class-sharedbpresence), which is tied to a specific [`Doc`](#class-sharedbdoc). When using presence with an associated `Doc`, any ops applied to the `Doc` will automatically be used to transform associated presence. On destroy, the `DocPresence` will unregister its listeners from the `Doc`.
+
+See [`Presence`](#class-sharedbpresence) for available methods.
+
+### Class: `ShareDB.LocalPresence`
+
+`LocalPresence` represents the presence of the local client in a given `Doc`. For example, this might be the position of a caret in a text document; which field has been highlighted in a complex JSON object; etc. Multiple presences may exist per `Doc` even on the same client.
+
+#### `submit`
+
+```javascript
+localPresence.submit(presence, callback): void;
+```
+
+Update the local representation of presence, and broadcast that presence to any other document presence subscribers.
+
+* `presence` _Object_: the presence object to broadcast. The structure of this will depend on the OT type
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
+
+#### `send`
+
+```javascript
+localPresence.send(callback): void;
+```
+
+Send presence like `submit`, but without updating the value. Can be useful if local presences expire periodically.
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
+
+#### `destroy`
+
+```javascript
+localPresence.destroy(callback): void;
+```
+
+Informs all remote clients that this presence is now `null`, and deletes itself for garbage collection.
+
+* `callback` _Function_: a callback with the signature `function (error: Error): void;`
 
 ### Logging
 
