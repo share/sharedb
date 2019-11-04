@@ -303,4 +303,89 @@ describe('middleware', function() {
       });
     });
   });
+
+  describe('access control', function() {
+    function setupOpMiddleware(backend) {
+      backend.use('apply', function(request, next) {
+        request.priorAccountId = request.snapshot.data && request.snapshot.data.accountId;
+        next();
+      });
+      backend.use('commit', function(request, next) {
+        var accountId = (request.snapshot.data) ?
+          // For created documents, get the accountId from the document data
+          request.snapshot.data.accountId :
+          // For deleted documents, get the accountId from before
+          request.priorAccountId;
+        // Store the accountId for the document on the op for efficient access control
+        request.op.accountId = accountId;
+        next();
+      });
+      backend.use('op', function(request, next) {
+        if (request.op.accountId === request.agent.accountId) {
+          return next();
+        }
+        var err = {message: 'op accountId does not match', code: 'ERR_OP_READ_FORBIDDEN'};
+        return next(err);
+      });
+    }
+
+    it('is possible to cache add additional top-level fields on ops for access control', function(done) {
+      setupOpMiddleware(this.backend);
+      var connection1 = this.backend.connect();
+      var connection2 = this.backend.connect();
+      connection2.agent.accountId = 'foo';
+
+      // Fetching the snapshot here will cause subsequent fetches to get ops
+      connection2.get('dogs', 'fido').fetch(function(err) {
+        if (err) return done(err);
+        var data = {accountId: 'foo', age: 2};
+        connection1.get('dogs', 'fido').create(data, function(err) {
+          if (err) return done(err);
+          // This will go through the 'op' middleware and should pass
+          connection2.get('dogs', 'fido').fetch(done);
+        });
+      });
+    });
+
+    it('op middleware can reject ops', function(done) {
+      setupOpMiddleware(this.backend);
+      var connection1 = this.backend.connect();
+      var connection2 = this.backend.connect();
+      connection2.agent.accountId = 'baz';
+
+      // Fetching the snapshot here will cause subsequent fetches to get ops
+      connection2.get('dogs', 'fido').fetch(function(err) {
+        if (err) return done(err);
+        var data = {accountId: 'foo', age: 2};
+        connection1.get('dogs', 'fido').create(data, function(err) {
+          if (err) return done(err);
+          // This will go through the 'op' middleware and fail;
+          connection2.get('dogs', 'fido').fetch(function(err) {
+            expect(err.code).equal('ERR_OP_READ_FORBIDDEN');
+            done();
+          });
+        });
+      });
+    });
+
+    it('pubsub subscribe can check top-level fields for access control', function(done) {
+      setupOpMiddleware(this.backend);
+      var connection1 = this.backend.connect();
+      var connection2 = this.backend.connect();
+      connection2.agent.accountId = 'foo';
+
+      // Fetching the snapshot here will cause subsequent fetches to get ops
+      connection2.get('dogs', 'fido').subscribe(function(err) {
+        if (err) return done(err);
+        var data = {accountId: 'foo', age: 2};
+        connection1.get('dogs', 'fido').create(data, function(err) {
+          if (err) return done(err);
+          // The subscribed op will go through the 'op' middleware and should pass
+          connection2.get('dogs', 'fido').on('create', function() {
+            done();
+          });
+        });
+      });
+    });
+  });
 });
