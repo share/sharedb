@@ -236,7 +236,9 @@ module.exports = function(options) {
         });
         query.on('remove', function(docs) {
           expect(util.pluck(docs, 'id')).eql(['fido']);
-          expect(util.pluck(docs, 'data')).eql([undefined]);
+          // We don't assert the value of data, because the del op could be
+          // applied by the client before or after the query result is removed.
+          // Order of ops & query result updates is not currently guaranteed
           finish();
         });
       });
