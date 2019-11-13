@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var Backend = require('../../lib/backend');
 
 describe('client connection', function() {

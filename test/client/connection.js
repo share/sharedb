@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var Backend = require('../../lib/backend');
 var Connection = require('../../lib/client/connection');
 
@@ -69,7 +69,7 @@ describe('client connection', function() {
         expect(originalStream).to.have.property('open', false);
         var newStream = agent.subscribedDocs[collection][docId];
         expect(newStream).to.have.property('open', true);
-        expect(newStream).to.not.be(originalStream);
+        expect(newStream).to.not.equal(originalStream);
         connection.close();
         done();
       });

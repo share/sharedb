@@ -1,6 +1,6 @@
 {
   "name": "sharedb-example-textarea",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A simple client/server app using ShareDB and WebSockets",
   "main": "server.js",
   "scripts": {
@@ -14,14 +14,14 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "express": "^4.14.0",
-    "reconnecting-websocket": "^3.0.3",
+    "@teamwork/websocket-json-stream": "^2.0.0",
+    "express": "^4.17.1",
+    "reconnecting-websocket": "^4.2.0",
     "sharedb": "^1.0.0-beta",
     "sharedb-string-binding": "^1.0.0",
-    "@teamwork/websocket-json-stream": "^2.0.0",
-    "ws": "^1.1.0"
+    "ws": "^7.2.0"
   },
   "devDependencies": {
-    "browserify": "^13.0.1"
+    "browserify": "^16.5.0"
   }
 }

@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 
 module.exports = function(create) {
   describe('pubsub', function() {
@@ -78,7 +78,7 @@ module.exports = function(create) {
 
     it('can emit events', function(done) {
       this.pubsub.on('error', function(err) {
-        expect(err).an(Error);
+        expect(err).instanceOf(Error);
         expect(err.message).equal('test error');
         done();
       });

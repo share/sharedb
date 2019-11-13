@@ -1,5 +1,5 @@
 var async = require('async');
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
 
@@ -36,7 +36,7 @@ module.exports = function(options) {
       });
     });
 
-    require('./client/projections')();
+    require('./client/projections')({getQuery: getQuery});
     require('./client/query-subscribe')({getQuery: getQuery});
     require('./client/query')({getQuery: getQuery});
     require('./client/submit')();
@@ -87,7 +87,7 @@ module.exports = function(options) {
       function testCreateCommit(ops, snapshot) {
         expect(snapshot.v).eql(1);
         expect(ops.length).equal(1);
-        expect(ops[0].create).ok();
+        expect(ops[0].create).ok;
       }
 
       it('one commit succeeds from 2 simultaneous creates', function(done) {
@@ -117,8 +117,8 @@ module.exports = function(options) {
       function testOpCommit(ops, snapshot) {
         expect(snapshot.v).equal(2);
         expect(ops.length).equal(2);
-        expect(ops[0].create).ok();
-        expect(ops[1].op).ok();
+        expect(ops[0].create).ok;
+        expect(ops[1].op).ok;
       }
 
       function testDelCommit(ops, snapshot) {
@@ -126,7 +126,7 @@ module.exports = function(options) {
         expect(ops.length).equal(2);
         expect(snapshot.data).equal(undefined);
         expect(snapshot.type).equal(null);
-        expect(ops[0].create).ok();
+        expect(ops[0].create).ok;
         expect(ops[1].del).equal(true);
       }
 
@@ -734,7 +734,8 @@ module.exports = function(options) {
         var db = this.db;
         db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
           if (err) return done(err);
-          db.queryPoll('testcollection', {x: 5}, null, function(err, ids) {
+          var dbQuery = getQuery({query: {x: 5}});
+          db.queryPoll('testcollection', dbQuery, null, function(err, ids) {
             if (err) return done(err);
             expect(ids).eql(['test']);
             done();
@@ -743,7 +744,8 @@ module.exports = function(options) {
       });
 
       it('returns nothing when there is no data', function(done) {
-        this.db.queryPoll('testcollection', {x: 5}, null, function(err, ids) {
+        var dbQuery = getQuery({query: {x: 5}});
+        this.db.queryPoll('testcollection', dbQuery, null, function(err, ids) {
           if (err) return done(err);
           expect(ids).eql([]);
           done();
@@ -753,11 +755,11 @@ module.exports = function(options) {
 
     describe('queryPollDoc', function() {
       it('returns false when the document does not exist', function(done) {
-        var query = {};
-        if (!this.db.canPollDoc('testcollection', query)) return done();
+        var dbQuery = getQuery({query: {}});
+        if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
 
         var db = this.db;
-        db.queryPollDoc('testcollection', 'doesnotexist', query, null, function(err, result) {
+        db.queryPollDoc('testcollection', 'doesnotexist', dbQuery, null, function(err, result) {
           if (err) return done(err);
           expect(result).equal(false);
           done();
@@ -765,14 +767,14 @@ module.exports = function(options) {
       });
 
       it('returns true when the document matches', function(done) {
-        var query = {x: 5};
-        if (!this.db.canPollDoc('testcollection', query)) return done();
+        var dbQuery = getQuery({query: {x: 5}});
+        if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
 
         var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
         var db = this.db;
         db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
           if (err) return done(err);
-          db.queryPollDoc('testcollection', 'test', query, null, function(err, result) {
+          db.queryPollDoc('testcollection', 'test', dbQuery, null, function(err, result) {
             if (err) return done(err);
             expect(result).equal(true);
             done();
@@ -781,14 +783,14 @@ module.exports = function(options) {
       });
 
       it('returns false when the document does not match', function(done) {
-        var query = {x: 6};
-        if (!this.db.canPollDoc('testcollection', query)) return done();
+        var dbQuery = getQuery({query: {x: 6}});
+        if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
 
         var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
         var db = this.db;
         db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
           if (err) return done(err);
-          db.queryPollDoc('testcollection', 'test', query, null, function(err, result) {
+          db.queryPollDoc('testcollection', 'test', dbQuery, null, function(err, result) {
             if (err) return done(err);
             expect(result).equal(false);
             done();

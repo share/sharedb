@@ -1,7 +1,10 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 var util = require('../util');
 
-module.exports = function() {
+module.exports = function(options) {
+  var getQuery = options.getQuery;
+  var matchAllQuery = getQuery({query: {}});
+
   describe('client projections', function() {
     beforeEach(function(done) {
       this.backend.addProjection('dogs_summary', 'dogs', {age: true, owner: true});
@@ -26,7 +29,7 @@ module.exports = function() {
     ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
       it('snapshot ' + method, function(done) {
         var connection2 = this.backend.connect();
-        connection2[method]('dogs_summary', {}, null, function(err, results) {
+        connection2[method]('dogs_summary', matchAllQuery, null, function(err, results) {
           if (err) return done(err);
           expect(results.length).eql(1);
           expect(results[0].data).eql({age: 3, owner: {name: 'jim'}});
@@ -139,7 +142,7 @@ module.exports = function() {
           if (err) return done(err);
           connection.get('dogs', 'fido').submitOp(op, function(err) {
             if (err) return done(err);
-            connection2.createFetchQuery('dogs_summary', {}, null, function(err) {
+            connection2.createFetchQuery('dogs_summary', matchAllQuery, null, function(err) {
               if (err) return done(err);
               expect(fido.data).eql(expected);
               expect(fido.version).eql(2);
@@ -156,7 +159,7 @@ module.exports = function() {
         var connection = this.connection;
         var connection2 = this.backend.connect();
         var fido = connection2.get('dogs_summary', 'fido');
-        connection2.createSubscribeQuery('dogs_summary', {}, null, function(err) {
+        connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
           if (err) return done(err);
           fido.on('op', function() {
             expect(fido.data).eql(expected);
@@ -194,7 +197,7 @@ module.exports = function() {
       function test(trigger, callback) {
         var connection = this.connection;
         var connection2 = this.backend.connect();
-        var query = connection2.createSubscribeQuery('dogs_summary', {}, null, function(err) {
+        var query = connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
           if (err) return callback(err);
           query.on('insert', function() {
             callback(null, query.results);
@@ -203,6 +206,30 @@ module.exports = function() {
         });
       }
       queryUpdateTests(test);
+
+      it('query subscribe on projection will update based on fields not in projection', function(done) {
+        // Create a query on a field not in the projection. The query doesn't
+        // match the doc created in beforeEach
+        var fido = this.connection.get('dogs', 'fido');
+        var connection2 = this.backend.connect();
+        var dbQuery = getQuery({query: {color: 'black'}});
+        var query = connection2.createSubscribeQuery('dogs_summary', dbQuery, null, function(err, results) {
+          if (err) return done(err);
+          expect(results).to.have.length(0);
+
+          // Submit an op on a field not in the projection, where the op should
+          // cause the doc to be included in the query results
+          fido.submitOp({p: ['color'], od: 'gold', oi: 'black'}, null, function(err) {
+            if (err) return done(err);
+            setTimeout(function() {
+              expect(query.results).to.have.length(1);
+              expect(query.results[0].id).to.equal('fido');
+              expect(query.results[0].data).to.eql({age: 3, owner: {name: 'jim'}});
+              done();
+            }, 10);
+          });
+        });
+      });
     });
 
     describe('fetch query', function() {
@@ -211,7 +238,7 @@ module.exports = function() {
         var connection2 = this.backend.connect();
         trigger(connection, function(err) {
           if (err) return callback(err);
-          connection2.createFetchQuery('dogs_summary', {}, null, callback);
+          connection2.createFetchQuery('dogs_summary', matchAllQuery, null, callback);
         });
       }
       queryUpdateTests(test);
@@ -240,7 +267,7 @@ module.exports = function() {
         projected.fetch(function(err) {
           if (err) return done(err);
           projected.submitOp(op, function(err) {
-            expect(err).ok();
+            expect(err).instanceOf(Error);
             doc.fetch(function(err) {
               if (err) return done(err);
               expect(doc.data).eql({age: 3, color: 'gold', owner: {name: 'jim'}, litter: {count: 4}});
@@ -318,7 +345,7 @@ module.exports = function() {
         var projected = this.backend.connect().get('dogs_summary', 'spot');
         var data = {age: 5, foo: 'bar'};
         projected.create(data, function(err) {
-          expect(err).ok();
+          expect(err).instanceOf(Error);
           doc.fetch(function(err) {
             if (err) return done(err);
             expect(doc.data).eql(undefined);

@@ -1,6 +1,6 @@
 {
   "name": "sharedb-example-counter",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A simple client/server app using ShareDB and WebSockets",
   "main": "server.js",
   "scripts": {
@@ -15,12 +15,13 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "express": "^4.14.0",
-    "sharedb": "^1.0.0-beta",
     "@teamwork/websocket-json-stream": "^2.0.0",
-    "ws": "^1.1.0"
+    "express": "^4.14.0",
+    "reconnecting-websocket": "^4.2.0",
+    "sharedb": "^1.0.0-beta",
+    "ws": "^7.2.0"
   },
   "devDependencies": {
-    "browserify": "^13.0.1"
+    "browserify": "^16.5.0"
   }
 }

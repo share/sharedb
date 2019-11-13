@@ -9,24 +9,16 @@ In this demo, data is not persisted. To persist data, run a Mongo
 server and initialize ShareDB with the
 [ShareDBMongo](https://github.com/share/sharedb-mongo) database adapter.
 
-## Run this example
+## Install dependencies
 
-First, install dependencies.
-
-Note: Make sure you're in the `examples/leaderboard` folder so that it uses the `package.json` located here).
-
+Make sure you're in the `examples/leaderboard` folder so that it uses the `package.json` located here).
 ```
 npm install
 ```
 
-Then build the client JavaScript file.
+## Build JavaScript bundle and run server
 ```
-npm run build
-```
-
-Get the server running.
-```
-npm start
+npm run build && npm start
 ```
 
 Finally, open the example app in the browser. It runs on port 8080 by default:
