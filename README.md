@@ -653,15 +653,7 @@ ShareDB only supports the following logger methods:
 
 ## Errors
 
-ShareDB returns errors as plain JavaScript objects with the format:
-```
-{
-  code: 'ERR_UNKNOWN_ERROR',
-  message: 'ShareDB internal error'
-}
-```
-
-Additional fields may be added to the error object for debugging context depending on the error. Common additional fields include `collection`, `id`, and `op`.
+ShareDB returns errors as an instance of `ShareDBError`, with a machine-parsable `code`, as well as more details in the human-readable `message`.
 
 ### Common error codes
 
