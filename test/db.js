@@ -20,6 +20,11 @@ module.exports = function(options) {
         if (err) return done(err);
         self.db = db;
         self.backend = new Backend({db: db});
+        self.backend.use('receive', function(request, next) {
+          var message = request.data;
+          if (message.error) throw message.error;
+          next();
+        });
         done();
       });
     });
