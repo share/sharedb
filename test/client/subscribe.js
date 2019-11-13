@@ -638,9 +638,9 @@ module.exports = function() {
         expect(doc.subscribed).equal(false);
       });
 
-      it('remains false before subscribe call completes', function() {
+      it('remains false before subscribe call completes', function(done) {
         var doc = this.backend.connect().get('dogs', 'fido');
-        doc.subscribe();
+        doc.subscribe(done);
         expect(doc.subscribed).equal(false);
       });
 
