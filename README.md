@@ -699,7 +699,7 @@ The creation request has failed, because the document was already created by ano
 
 This can happen when two clients happen to simultaneously try to create the same document, and is potentially recoverable by simply fetching the already-created document.
 
-#### `ERR_DOC_ALREADY_DELETED`
+#### `ERR_DOC_WAS_DELETED`
 
 The deletion request has failed, because the document was already deleted by another client.
 
