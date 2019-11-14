@@ -2,7 +2,7 @@ var expect = require('chai').expect;
 var async = require('async');
 
 module.exports = function() {
-  describe('client subscribe', function() {
+  describe.only('client subscribe', function() {
     it('can call bulk without doing any actions', function() {
       var connection = this.backend.connect();
       connection.startBulk();
