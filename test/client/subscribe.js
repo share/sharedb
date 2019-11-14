@@ -11,10 +11,8 @@ module.exports = function() {
 
     ['fetch', 'subscribe'].forEach(function(method) {
       it(method + ' gets initial data', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           doc2[method](function(err) {
@@ -27,10 +25,8 @@ module.exports = function() {
       });
 
       it(method + ' twice simultaneously calls back', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           async.parallel([
@@ -50,10 +46,8 @@ module.exports = function() {
       });
 
       it(method + ' twice in bulk simultaneously calls back', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           doc2.connection.startBulk();
@@ -89,12 +83,9 @@ module.exports = function() {
           }
         ], function(err) {
           if (err) return done(err);
-          var fido = connection2.get('dogs', 'fido');
-          var spot = connection2.get('dogs', 'spot');
-          var finn = connection2.get('cats', 'finn');
-          fido.on('error', function(error) {console.log('error', error, 1); throw error});
-          spot.on('error', function(error) {console.log('error', error, 1); throw error});
-          finn.on('error', function(error) {console.log('error', error, 1); throw error});
+          var fido = connection2.get('dogs', 'fido').on('error', done);
+          var spot = connection2.get('dogs', 'spot').on('error', done);
+          var finn = connection2.get('cats', 'finn').on('error', done);
           connection2.startBulk();
           async.parallel([
             function(cb) {
@@ -120,12 +111,9 @@ module.exports = function() {
       it(method + ' bulk on same collection from known version', function(done) {
         var connection = this.backend.connect();
         var connection2 = this.backend.connect();
-        var fido = connection2.get('dogs', 'fido');
-        var spot = connection2.get('dogs', 'spot');
-        var finn = connection2.get('cats', 'finn');
-        fido.on('error', function(error) {console.log('error', error, 1); throw error});
-        spot.on('error', function(error) {console.log('error', error, 1); throw error});
-        finn.on('error', function(error) {console.log('error', error, 1); throw error});
+        var fido = connection2.get('dogs', 'fido').on('error', done);
+        var spot = connection2.get('dogs', 'spot').on('error', done);
+        var finn = connection2.get('cats', 'finn').on('error', done);
         connection2.startBulk();
         async.parallel([
           function(cb) {
@@ -233,10 +221,8 @@ module.exports = function() {
       });
 
       it(method + ' gets new ops', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           doc2.fetch(function(err) {
@@ -254,10 +240,8 @@ module.exports = function() {
 
       it(method + ' calls back after reconnect', function(done) {
         var backend = this.backend;
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           doc2[method](function(err) {
@@ -277,10 +261,8 @@ module.exports = function() {
         this.backend.use('doc', function(request, next) {
           next({message: 'Reject doc read'});
         });
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           doc2[method](function(err) {
@@ -311,8 +293,7 @@ module.exports = function() {
       });
 
       it(method + ' will call back when ops are pending', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.create({age: 3}, function(err) {
           if (err) return done(err);
           doc.pause();
@@ -322,8 +303,7 @@ module.exports = function() {
       });
 
       it(method + ' will not call back when creating the doc is pending', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.pause();
         doc.create({age: 3});
         doc[method](done);
@@ -332,8 +312,7 @@ module.exports = function() {
       });
 
       it(method + ' will wait for write when doc is locally created', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.pause();
         var calls = 0;
         doc.create({age: 3}, function(err) {
@@ -353,10 +332,8 @@ module.exports = function() {
       });
 
       it(method + ' will wait for write when doc is locally created and will fail to submit', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
-        var doc2 = this.backend.connect().get('dogs', 'fido');
-        doc.on('error', function(error) {console.log('error', error, 1); throw error});
-        doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+        var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc2.create({age: 5}, function(err) {
           if (err) return done(err);
           doc.pause();
@@ -380,8 +357,7 @@ module.exports = function() {
     });
 
     it('unsubscribe calls back immediately on disconnect', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.subscribe(function(err) {
         if (err) return done(err);
         doc.unsubscribe(done);
@@ -390,8 +366,7 @@ module.exports = function() {
     });
 
     it('unsubscribe calls back immediately when already disconnected', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.subscribe(function(err) {
         if (err) return done(err);
         doc.connection.close();
@@ -400,10 +375,8 @@ module.exports = function() {
     });
 
     it('subscribed client gets create from other client', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc2.subscribe(function(err) {
         if (err) return done(err);
         doc2.on('create', function(context) {
@@ -417,10 +390,8 @@ module.exports = function() {
     });
 
     it('subscribed client gets op from other client', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -436,10 +407,8 @@ module.exports = function() {
     });
 
     it('disconnecting stops op updates', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -455,10 +424,8 @@ module.exports = function() {
 
     it('backend.suppressPublish stops op updates', function(done) {
       var backend = this.backend;
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -473,10 +440,8 @@ module.exports = function() {
     });
 
     it('unsubscribe stops op updates', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -495,10 +460,8 @@ module.exports = function() {
     it('doc destroy stops op updates', function(done) {
       var connection1 = this.backend.connect();
       var connection2 = this.backend.connect();
-      var doc = connection1.get('dogs', 'fido');
-      var doc2 = connection2.get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = connection1.get('dogs', 'fido').on('error', done);
+      var doc2 = connection2.get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -517,8 +480,7 @@ module.exports = function() {
 
     it('doc destroy removes doc from connection when doc is not subscribed', function(done) {
       var connection = this.backend.connect();
-      var doc = connection.get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = connection.get('dogs', 'fido').on('error', done);
       expect(connection.getExisting('dogs', 'fido')).equal(doc);
       doc.destroy(function(err) {
         if (err) return done(err);
@@ -530,12 +492,9 @@ module.exports = function() {
     it('bulk unsubscribe stops op updates', function(done) {
       var connection = this.backend.connect();
       var connection2 = this.backend.connect();
-      var doc = connection.get('dogs', 'fido');
-      var fido = connection2.get('dogs', 'fido');
-      var spot = connection2.get('dogs', 'spot');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      fido.on('error', function(error) {console.log('error', error, 1); throw error});
-      spot.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = connection.get('dogs', 'fido').on('error', done);
+      var fido = connection2.get('dogs', 'fido').on('error', done);
+      var spot = connection2.get('dogs', 'spot').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         async.parallel([
@@ -569,10 +528,8 @@ module.exports = function() {
 
     it('a subscribed doc is re-subscribed after reconnect and gets any missing ops', function(done) {
       var backend = this.backend;
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -593,10 +550,8 @@ module.exports = function() {
     });
 
     it('calling subscribe, unsubscribe, subscribe sync leaves a doc subscribed', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe();
@@ -613,10 +568,8 @@ module.exports = function() {
 
     it('doc fetches ops to catch up if it receives a future op', function(done) {
       var backend = this.backend;
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc2.subscribe(function(err) {
@@ -645,10 +598,8 @@ module.exports = function() {
 
     it('doc fetches ops to catch up if it receives multiple future ops', function(done) {
       var backend = this.backend;
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.on('error', function(error) {console.log('error', error, 1); throw error});
-      doc2.on('error', function(error) {console.log('error', error, 1); throw error});
+      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
+      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
       // Delaying op replies will cause multiple future ops to be received
       // before the fetch to catch up completes
       backend.use('op', function(request, next) {
@@ -682,19 +633,20 @@ module.exports = function() {
     });
 
     describe('doc.subscribed', function() {
-      it('is set to false initially', function() {
-        var doc = this.backend.connect().get('dogs', 'fido');
+      it('is set to false initially', function(done) {
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         expect(doc.subscribed).equal(false);
+        done();
       });
 
       it('remains false before subscribe call completes', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.subscribe(done);
         expect(doc.subscribed).equal(false);
       });
 
       it('is set to true after subscribe completes', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.subscribe(function(err) {
           if (err) return done(err);
           expect(doc.subscribed).equal(true);
@@ -703,7 +655,7 @@ module.exports = function() {
       });
 
       it('is not set to true after subscribe completes if already unsubscribed', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.subscribe(function(err) {
           if (err) return done(err);
           expect(doc.subscribed).equal(false);
@@ -713,7 +665,7 @@ module.exports = function() {
       });
 
       it('is set to false sychronously in unsubscribe', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.subscribe(function(err) {
           if (err) return done(err);
           expect(doc.subscribed).equal(true);
@@ -724,7 +676,7 @@ module.exports = function() {
       });
 
       it('is set to false sychronously on disconnect', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido');
+        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         doc.subscribe(function(err) {
           if (err) return done(err);
           expect(doc.subscribed).equal(true);
