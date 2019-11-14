@@ -15,8 +15,9 @@ module.exports = function(options) {
       var connection = this.backend.connect();
       var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, null, function(err) {
         if (err) return done(err);
-        connection.get('dogs', 'fido').create({age: 3});
+        connection.get('dogs', 'fido').on('error', done).create({age: 3});
       });
+      query.on('error', done);
       query.on('insert', function(docs, index) {
         expect(util.pluck(docs, 'id')).eql(['fido']);
         expect(util.pluck(docs, 'data')).eql([{age: 3}]);
@@ -32,17 +33,18 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
         var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
           if (err) return done(err);
-          connection.get('dogs', 'taco').create({age: 2});
+          connection.get('dogs', 'taco').on('error', done).create({age: 2});
         });
+        query.on('error', done);
         query.on('insert', function(docs, index) {
           expect(util.pluck(docs, 'id')).eql(['taco']);
           expect(util.pluck(docs, 'data')).eql([{age: 2}]);
@@ -60,10 +62,10 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -71,6 +73,7 @@ module.exports = function(options) {
           if (err) return done(err);
           connection.get('dogs', 'fido').del();
         });
+        query.on('error', done);
         query.on('remove', function(docs, index) {
           expect(util.pluck(docs, 'id')).eql(['fido']);
           expect(util.pluck(docs, 'data')).eql([undefined]);
@@ -89,10 +92,10 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection1.get('dogs', 'fido').create({age: 3}, cb);
+          connection1.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection1.get('dogs', 'spot').create({age: 5}, cb);
+          connection1.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -100,6 +103,7 @@ module.exports = function(options) {
           if (err) return done(err);
           connection1.get('dogs', 'fido').del();
         });
+        query.on('error', done);
         var removed = false;
         connection2.get('dogs', 'fido').on('del', function() {
           expect(removed).equal(true);
@@ -123,10 +127,10 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -134,9 +138,10 @@ module.exports = function(options) {
           if (err) return done(err);
           query.destroy(function(err) {
             if (err) return done(err);
-            connection2.get('dogs', 'taco').create({age: 2}, done);
+            connection2.get('dogs', 'taco').on('error', done).create({age: 2}, done);
           });
         });
+        query.on('error', done);
         query.on('insert', function() {
           done();
         });
@@ -149,18 +154,19 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
         var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
           if (err) return done(err);
           connection.close();
-          connection2.get('dogs', 'taco').create({age: 2}, done);
+          connection2.get('dogs', 'taco').on('error', done).create({age: 2}, done);
         });
+        query.on('error', done);
         query.on('insert', function() {
           done();
         });
@@ -174,21 +180,22 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
         var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
           if (err) return done(err);
           connection.close();
-          connection2.get('dogs', 'taco').create({age: 2});
+          connection2.get('dogs', 'taco').on('error', done).create({age: 2});
           process.nextTick(function() {
             backend.connect(connection);
           });
         });
+        query.on('error', done);
         query.on('insert', function() {
           done();
         });
@@ -202,10 +209,10 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -215,12 +222,13 @@ module.exports = function(options) {
           connection2.get('dogs', 'fido').fetch(function(err) {
             if (err) return done(err);
             connection2.get('dogs', 'fido').del();
-            connection2.get('dogs', 'taco').create({age: 2});
+            connection2.get('dogs', 'taco').on('error', done).create({age: 2});
             process.nextTick(function() {
               backend.connect(connection);
             });
           });
         });
+        query.on('error', done);
         var wait = 2;
         function finish() {
           if (--wait) return;
@@ -249,17 +257,18 @@ module.exports = function(options) {
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
         var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
           if (err) return done(err);
-          connection.get('dogs', 'taco').create({age: 2});
+          connection.get('dogs', 'taco').on('error', done).create({age: 2});
         });
+        query.on('error', done);
         query.on('insert', function(docs, index) {
           expect(util.pluck(docs, 'id')).eql(['taco']);
           expect(util.pluck(docs, 'data')).eql([{age: 2}]);
@@ -278,6 +287,7 @@ module.exports = function(options) {
         return false;
       };
       var query = connection.createSubscribeQuery('items', this.matchAllDbQuery, {pollDebounce: 1000});
+      query.on('error', done);
       var batchSizes = [];
       var total = 0;
 
@@ -287,7 +297,9 @@ module.exports = function(options) {
         if (total === 1) {
         // first write received by client. we're debouncing. create 9
         // more documents.
-          for (var i = 1; i < 10; i++) connection.get('items', i.toString()).create({});
+          for (var i = 1; i < 10; i++) {
+            connection.get('items', i.toString()).on('error', done).create({});
+          }
         }
         if (total === 10) {
         // first document is its own batch; then subsequent creates
@@ -300,7 +312,7 @@ module.exports = function(options) {
       // create an initial document. this will lead to the 'insert'
       // event firing the first time, while sharedb is definitely
       // debouncing
-      connection.get('items', '0').create({});
+      connection.get('items', '0').on('error', done).create({});
     });
 
     it('db.pollDebounce option reduces subsequent poll interval', function(done) {
@@ -310,6 +322,7 @@ module.exports = function(options) {
       };
       this.backend.db.pollDebounce = 1000;
       var query = connection.createSubscribeQuery('items', this.matchAllDbQuery);
+      query.on('error', done);
       var batchSizes = [];
       var total = 0;
 
@@ -319,7 +332,9 @@ module.exports = function(options) {
         if (total === 1) {
         // first write received by client. we're debouncing. create 9
         // more documents.
-          for (var i = 1; i < 10; i++) connection.get('items', i.toString()).create({});
+          for (var i = 1; i < 10; i++) {
+            connection.get('items', i.toString()).on('error', done).create({});
+          }
         }
         if (total === 10) {
         // first document is its own batch; then subsequent creates
@@ -332,7 +347,7 @@ module.exports = function(options) {
       // create an initial document. this will lead to the 'insert'
       // event firing the first time, while sharedb is definitely
       // debouncing
-      connection.get('items', '0').create({});
+      connection.get('items', '0').on('error', done).create({});
     });
 
     it('pollInterval updates a subscribed query after an unpublished create', function(done) {
@@ -340,8 +355,9 @@ module.exports = function(options) {
       this.backend.suppressPublish = true;
       var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, {pollInterval: 50}, function(err) {
         if (err) return done(err);
-        connection.get('dogs', 'fido').create({});
+        connection.get('dogs', 'fido').on('error', done).create({});
       });
+      query.on('error', done);
       query.on('insert', function(docs) {
         expect(util.pluck(docs, 'id')).eql(['fido']);
         done();
@@ -354,8 +370,9 @@ module.exports = function(options) {
       this.backend.db.pollInterval = 50;
       var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, null, function(err) {
         if (err) return done(err);
-        connection.get('dogs', 'fido').create({});
+        connection.get('dogs', 'fido').on('error', done).create({});
       });
+      query.on('error', done);
       query.on('insert', function(docs) {
         expect(util.pluck(docs, 'id')).eql(['fido']);
         done();
@@ -368,12 +385,13 @@ module.exports = function(options) {
       var count = 0;
       var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, {pollInterval: 50}, function(err) {
         if (err) return done(err);
-        connection.get('dogs', count.toString()).create({});
+        connection.get('dogs', count.toString()).on('error', done).create({});
       });
+      query.on('error', done);
       query.on('insert', function() {
         count++;
         if (count === 3) return done();
-        connection.get('dogs', count.toString()).create({});
+        connection.get('dogs', count.toString()).on('error', done).create({});
       });
     });
 
@@ -391,6 +409,7 @@ module.exports = function(options) {
         expect(query.extra).eql({colors: ['brown', 'gold']});
         done();
       });
+      query.on('error', done);
     });
 
     it('query extra is updated on change', function(done) {
@@ -413,22 +432,23 @@ module.exports = function(options) {
         expect(extra).eql(1);
         expect(query.extra).eql(1);
       });
+      query.on('error', done);
       query.on('extra', function(extra) {
         expect(extra).eql(2);
         expect(query.extra).eql(2);
         done();
       });
-      connection.get('dogs', 'fido').create({age: 3});
+      connection.get('dogs', 'fido').on('error', done).create({age: 3});
     });
 
     it('changing a filtered property removes from a subscribed query', function(done) {
       var connection = this.backend.connect();
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 3}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 3}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -440,6 +460,7 @@ module.exports = function(options) {
           expect(util.pluck(sorted, 'data')).eql([{age: 3}, {age: 3}]);
           connection.get('dogs', 'fido').submitOp({p: ['age'], na: 2});
         });
+        query.on('error', done);
         query.on('remove', function(docs, index) {
           expect(util.pluck(docs, 'id')).eql(['fido']);
           expect(util.pluck(docs, 'data')).eql([{age: 5}]);
@@ -456,10 +477,10 @@ module.exports = function(options) {
       var connection = this.backend.connect();
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -471,6 +492,7 @@ module.exports = function(options) {
           expect(util.pluck(sorted, 'data')).eql([{age: 3}]);
           connection.get('dogs', 'spot').submitOp({p: ['age'], na: -2});
         });
+        query.on('error', done);
         query.on('insert', function(docs, index) {
           expect(util.pluck(docs, 'id')).eql(['spot']);
           expect(util.pluck(docs, 'data')).eql([{age: 3}]);
@@ -488,10 +510,10 @@ module.exports = function(options) {
 
       async.parallel([
         function(cb) {
-          connection.get('dogs', 'fido').create({age: 3}, cb);
+          connection.get('dogs', 'fido').on('error', done).create({age: 3}, cb);
         },
         function(cb) {
-          connection.get('dogs', 'spot').create({age: 5}, cb);
+          connection.get('dogs', 'spot').on('error', done).create({age: 5}, cb);
         }
       ], function(err) {
         if (err) return done(err);
@@ -506,7 +528,7 @@ module.exports = function(options) {
             expect(util.pluck(results, 'data')).eql([{age: 3}, {age: 5}]);
             connection.get('dogs', 'spot').submitOp({p: ['age'], na: -3});
           });
-
+        query.on('error', done);
         query.on('move', function(docs, from, to) {
           expect(docs.length).eql(1);
           expect(from).a('number');
