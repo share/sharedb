@@ -614,7 +614,11 @@ module.exports = function() {
             if (--wait) return;
             expect(doc2.version).eql(5);
             expect(doc2.data).eql({age: 122});
-            done();
+            // Wait for whenNothingPending, because the doc might have kicked
+            // off multiple fetches, and some could be pending still. We want to
+            // resolve all inflight requests of the database before closing and
+            // proceeding to the next test
+            doc2.whenNothingPending(done);
           });
           backend.suppressPublish = true;
           doc.submitOp({p: ['age'], na: 1}, function(err) {
