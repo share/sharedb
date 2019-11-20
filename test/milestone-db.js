@@ -14,14 +14,14 @@ describe('Base class', function() {
 
   it('calls back with an error when trying to get a snapshot', function(done) {
     db.getMilestoneSnapshot('books', '123', 1, function(error) {
-      expect(error.code).to.equal(5019);
+      expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
   });
 
   it('emits an error when trying to get a snapshot', function(done) {
     db.on('error', function(error) {
-      expect(error.code).to.equal(5019);
+      expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
 
@@ -30,14 +30,14 @@ describe('Base class', function() {
 
   it('calls back with an error when trying to save a snapshot', function(done) {
     db.saveMilestoneSnapshot('books', {}, function(error) {
-      expect(error.code).to.equal(5020);
+      expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
   });
 
   it('emits an error when trying to save a snapshot', function(done) {
     db.on('error', function(error) {
-      expect(error.code).to.equal(5020);
+      expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
 
@@ -46,14 +46,14 @@ describe('Base class', function() {
 
   it('calls back with an error when trying to get a snapshot before a time', function(done) {
     db.getMilestoneSnapshotAtOrBeforeTime('books', '123', 1000, function(error) {
-      expect(error.code).to.equal(5021);
+      expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
   });
 
   it('calls back with an error when trying to get a snapshot after a time', function(done) {
     db.getMilestoneSnapshotAtOrAfterTime('books', '123', 1000, function(error) {
-      expect(error.code).to.equal(5022);
+      expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
   });

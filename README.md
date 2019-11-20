@@ -651,69 +651,85 @@ ShareDB only supports the following logger methods:
   - `error`
 
 
-## Error codes
+## Errors
 
-ShareDB returns errors as plain JavaScript objects with the format:
+ShareDB returns errors as an instance of `ShareDBError`, with a machine-parsable `code`, as well as more details in the human-readable `message`.
+
+### Common error codes
+
+#### `ERR_OP_SUBMIT_REJECTED`
+
+The op submitted by the client has been rejected by the server for a non-critical reason.
+
+When the client receives this code, it will attempt to roll back the rejected op, leaving the client in a usable state.
+
+This error might be used as part of standard control flow. For example, consumers may define a middleware that validates document structure, and rejects operations that do not conform to this schema using this error code to reset the client to a valid state.
+
+#### `ERR_OP_ALREADY_SUBMITTED`
+
+The same op has been received by the server twice.
+
+This is non-critical, and part of normal control flow, and is sent as an error in order to short-circuit the op processing. It is eventually swallowed by the server, and shouldn't need further handling.
+
+#### `ERR_SUBMIT_TRANSFORM_OPS_NOT_FOUND`
+
+The ops needed to transform the submitted op up to the current version of the snapshot could not be found.
+
+If a client on an old version of a document submits an op, that op needs to be transformed by all the ops that have been applied to the document in the meantime. If the server cannot fetch these ops from the database, then this error is returned.
+
+The most common case of this would be ops being deleted from the database. For example, let's assume we have a TTL set up on the ops in our database. Let's also say we have a client that is so old that the op corresponding to its version has been deleted by the TTL policy. If this client then attempts to submit an op, the server will not be able to find the ops required to transform the op to apply to the current version of the snapshot.
+
+Other causes of this error may be dropping the ops collection all together, or having the database corrupted in some other way.
+
+#### `ERR_MAX_SUBMIT_RETRIES_EXCEEDED`
+
+The number of retries defined by the `maxSubmitRetries` option has been exceeded by a submission.
+
+#### `ERR_DOC_ALREADY_CREATED`
+
+The creation request has failed, because the document was already created by another client.
+
+This can happen when two clients happen to simultaneously try to create the same document, and is potentially recoverable by simply fetching the already-created document.
+
+#### `ERR_DOC_WAS_DELETED`
+
+The deletion request has failed, because the document was already deleted by another client.
+
+This can happen when two clients happen to simultaneously try to delete the same document. Given that the end result is the same, this error can potentially just be ignored.
+
+#### `ERR_DOC_TYPE_NOT_RECOGNIZED`
+
+The specified document type has not been registered with ShareDB.
+
+This error can usually be remedied by remembering to register any types you need:
+
+```javascript
+var ShareDB = require('sharedb');
+var richText = require('rich-text');
+
+ShareDB.types.register(richText.type);
 ```
-{
-  code: 5000,
-  message: 'ShareDB internal error'
-}
+
+#### `ERR_DEFAULT_TYPE_MISMATCH`
+
+The default type being used by the client does not match the default type expected by the server.
+
+This will typically only happen when using a different default type to the built-in `json0` used by ShareDB by default (eg if using a fork). The exact same type must be used by both the client and the server, and should be registered as the default type:
+
+```javascript
+var ShareDB = require('sharedb');
+var forkedJson0 = require('forked-json0');
+
+// Make sure to also do this on your client
+ShareDB.types.defaultType = forkedJson0.type;
 ```
 
-Additional fields may be added to the error object for debugging context depending on the error. Common additional fields include `collection`, `id`, and `op`.
+#### `ERR_OP_NOT_ALLOWED_IN_PROJECTION`
 
-### 4000 - Bad request
+The submitted op is not valid when applied to the projection.
 
-* 4001 - Unknown error type
-* 4002 - Database adapter does not support subscribe
-* 4003 - Database adapter not found
-* 4004 - Missing op
-* 4005 - Op must be an array
-* 4006 - Create data in op must be an object
-* 4007 - Create op missing type
-* 4008 - Unknown type
-* 4009 - del value must be true
-* 4010 - Missing op, create or del
-* 4011 - Invalid src
-* 4012 - Invalid seq
-* 4013 - Found seq but not src
-* 4014 - op.m invalid
-* 4015 - Document does not exist
-* 4016 - Document already exists
-* 4017 - Document was deleted
-* 4018 - Document was created remotely
-* 4019 - Invalid protocol version
-* 4020 - Invalid default type
-* 4021 - Invalid client id
-* 4022 - Database adapter does not support queries
-* 4023 - Cannot project snapshots of this type
-* 4024 - Invalid version
-* 4025 - Passing options to subscribe has not been implemented
+This may happen if the op targets some property that is not included in the projection.
 
-### 5000 - Internal error
+#### `ERR_TYPE_CANNOT_BE_PROJECTED`
 
-The `41xx` and `51xx` codes are reserved for use by ShareDB DB adapters, and the `42xx` and `52xx` codes are reserved for use by ShareDB PubSub adapters.
-
-* 5001 - No new ops returned when retrying unsuccessful submit
-* 5002 - Missing snapshot
-* 5003 - Snapshot and op version don't match
-* 5004 - Missing op
-* 5005 - Missing document
-* 5006 - Version mismatch
-* 5007 - Invalid state transition
-* 5008 - Missing version in snapshot
-* 5009 - Cannot ingest snapshot with null version
-* 5010 - No op to send
-* 5011 - Commit DB method unimplemented
-* 5012 - getSnapshot DB method unimplemented
-* 5013 - getOps DB method unimplemented
-* 5014 - queryPollDoc DB method unimplemented
-* 5015 - _subscribe PubSub method unimplemented
-* 5016 - _unsubscribe PubSub method unimplemented
-* 5017 - _publish PubSub method unimplemented
-* 5018 - Required QueryEmitter listener not assigned
-* 5019 - getMilestoneSnapshot MilestoneDB method unimplemented
-* 5020 - saveMilestoneSnapshot MilestoneDB method unimplemented
-* 5021 - getMilestoneSnapshotAtOrBeforeTime MilestoneDB method unimplemented
-* 5022 - getMilestoneSnapshotAtOrAfterTime MilestoneDB method unimplemented
+The document's type cannot be projected. `json0` is currently the only type that supports projections.
