@@ -49,6 +49,42 @@ describe('Doc', function() {
     doc.destroy();
   });
 
+  describe('when connection closed', function() {
+    beforeEach(function(done) {
+      this.op1 = [{p: ['snacks'], oi: true}];
+      this.op2 = [{p: ['color'], oi: 'gray'}];
+      this.doc = this.connection.get('dogs', 'fido');
+      this.doc.create({}, function(err) {
+        if (err) return done(err);
+        done();
+      });
+    });
+
+    it('do not mutate previously inflight op', function(done) {
+      var doc = this.doc;
+      var op1 = this.op1;
+      var op2 = this.op2;
+      var connection = this.connection;
+
+      this.connection.on('send', function() {
+        expect(doc.pendingOps).to.have.length(0);
+        expect(doc.inflightOp.op).to.eql(op1);
+        expect(doc.inflightOp.sentAt).to.not.be.undefined;
+        connection.close();
+        expect(doc.pendingOps).to.have.length(1);
+        doc.submitOp(op2);
+        expect(doc.pendingOps).to.have.length(2);
+        expect(doc.pendingOps[0].op).to.eql(op1);
+        expect(doc.pendingOps[1].op).to.eql(op2);
+        done();
+      });
+
+      this.doc.submitOp(this.op1, function() {
+        done(new Error('Connection should have been closed'));
+      });
+    });
+  });
+
   describe('applyStack', function() {
     beforeEach(function(done) {
       this.doc = this.connection.get('dogs', 'fido');
