@@ -1,12 +1,7 @@
 var ShareDBError = require('../lib/error');
 var expect = require('chai').expect;
-var sinon = require('sinon');
 
 describe('ShareDBError', function() {
-  afterEach(function() {
-    sinon.restore();
-  });
-
   it('can be identified by instanceof', function() {
     var error = new ShareDBError();
     expect(error).to.be.instanceof(ShareDBError);
@@ -23,19 +18,6 @@ describe('ShareDBError', function() {
   });
 
   it('has a stack trace', function() {
-    function badFunction() {
-      throw new ShareDBError();
-    }
-
-    try {
-      badFunction();
-    } catch (error) {
-      expect(error.stack).to.contain('badFunction');
-    }
-  });
-
-  it('has a stack trace when Error.captureStackTrace is not implemented', function() {
-    sinon.stub(ShareDBError.prototype, 'canCaptureStackTrace').returns(false);
     function badFunction() {
       throw new ShareDBError();
     }
