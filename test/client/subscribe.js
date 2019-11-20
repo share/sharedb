@@ -257,8 +257,8 @@ module.exports = function() {
         });
       });
 
-      it(method + ' returns error passed to doc read middleware', function(done) {
-        this.backend.use('doc', function(request, next) {
+      it(method + ' returns error passed to readSnapshots middleware', function(done) {
+        this.backend.use('readSnapshots', function(request, next) {
           next({message: 'Reject doc read'});
         });
         var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
@@ -274,8 +274,8 @@ module.exports = function() {
         });
       });
 
-      it(method + ' emits error passed to doc read middleware', function(done) {
-        this.backend.use('doc', function(request, next) {
+      it(method + ' emits error passed to readSnapshots middleware', function(done) {
+        this.backend.use('readSnapshots', function(request, next) {
           next({message: 'Reject doc read'});
         });
         var doc = this.backend.connect().get('dogs', 'fido');
