@@ -1,6 +1,6 @@
 {
   "name": "sharedb",
-  "version": "1.0.0-beta.27",
+  "version": "1.0.0-beta.30",
   "description": "JSON OT database backend",
   "main": "lib/index.js",
   "dependencies": {
@@ -8,7 +8,6 @@
     "async": "^1.4.2",
     "fast-deep-equal": "^2.0.1",
     "hat": "0.0.3",
-    "make-error": "^1.1.1",
     "ot-json0": "^1.0.1"
   },
   "devDependencies": {

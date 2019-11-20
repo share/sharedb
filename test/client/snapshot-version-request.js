@@ -142,7 +142,7 @@ describe('SnapshotVersionRequest', function() {
 
     it('errors if asking for a version that does not exist', function(done) {
       backend.connect().fetchSnapshot('books', 'don-quixote', 4, function(error, snapshot) {
-        expect(error.code).to.equal(4024);
+        expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
         expect(snapshot).to.equal(undefined);
         done();
       });

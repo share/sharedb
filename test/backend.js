@@ -95,7 +95,7 @@ describe('Backend', function() {
           opsOptions: {metadata: true}
         };
         backend.subscribe(null, 'books', '1984', null, options, function(error) {
-          expect(error.code).to.equal(4025);
+          expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
           done();
         });
       });

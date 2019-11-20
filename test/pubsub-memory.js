@@ -14,7 +14,7 @@ describe('PubSub base class', function() {
     var pubsub = new PubSub();
     pubsub.subscribe('x', function(err) {
       expect(err).instanceOf(Error);
-      expect(err.code).to.equal(5015);
+      expect(err.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
   });
@@ -23,7 +23,7 @@ describe('PubSub base class', function() {
     var pubsub = new PubSub();
     pubsub.on('error', function(err) {
       expect(err).instanceOf(Error);
-      expect(err.code).to.equal(5015);
+      expect(err.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
     pubsub.subscribe('x');
@@ -38,7 +38,7 @@ describe('PubSub base class', function() {
       if (err) return done(err);
       pubsub.on('error', function(err) {
         expect(err).instanceOf(Error);
-        expect(err.code).to.equal(5016);
+        expect(err.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
         done();
       });
       stream.destroy();
@@ -50,7 +50,7 @@ describe('PubSub base class', function() {
     pubsub.on('error', done);
     pubsub.publish(['x', 'y'], {test: true}, function(err) {
       expect(err).instanceOf(Error);
-      expect(err.code).to.equal(5017);
+      expect(err.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
   });
@@ -59,7 +59,7 @@ describe('PubSub base class', function() {
     var pubsub = new PubSub();
     pubsub.on('error', function(err) {
       expect(err).instanceOf(Error);
-      expect(err.code).to.equal(5017);
+      expect(err.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
       done();
     });
     pubsub.publish(['x', 'y'], {test: true});
