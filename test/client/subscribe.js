@@ -108,6 +108,122 @@ module.exports = function() {
         });
       });
 
+      it(method + ' bulk with readSnapshots full error', function(done) {
+        var backend = this.backend;
+        var connection = backend.connect();
+        var connection2 = backend.connect();
+        async.parallel([
+          function(cb) {
+            connection.get('dogs', 'fido').create({age: 3}, cb);
+          },
+          function(cb) {
+            connection.get('dogs', 'spot').create({age: 5}, cb);
+          }
+        ], function(err) {
+          if (err) return done(err);
+
+          backend.use('readSnapshots', function(context, cb) {
+            expect(context.snapshots).to.be.an('array').of.length(2);
+            cb(new Error('Failed to fetch dogs'));
+          });
+
+          var fido = connection2.get('dogs', 'fido');
+          var spot = connection2.get('dogs', 'spot');
+          connection2.startBulk();
+          async.parallel([
+            function(cb) {
+              fido[method](function(err) {
+                expect(err).to.be.an('error').with.property('message', 'Failed to fetch dogs');
+                cb(err);
+              });
+            },
+            function(cb) {
+              spot[method](function(err) {
+                expect(err).to.be.an('error').with.property('message', 'Failed to fetch dogs');
+                cb(err);
+              });
+            }
+          ], function(err) {
+            expect(err).to.be.an('error').with.property('message', 'Failed to fetch dogs');
+            // Error should mean data doesn't get loaded.
+            expect(fido.data).eql(undefined);
+            expect(spot.data).eql(undefined);
+            done();
+          });
+          connection2.endBulk();
+        });
+      });
+
+      it(method + ' bulk with readSnapshots snapshot-specific error', function(done) {
+        var backend = this.backend;
+        var connection = backend.connect();
+        var connection2 = backend.connect();
+        async.parallel([
+          function(cb) {
+            connection.get('dogs', 'fido').create({age: 3}, cb);
+          },
+          function(cb) {
+            connection.get('dogs', 'spot').create({age: 5}, cb);
+          }
+        ], function(err) {
+          if (err) return done(err);
+
+          backend.use('readSnapshots', function(context, cb) {
+            expect(context.snapshots).to.be.an('array').of.length(2);
+            expect(context.snapshots[0]).to.have.property('id', 'fido');
+            // Signal snapshot-specific error by setting the snapshot's `error` property.
+            context.snapshots[0].error = new Error('Failed to fetch fido');
+            cb();
+          });
+
+          var fido = connection2.get('dogs', 'fido');
+          var spot = connection2.get('dogs', 'spot');
+          connection2.debug = true;
+          connection2.startBulk();
+          async.parallel([
+            function(cb) {
+              fido[method](function(err) {
+                expect(err).to.be.an('error').with.property('message', 'Failed to fetch fido');
+                cb();
+              });
+            },
+            function(cb) {
+              spot[method](cb);
+            }
+          ], function(err) {
+            if (err) return done(err);
+            // An error for 'fido' means the data shouldn't get loaded.
+            expect(fido.data).eql(undefined);
+            // Data for 'spot' should still be loaded.
+            expect(spot.data).eql({age: 5});
+
+            // For subscribe, also test that further remote ops will only get sent for the doc
+            // without the error.
+            if (method !== 'subscribe') {
+              return done();
+            }
+            // Issue some operations on connection1.
+            connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}]);
+            connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}]);
+            // Add listeners on connection2 for those operations.
+            fido.on('before op', function(op) {
+              done(new Error('fido on connection2 should not have received any ops, got:' +
+                JSON.stringify(op)));
+            });
+            connection2.once('receive', function() {
+              // 'receive' happens before the client processes the message. Wait an extra tick so we
+              // can check the effects of the message.
+              process.nextTick(function() {
+                expect(fido.data).eql(undefined);
+                expect(spot.data).eql({age: 6});
+                done();
+              });
+            });
+          });
+          connection2.endBulk();
+        });
+      });
+
       it(method + ' bulk on same collection from known version', function(done) {
         var connection = this.backend.connect();
         var connection2 = this.backend.connect();
