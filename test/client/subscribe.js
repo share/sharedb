@@ -46,6 +46,72 @@ module.exports = function() {
         });
       });
 
+      function testSingleSnapshotSpecificError(label, fns) {
+        var createReadSnapshotsError = fns.createReadSnapshotsError;
+        var verifyClientError = fns.verifyClientError;
+        it(method + ' single with readSnapshots rejectSnapshotRead ' + label, function(done) {
+          var backend = this.backend;
+          var connection = backend.connect();
+          var connection2 = backend.connect();
+          connection.get('dogs', 'fido').create({age: 3}, function(err) {
+            if (err) return done(err);
+
+            backend.use('readSnapshots', function(context, cb) {
+              expect(context.snapshots).to.be.an('array').of.length(1);
+              expect(context.snapshots[0]).to.have.property('id', 'fido');
+              context.rejectSnapshotRead(context.snapshots[0], createReadSnapshotsError());
+              cb();
+            });
+
+            var fido = connection2.get('dogs', 'fido');
+            fido[method](function(err) {
+              verifyClientError(err);
+              // An error for 'fido' means the data shouldn't get loaded.
+              expect(fido.data).eql(undefined);
+
+              // For subscribe, also test that further remote ops will not get sent for the doc.
+              if (method !== 'subscribe') {
+                return done();
+              }
+              // Add listeners on connection2 for remote operations.
+              fido.on('before op', function(op) {
+                done(new Error('fido on connection2 should not have received any ops, got:' +
+                  JSON.stringify(op)));
+              });
+              // Issue an operation on connection1.
+              connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}], function(err) {
+                if (err) return done(err);
+                // Do a manual fetch on connection2, which should be enough time for it to receive
+                // the op, if the op were to be sent.
+                fido.fetch(function(err) {
+                  verifyClientError(err);
+                  expect(fido.data).eql(undefined);
+                  done();
+                });
+              });
+            });
+          });
+        });
+      }
+      testSingleSnapshotSpecificError('normal error', {
+        createReadSnapshotsError: function() {
+          return new Error('Failed to fetch fido');
+        },
+        verifyClientError: function(err) {
+          expect(err).to.be.an('error').with.property('message', 'Failed to fetch fido');
+        }
+      });
+      testSingleSnapshotSpecificError('special ignorable error', {
+        createReadSnapshotsError: function() {
+          var err = new Error('Failed to fetch fido');
+          err.code = ERROR_CODES.ERR_SNAPSHOT_READ_SILENT_REJECTION;
+          return err;
+        },
+        verifyClientError: function(err) {
+          expect(err).to.equal(undefined);
+        }
+      });
+
       it(method + ' twice in bulk simultaneously calls back', function(done) {
         var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
         var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
@@ -155,7 +221,7 @@ module.exports = function() {
         });
       });
 
-      function testSnapshotSpecificError(label, fns) {
+      function testBulkSnapshotSpecificError(label, fns) {
         var createReadSnapshotsError = fns.createReadSnapshotsError;
         var verifyClientError = fns.verifyClientError;
         it(method + ' bulk with readSnapshots rejectSnapshotRead ' + label, function(done) {
@@ -181,7 +247,6 @@ module.exports = function() {
 
             var fido = connection2.get('dogs', 'fido');
             var spot = connection2.get('dogs', 'spot');
-            connection2.debug = true;
             connection2.startBulk();
             async.parallel([
               function(cb) {
@@ -205,14 +270,15 @@ module.exports = function() {
               if (method !== 'subscribe') {
                 return done();
               }
-              // Issue some operations on connection1.
-              connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}]);
-              connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}]);
               // Add listeners on connection2 for those operations.
               fido.on('before op', function(op) {
                 done(new Error('fido on connection2 should not have received any ops, got:' +
                   JSON.stringify(op)));
               });
+              // Issue some operations on connection1.
+              connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}]);
+              connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}]);
+              // Check that connection2 receives the op for spot but not fido.
               connection2.once('receive', function() {
                 // 'receive' happens before the client processes the message. Wait an extra tick so we
                 // can check the effects of the message.
@@ -227,7 +293,7 @@ module.exports = function() {
           });
         });
       }
-      testSnapshotSpecificError('normal error', {
+      testBulkSnapshotSpecificError('normal error', {
         createReadSnapshotsError: function() {
           return new Error('Failed to fetch fido');
         },
@@ -235,7 +301,7 @@ module.exports = function() {
           expect(err).to.be.an('error').with.property('message', 'Failed to fetch fido');
         }
       });
-      testSnapshotSpecificError('special ignorable error', {
+      testBulkSnapshotSpecificError('special ignorable error', {
         createReadSnapshotsError: function() {
           var err = new Error('Failed to fetch fido');
           err.code = ERROR_CODES.ERR_SNAPSHOT_READ_SILENT_REJECTION;
