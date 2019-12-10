@@ -158,7 +158,7 @@ module.exports = function() {
       function testSnapshotSpecificError(label, fns) {
         var createReadSnapshotsError = fns.createReadSnapshotsError;
         var verifyClientError = fns.verifyClientError;
-        it(method + ' bulk with readSnapshots snapshot-specific ' + label, function(done) {
+        it(method + ' bulk with readSnapshots rejectSnapshotRead ' + label, function(done) {
           var backend = this.backend;
           var connection = backend.connect();
           var connection2 = backend.connect();
@@ -175,8 +175,7 @@ module.exports = function() {
             backend.use('readSnapshots', function(context, cb) {
               expect(context.snapshots).to.be.an('array').of.length(2);
               expect(context.snapshots[0]).to.have.property('id', 'fido');
-              // Signal snapshot-specific error by setting the snapshot's `error` property.
-              context.snapshots[0].error = createReadSnapshotsError();
+              context.rejectSnapshotRead(context.snapshots[0], createReadSnapshotsError());
               cb();
             });
 
@@ -239,7 +238,7 @@ module.exports = function() {
       testSnapshotSpecificError('special ignorable error', {
         createReadSnapshotsError: function() {
           var err = new Error('Failed to fetch fido');
-          err.code = ERROR_CODES.ERR_SNAPSHOT_READ_IGNORABLE_REJECTION;
+          err.code = ERROR_CODES.ERR_SNAPSHOT_READ_SILENT_REJECTION;
           return err;
         },
         verifyClientError: function(err) {

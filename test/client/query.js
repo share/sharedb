@@ -141,7 +141,7 @@ module.exports = function(options) {
         });
       });
 
-      it(method + ' on collection with readSnapshots partial failure', function(done) {
+      it(method + ' on collection with readSnapshots rejectSnapshotRead', function(done) {
         var backend = this.backend;
         var connection = backend.connect();
         var connection2 = backend.connect();
@@ -160,14 +160,13 @@ module.exports = function(options) {
           if (err) return done(err);
           backend.use('readSnapshots', function(context, cb) {
             expect(context.snapshots).to.be.an('array').of.length(2);
-            // Signal snapshot-specific error by setting one snapshot's `error` property.
-            context.snapshots[0].error = new Error('Failed to fetch dog');
+            context.rejectSnapshotRead(context.snapshots[0], new Error('Failed to fetch dog'));
             cb();
           });
           // Queries have no way of supporting partial readSnapshots rejections, so the entire query
           // fails if at least one of the snapshots has an error.
           connection2[method]('dogs', matchAllDbQuery, null, function(err, results) {
-            expect(err).to.be.an('error').with.property('code', 'ERR_SNAPSHOT_READS_PARTIALLY_REJECTED');
+            expect(err).to.be.an('error').with.property('code', 'ERR_SNAPSHOT_READS_REJECTED');
             expect(results).to.equal(undefined);
             done();
           });

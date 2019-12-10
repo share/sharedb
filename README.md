@@ -172,6 +172,7 @@ Register a new middleware.
     * `stream`: The duplex Stream provided to `share.listen` (for 'connect')
     * `query`: The query object being handled (for 'query')
     * `snapshots`: Array of retrieved snapshots (for 'readSnapshots')
+    * `rejectSnapshotRead(snapshot, error)`: Reject a specific snapshot read (for 'readSnapshots')
     * `data`: Received client message (for 'receive')
     * `request`: Client message being replied to (for 'reply')
     * `reply`: Reply to be sent to the client (for 'reply')
@@ -612,10 +613,19 @@ backend.useMiddleware('readSnapshots', function (request, callback) {
   var connectionInfo = request.agent.custom;
   var snapshots = request.snapshots;
 
-  // Use the information provided at connection to determine if a user can access snapshots.
+  // Use the information provided at connection to determine if a user can access the snapshots.
   // This should also be checked when fetching and submitting ops.
-  if (!userCanAccessSnapshots(connectionInfo, snapshots)) {
-    return callback(new Error('Authentication error'));
+  if (!userCanAccessCollection(connectionInfo, request.collection)) {
+    return callback(new Error('Not allowed to access collection ' + request.collection));
+  }
+  // Check each snapshot individually.
+  // In ES6, this could be `for (const snapshot of snapshots)`
+  for (var i = 0; i < snapshots.length; i++) {
+    var snapshot = snapshots[i];
+    if (!userCanAccessSnapshot(connectionInfo, request.collection, snapshot)) {
+      request.rejectSnapshotRead(snapshot,
+        new Error('Not allowed to access snapshot in ' request.collection));
+    }
   }
 
   callback();
