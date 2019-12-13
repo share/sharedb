@@ -602,16 +602,16 @@ An `Agent` is the representation of a client's `Connection` state on the server.
 The `Agent` will be made available in all [middleware](#middlewares) requests. The `agent.custom` field is an object that can be used for storing arbitrary information for use in middleware. For example:
 
 ```javascript
-backend.useMiddleware('connect', function (request, callback) {
+backend.useMiddleware('connect', (request, callback) => {
   // Best practice to clone to prevent mutating the object after connection.
   // You may also want to consider a deep clone, depending on the shape of request.req.
   Object.assign(request.agent.custom, request.req);
   callback();
 });
 
-backend.useMiddleware('readSnapshots', function (request, callback) {
-  var connectionInfo = request.agent.custom;
-  var snapshots = request.snapshots;
+backend.useMiddleware('readSnapshots', (request, callback) => {
+  const connectionInfo = request.agent.custom;
+  const snapshots = request.snapshots;
 
   // Use the information provided at connection to determine if a user can access the snapshots.
   // This should also be checked when fetching and submitting ops.
@@ -619,9 +619,7 @@ backend.useMiddleware('readSnapshots', function (request, callback) {
     return callback(new Error('Not allowed to access collection ' + request.collection));
   }
   // Check each snapshot individually.
-  // In ES6, this could be `for (const snapshot of snapshots)`
-  for (var i = 0; i < snapshots.length; i++) {
-    var snapshot = snapshots[i];
+  for (const snapshot of snapshots) {
     if (!userCanAccessSnapshot(connectionInfo, request.collection, snapshot)) {
       request.rejectSnapshotRead(snapshot,
         new Error('Not allowed to access snapshot in ' request.collection));
@@ -635,10 +633,10 @@ backend.useMiddleware('readSnapshots', function (request, callback) {
 // potentially making some database request to check which documents they can access, or which
 // roles they have, etc. If doing this asynchronously, make sure you call backend.connect
 // after the permissions have been fetched.
-var connectionInfo = getUserPermissions();
+const connectionInfo = getUserPermissions();
 // Pass info in as the second argument. This will be made available as request.req in the
 // 'connection' middleware.
-var connection = backend.connect(null, connectionInfo);
+const connection = backend.connect(null, connectionInfo);
 ```
 
 ### Logging
