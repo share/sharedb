@@ -1,6 +1,5 @@
 var expect = require('chai').expect;
 var async = require('async');
-var ERROR_CODES = require('../../lib/error').CODES;
 
 module.exports = function() {
   describe('client subscribe', function() {
@@ -47,7 +46,7 @@ module.exports = function() {
       });
 
       function testSingleSnapshotSpecificError(label, fns) {
-        var createReadSnapshotsError = fns.createReadSnapshotsError;
+        var rejectSnapshot = fns.rejectSnapshot;
         var verifyClientError = fns.verifyClientError;
         it(method + ' single with readSnapshots rejectSnapshotRead ' + label, function(done) {
           var backend = this.backend;
@@ -59,7 +58,7 @@ module.exports = function() {
             backend.use('readSnapshots', function(context, cb) {
               expect(context.snapshots).to.be.an('array').of.length(1);
               expect(context.snapshots[0]).to.have.property('id', 'fido');
-              context.rejectSnapshotRead(context.snapshots[0], createReadSnapshotsError());
+              rejectSnapshot(context, context.snapshots[0]);
               cb();
             });
 
@@ -94,18 +93,16 @@ module.exports = function() {
         });
       }
       testSingleSnapshotSpecificError('normal error', {
-        createReadSnapshotsError: function() {
-          return new Error('Failed to fetch fido');
+        rejectSnapshot: function(context, snapshot) {
+          context.rejectSnapshotRead(snapshot, new Error('Failed to fetch fido'));
         },
         verifyClientError: function(err) {
           expect(err).to.be.an('error').with.property('message', 'Failed to fetch fido');
         }
       });
-      testSingleSnapshotSpecificError('special ignorable error', {
-        createReadSnapshotsError: function() {
-          var err = new Error('Failed to fetch fido');
-          err.code = ERROR_CODES.ERR_SNAPSHOT_READ_SILENT_REJECTION;
-          return err;
+      testSingleSnapshotSpecificError('silent error', {
+        rejectSnapshot: function(context, snapshot) {
+          context.rejectSnapshotReadSilent(snapshot, 'Failed to fetch fido');
         },
         verifyClientError: function(err) {
           expect(err).to.equal(undefined);
@@ -222,7 +219,7 @@ module.exports = function() {
       });
 
       function testBulkSnapshotSpecificError(label, fns) {
-        var createReadSnapshotsError = fns.createReadSnapshotsError;
+        var rejectSnapshot = fns.rejectSnapshot;
         var verifyClientError = fns.verifyClientError;
         it(method + ' bulk with readSnapshots rejectSnapshotRead ' + label, function(done) {
           var backend = this.backend;
@@ -241,7 +238,7 @@ module.exports = function() {
             backend.use('readSnapshots', function(context, cb) {
               expect(context.snapshots).to.be.an('array').of.length(2);
               expect(context.snapshots[0]).to.have.property('id', 'fido');
-              context.rejectSnapshotRead(context.snapshots[0], createReadSnapshotsError());
+              rejectSnapshot(context, context.snapshots[0]);
               cb();
             });
 
@@ -294,18 +291,16 @@ module.exports = function() {
         });
       }
       testBulkSnapshotSpecificError('normal error', {
-        createReadSnapshotsError: function() {
-          return new Error('Failed to fetch fido');
+        rejectSnapshot: function(context, snapshot) {
+          context.rejectSnapshotRead(snapshot, new Error('Failed to fetch fido'));
         },
         verifyClientError: function(err) {
           expect(err).to.be.an('error').with.property('message', 'Failed to fetch fido');
         }
       });
       testBulkSnapshotSpecificError('special ignorable error', {
-        createReadSnapshotsError: function() {
-          var err = new Error('Failed to fetch fido');
-          err.code = ERROR_CODES.ERR_SNAPSHOT_READ_SILENT_REJECTION;
-          return err;
+        rejectSnapshot: function(context, snapshot) {
+          context.rejectSnapshotReadSilent(snapshot, 'Failed to fetch fido');
         },
         verifyClientError: function(err) {
           expect(err).to.equal(undefined);
