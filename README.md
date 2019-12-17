@@ -173,6 +173,7 @@ Register a new middleware.
     * `query`: The query object being handled (for 'query')
     * `snapshots`: Array of retrieved snapshots (for 'readSnapshots')
     * `rejectSnapshotRead(snapshot, error)`: Reject a specific snapshot read (for 'readSnapshots')
+      - `rejectSnapshotReadSilent(snapshot, errorMessage)`: As above, but causes the ShareDB client to treat it as a silent rejection, not passing the error back to user code.
     * `data`: Received client message (for 'receive')
     * `request`: Client message being replied to (for 'reply')
     * `reply`: Reply to be sent to the client (for 'reply')
