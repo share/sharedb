@@ -140,6 +140,38 @@ module.exports = function(options) {
           });
         });
       });
+
+      it(method + ' on collection with readSnapshots rejectSnapshotRead', function(done) {
+        var backend = this.backend;
+        var connection = backend.connect();
+        var connection2 = backend.connect();
+        var matchAllDbQuery = this.matchAllDbQuery;
+        async.parallel([
+          function(cb) {
+            connection.get('dogs', 'fido').create({age: 3}, cb);
+          },
+          function(cb) {
+            connection.get('dogs', 'spot').create({age: 5}, cb);
+          },
+          function(cb) {
+            connection.get('cats', 'finn').create({age: 2}, cb);
+          }
+        ], function(err) {
+          if (err) return done(err);
+          backend.use('readSnapshots', function(context, cb) {
+            expect(context.snapshots).to.be.an('array').of.length(2);
+            context.rejectSnapshotRead(context.snapshots[0], new Error('Failed to fetch dog'));
+            cb();
+          });
+          // Queries have no way of supporting partial readSnapshots rejections, so the entire query
+          // fails if at least one of the snapshots has an error.
+          connection2[method]('dogs', matchAllDbQuery, null, function(err, results) {
+            expect(err).to.be.an('error').with.property('code', 'ERR_SNAPSHOT_READS_REJECTED');
+            expect(results).to.equal(undefined);
+            done();
+          });
+        });
+      });
     });
   });
 };
