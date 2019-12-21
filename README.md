@@ -161,7 +161,7 @@ Register a new middleware.
 * `fn` _(Function(context, callback))_
   Call this function at the time specified by `action`.
   * `context` will always have the following properties:
-    * `action`: The action this middleware is hanlding
+    * `action`: The action this middleware is handling
     * `agent`: A reference to the server agent handling this client
     * `backend`: A reference to this ShareDB backend instance
   * `context` can also have additional properties, as relevant for the action:
