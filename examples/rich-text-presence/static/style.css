@@ -1,0 +1,37 @@
+h1 {
+  margin: 0 10px;
+  display: inline-block;
+}
+
+button {
+  font-size: 20px;
+}
+
+.controls {
+  width: 100%;
+  text-align: center;
+  margin: 20px;
+}
+
+.editor-container {
+  width: 100%;
+}
+
+.editor {
+  display: inline-block;
+  width: 50%;
+  margin-bottom: 20px;
+}
+
+.ql-container {
+  padding: 10px;
+}
+
+.ql-editor {
+  /* TODO: Colour code with cursor? */
+  border: 1px solid grey;
+}
+
+.ql-tooltip {
+  display: none;
+}
