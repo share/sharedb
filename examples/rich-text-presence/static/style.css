@@ -1,10 +1,10 @@
-h1 {
-  margin: 0 10px;
-  display: inline-block;
+body {
+  font-family: sans-serif;
 }
 
-button {
-  font-size: 20px;
+input, button {
+  font-size: 16px;
+  margin-right: 10px;
 }
 
 .controls {
@@ -13,25 +13,15 @@ button {
   margin: 20px;
 }
 
-.editor-container {
-  width: 100%;
-}
-
-.editor {
-  display: inline-block;
-  width: 50%;
-  margin-bottom: 20px;
-}
-
 .ql-container {
   padding: 10px;
 }
 
 .ql-editor {
-  /* TODO: Colour code with cursor? */
   border: 1px solid grey;
 }
 
+/* Keep the example simple by hiding the toolbar */
 .ql-tooltip {
   display: none;
 }

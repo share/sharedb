@@ -4,54 +4,39 @@ var richText = require('./rich-text');
 var Quill = require('quill');
 var QuillCursors = require('quill-cursors');
 var tinycolor = require('tinycolor2');
+var ObjectID = require('bson-objectid');
 
 sharedb.types.register(richText.type);
 Quill.register('modules/cursors', QuillCursors);
 
-var clients = [];
+var connectionButton = document.getElementById('client-connection');
+connectionButton.addEventListener('click', function() {
+  toggleConnection(connectionButton);
+});
+
+var nameInput = document.getElementById('name');
+
 var colors = {};
 
 var collection = 'examples';
 var id = 'richtext';
+var presenceId = new ObjectID().toString();
 
-var editorContainer = document.querySelector('.editor-container');
-document.querySelector('#add-client').addEventListener('click', function() {
-  addClient();
+var socket = new ReconnectingWebSocket('ws://' + window.location.host);
+var connection = new sharedb.Connection(socket);
+var doc = connection.get(collection, id);
+
+doc.subscribe(function(err) {
+  if (err) throw err;
+  initialiseQuill(doc);
 });
 
-addClient();
-addClient();
-
-function addClient() {
-  var socket = new ReconnectingWebSocket('ws://' + window.location.host);
-  var connection = new sharedb.Connection(socket);
-  var doc = connection.get(collection, id);
-  doc.subscribe(function(err) {
-    if (err) throw err;
-    var quill = initialiseQuill(doc);
-    var color = '#' + tinycolor.random().toHex();
-    var id = 'client-' + (clients.length + 1);
-    colors[id] = color;
-
-    clients.push({
-      quill: quill,
-      doc: doc,
-      color: color
-    });
-
-    document.querySelector('#' + id + ' h1').style.color = color;
-  });
-}
-
 function initialiseQuill(doc) {
-  var quill = new Quill(quillContainer(), {
+  var quill = new Quill('#editor', {
     theme: 'bubble',
-    modules: {
-      cursors: true
-    }
+    modules: {cursors: true}
   });
   var cursors = quill.getModule('cursors');
-  var index = clients.length;
 
   quill.setContents(doc.data);
 
@@ -69,74 +54,48 @@ function initialiseQuill(doc) {
   presence.subscribe(function(error) {
     if (error) throw error;
   });
-  var localPresence = presence.create('client-' + (index + 1));
+  var localPresence = presence.create(presenceId);
 
   quill.on('selection-change', function(range) {
     // Ignore blurring, so that we can see lots of users in the
-    // same window
+    // same window. In real use, you may want to clear the cursor.
     if (!range) return;
+    // In this particular instance, we can send extra information
+    // on the presence object. This ability will vary depending on
+    // type.
+    range.name = nameInput.value;
     localPresence.submit(range, function(error) {
       if (error) throw error;
     });
   });
 
   presence.on('receive', function(id, range) {
-    cursors.createCursor(id, id, colors[id]);
+    colors[id] = colors[id] || tinycolor.random().toHexString();
+    var name = (range && range.name) || 'Anonymous';
+    cursors.createCursor(id, name, colors[id]);
     cursors.moveCursor(id, range);
   });
 
   return quill;
 }
 
-function quillContainer() {
-  var wrapper = document.createElement('div');
-  wrapper.classList.add('editor');
-  var index = clients.length;
-  wrapper.id = 'client-' + (index + 1);
-
-  wrapper.innerHTML =
-    '  <h1>Client' + (index + 1) + '</h1>' +
-    '  <button class="remove-client">Remove</button>' +
-    '  <button class="client-connection connected">Disconnect</button>' +
-    '  <div class="quill"></div>';
-
-  wrapper.querySelector('.remove-client').addEventListener('click', function() {
-    removeClient(clients[index]);
-  });
-
-  var connectionButton = wrapper.querySelector('.client-connection');
-  connectionButton.addEventListener('click', function() {
-    toggleConnection(connectionButton, clients[index]);
-  });
-
-  editorContainer.appendChild(wrapper);
-  return wrapper.querySelector('.quill');
-}
-
-function toggleConnection(button, client) {
+function toggleConnection(button) {
   if (button.classList.contains('connected')) {
     button.classList.remove('connected');
     button.textContent = 'Connect';
-    disconnectClient(client);
+    disconnect();
   } else {
     button.classList.add('connected');
     button.textContent = 'Disconnect';
-    connectClient(client);
+    connect();
   }
 }
 
-function disconnectClient(client) {
-  client.doc.connection.close();
+function disconnect() {
+  doc.connection.close();
 }
 
-function connectClient(client) {
+function connect() {
   var socket = new ReconnectingWebSocket('ws://' + window.location.host);
-  client.doc.connection.bindToSocket(socket);
-}
-
-function removeClient(client) {
-  client.quill.root.parentElement.parentElement.remove();
-  client.doc.destroy(function(error) {
-    if (error) throw error;
-  });
+  doc.connection.bindToSocket(socket);
 }
