@@ -1,10 +1,25 @@
 var expect = require('chai').expect;
 var Backend = require('../../lib/backend');
 var Connection = require('../../lib/client/connection');
+var StreamSocket = require('../../lib/stream-socket');
 
 describe('client connection', function() {
   beforeEach(function() {
     this.backend = new Backend();
+  });
+
+  it.only('connects when the client faffs around with its Connection constructor', function(done) {
+    var socket = new StreamSocket();
+    socket._open();
+    this.backend.listen(socket.stream);
+    setTimeout(function() {
+      var connection = new Connection(socket);
+      var doc = connection.get('test', '123');
+      doc.create({foo: 'bar'}, function(error) {
+        if (error) done(error);
+        done();
+      });
+    }, 1000);
   });
 
   it('ends the agent stream when a connection is closed after connect', function(done) {
