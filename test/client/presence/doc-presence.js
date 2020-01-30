@@ -519,8 +519,8 @@ describe('DocPresence', function() {
           if (pauseCount === 2) {
             expect(this._pendingBroadcasts[0][0].presence.p).to.eql({index: 2});
             expect(this._pendingBroadcasts[1][0].presence.p).to.eql({index: 4});
-            expect(this._pendingBroadcasts[0][0].presence.seq)
-              .to.be.lessThan(this._pendingBroadcasts[1][0].presence.seq);
+            expect(this._pendingBroadcasts[0][0].presence.pv)
+              .to.be.lessThan(this._pendingBroadcasts[1][0].presence.pv);
 
             // Fire the broadcasts in the reverse order
             this._pendingBroadcasts[1][1]();
