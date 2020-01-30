@@ -197,4 +197,23 @@ describe('client connection', function() {
       });
     });
   });
+
+  it('persists its id and seq when reconnecting', function(done) {
+    var backend = this.backend;
+    backend.connect(function(connection) {
+      var id = connection.id;
+      expect(id).to.be.ok;
+      var doc = connection.get('test', '123');
+      doc.create({foo: 'bar'}, function(error) {
+        if (error) return done(error);
+        expect(connection.seq).to.equal(2);
+        connection.close();
+        backend.connect(connection, null, function() {
+          expect(connection.id).to.equal(id);
+          expect(connection.seq).to.equal(2);
+          done();
+        });
+      });
+    });
+  });
 });
