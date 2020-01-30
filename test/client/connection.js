@@ -216,4 +216,22 @@ describe('client connection', function() {
       });
     });
   });
+
+  it('errors when submitting an op with a very large seq', function(done) {
+    this.backend.connect(function(connection) {
+      var doc = connection.get('test', '123');
+      doc.create({foo: 'bar'}, function(error) {
+        if (error) return done(error);
+        connection.sendOp(doc, {
+          op: {p: ['foo'], od: 'bar'},
+          src: connection.id,
+          seq: Number.MAX_SAFE_INTEGER
+        });
+        doc.once('error', function(error) {
+          expect(error.code).to.equal('ERR_CONNECTION_SEQ_INTEGER_OVERFLOW');
+          done();
+        });
+      });
+    });
+  });
 });
