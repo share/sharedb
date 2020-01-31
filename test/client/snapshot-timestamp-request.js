@@ -1,10 +1,10 @@
 var Backend = require('../../lib/backend');
 var expect = require('chai').expect;
-var util = require('../util');
 var lolex = require('lolex');
 var MemoryDb = require('../../lib/db/memory');
 var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
 var sinon = require('sinon');
+var async = require('async');
 
 describe('SnapshotTimestampRequest', function() {
   var backend;
@@ -70,10 +70,8 @@ describe('SnapshotTimestampRequest', function() {
 
     beforeEach(function(done) {
       var doc = backend.connect().get('books', 'time-machine');
-      util.callInSeries([
-        function(next) {
-          doc.create({title: 'The Time Machine'}, next);
-        },
+      async.series([
+        doc.create.bind(doc, {title: 'The Time Machine'}),
         function(next) {
           clock.tick(ONE_DAY);
           doc.submitOp({p: ['author'], oi: 'HG Wells'}, next);
@@ -81,101 +79,86 @@ describe('SnapshotTimestampRequest', function() {
         function(next) {
           clock.tick(ONE_DAY);
           doc.submitOp({p: ['author'], od: 'HG Wells', oi: 'H.G. Wells'}, next);
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the version at exactly day 1', function(done) {
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day1, next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine', day1),
         function(snapshot, next) {
           expect(snapshot).to.eql(v1);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the version at exactly day 2', function(done) {
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day2, next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine', day2),
         function(snapshot, next) {
           expect(snapshot).to.eql(v2);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the version at exactly day 3', function(done) {
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day3, next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine', day3),
         function(snapshot, next) {
           expect(snapshot).to.eql(v3);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the day 2 version when asking for a time halfway between days 2 and 3', function(done) {
       var halfwayBetweenDays2and3 = (day2 + day3) * 0.5;
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', halfwayBetweenDays2and3, next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine', halfwayBetweenDays2and3),
         function(snapshot, next) {
           expect(snapshot).to.eql(v2);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the day 3 version when asking for a time after day 3', function(done) {
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day4, next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine', day4),
         function(snapshot, next) {
           expect(snapshot).to.eql(v3);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the most recent version when not specifying a timestamp', function(done) {
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine'),
         function(snapshot, next) {
           expect(snapshot).to.eql(v3);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches an empty snapshot if the timestamp is before the document creation', function(done) {
-      util.callInSeries([
-        function(next) {
-          backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', day0, next);
-        },
+      var connection = backend.connect();
+      async.waterfall([
+        connection.fetchSnapshotByTimestamp.bind(connection, 'books', 'time-machine', day0),
         function(snapshot, next) {
           expect(snapshot).to.eql(v0);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('throws if the timestamp is undefined', function() {
@@ -407,10 +390,8 @@ describe('SnapshotTimestampRequest', function() {
 
         var doc = backendWithMilestones.connect().get('books', 'mocking-bird');
 
-        util.callInSeries([
-          function(next) {
-            doc.create({title: 'To Kill a Mocking Bird'}, next);
-          },
+        async.series([
+          doc.create.bind(doc, {title: 'To Kill a Mocking Bird'}),
           function(next) {
             clock.tick(ONE_DAY);
             doc.submitOp({p: ['author'], oi: 'Harper Lea'}, next);
@@ -426,9 +407,8 @@ describe('SnapshotTimestampRequest', function() {
           function(next) {
             clock.tick(ONE_DAY);
             doc.submitOp({p: ['year'], od: 1959, oi: 1960}, next);
-          },
-          done
-        ]);
+          }
+        ], done);
       });
 
       it('fetches a snapshot between two milestones using the milestones', function(done) {

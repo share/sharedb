@@ -40,23 +40,8 @@ exports.callAfter = function(calls, callback) {
   return callbackAfter;
 };
 
-exports.callInSeries = function(callbacks, args) {
-  if (!callbacks.length) return;
-  args = args || [];
-  var error = args.shift();
-
-  if (error) {
-    var finalCallback = callbacks[callbacks.length - 1];
-    return finalCallback(error);
-  }
-
-  var callback = callbacks.shift();
-  if (callbacks.length) {
-    args.push(function() {
-      var args = Array.from(arguments);
-      exports.callInSeries(callbacks, args);
-    });
-  }
-
-  callback.apply(callback, args);
+exports.errorHandler = function(callback) {
+  return function(error) {
+    if (error) callback(error);
+  };
 };
