@@ -200,7 +200,7 @@ describe('client connection', function() {
 
   it('persists its id and seq when reconnecting', function(done) {
     var backend = this.backend;
-    backend.connect(function(connection) {
+    backend.connect(null, null, function(connection) {
       var id = connection.id;
       expect(id).to.be.ok;
       var doc = connection.get('test', '123');
@@ -218,7 +218,7 @@ describe('client connection', function() {
   });
 
   it('errors when submitting an op with a very large seq', function(done) {
-    this.backend.connect(function(connection) {
+    this.backend.connect(null, null, function(connection) {
       var doc = connection.get('test', '123');
       doc.create({foo: 'bar'}, function(error) {
         if (error) return done(error);

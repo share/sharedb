@@ -355,7 +355,7 @@ module.exports = function() {
     });
 
     it('op submitted during inflight create does not compose and gets flushed', function(done) {
-      this.backend.connect(function(connection) {
+      this.backend.connect(null, null, function(connection) {
         var doc = connection.get('dogs', 'fido');
         doc.create({age: 3});
         // Submit an op after message is sent but before server has a chance to reply
@@ -802,8 +802,8 @@ module.exports = function() {
 
     it('snapshot fetch from query does not advance version of doc with pending ops', function(done) {
       var backend = this.backend;
-      backend.connect(function(connection1) {
-        backend.connect(function(connection2) {
+      backend.connect(null, null, function(connection1) {
+        backend.connect(null, null, function(connection2) {
           var doc = connection1.get('dogs', 'fido');
           var doc2 = connection2.get('dogs', 'fido');
           doc.create({name: 'kido'}, function(err) {
