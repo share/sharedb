@@ -3,7 +3,8 @@ var Backend = require('../lib/backend');
 var MilestoneDB = require('../lib/milestone-db');
 var NoOpMilestoneDB = require('../lib/milestone-db/no-op');
 var Snapshot = require('../lib/snapshot');
-var util = require('./util');
+var async = require('async');
+var errorHandler = require('./util').errorHandler;
 
 describe('Base class', function() {
   var db;
@@ -75,19 +76,14 @@ describe('NoOpMilestoneDB', function() {
       null
     );
 
-    util.callInSeries([
-      function(next) {
-        db.saveMilestoneSnapshot('books', snapshot, next);
-      },
-      function(next) {
-        db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, next);
-      },
+    async.waterfall([
+      db.saveMilestoneSnapshot.bind(db, 'books', snapshot),
+      db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
       function(snapshot, next) {
         expect(snapshot).to.equal(undefined);
         next();
-      },
-      done
-    ]);
+      }
+    ], done);
   });
 
   it('emits an event when saving without a callback', function(done) {
@@ -136,19 +132,14 @@ module.exports = function(options) {
         null
       );
 
-      util.callInSeries([
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot, next);
-        },
-        function(next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, next);
-        },
+      async.waterfall([
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot),
+        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 2),
         function(retrievedSnapshot, next) {
           expect(retrievedSnapshot).to.eql(snapshot);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the most recent snapshot before the requested version', function(done) {
@@ -176,25 +167,16 @@ module.exports = function(options) {
         null
       );
 
-      util.callInSeries([
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot1, next);
-        },
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot2, next);
-        },
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot10, next);
-        },
-        function(next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
-        },
+      async.waterfall([
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot10),
+        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
         function(snapshot, next) {
           expect(snapshot).to.eql(snapshot2);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the most recent snapshot even if they are inserted in the wrong order', function(done) {
@@ -214,22 +196,15 @@ module.exports = function(options) {
         null
       );
 
-      util.callInSeries([
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot2, next);
-        },
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot1, next);
-        },
-        function(next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
-        },
+      async.waterfall([
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
         function(snapshot, next) {
           expect(snapshot).to.eql(snapshot2);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('fetches the most recent snapshot when the version is null', function(done) {
@@ -249,22 +224,15 @@ module.exports = function(options) {
         null
       );
 
-      util.callInSeries([
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot1, next);
-        },
-        function(next) {
-          db.saveMilestoneSnapshot('books', snapshot2, next);
-        },
-        function(next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, next);
-        },
+      async.waterfall([
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+        db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
         function(snapshot, next) {
           expect(snapshot).to.eql(snapshot2);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('errors when fetching an undefined version', function(done) {
@@ -318,33 +286,25 @@ module.exports = function(options) {
     });
 
     it('returns undefined if no snapshot exists', function(done) {
-      util.callInSeries([
-        function(next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, next);
-        },
+      async.waterfall([
+        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),
         function(snapshot, next) {
           expect(snapshot).to.equal(undefined);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('does not store a milestone snapshot on commit', function(done) {
-      util.callInSeries([
-        function(next) {
-          var doc = backend.connect().get('books', 'catcher-in-the-rye');
-          doc.create({title: 'Catcher in the Rye'}, next);
-        },
-        function(next) {
-          db.getMilestoneSnapshot('books', 'catcher-in-the-rye', null, next);
-        },
+      var doc = backend.connect().get('books', 'catcher-in-the-rye');
+      async.waterfall([
+        doc.create.bind(doc, {title: 'Catcher in the Rye'}),
+        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
         function(snapshot, next) {
           expect(snapshot).to.equal(undefined);
           next();
-        },
-        done
-      ]);
+        }
+      ], done);
     });
 
     it('can save without a callback', function(done) {
@@ -415,58 +375,42 @@ module.exports = function(options) {
       );
 
       beforeEach(function(done) {
-        util.callInSeries([
-          function(next) {
-            db.saveMilestoneSnapshot('books', snapshot1, next);
-          },
-          function(next) {
-            db.saveMilestoneSnapshot('books', snapshot2, next);
-          },
-          function(next) {
-            db.saveMilestoneSnapshot('books', snapshot3, next);
-          },
-          done
-        ]);
+        async.series([
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot3)
+        ], done);
       });
 
       describe('fetching a snapshot before or at a time', function() {
         it('fetches a snapshot before a given time', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 2500, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 2500),
             function(snapshot, next) {
               expect(snapshot).to.eql(snapshot2);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('fetches a snapshot at an exact time', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 2000, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 2000),
             function(snapshot, next) {
               expect(snapshot).to.eql(snapshot2);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('fetches the first snapshot for a null timestamp', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', null, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', null),
             function(snapshot, next) {
               expect(snapshot).to.eql(snapshot1);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('returns an error for a string timestamp', function(done) {
@@ -484,16 +428,13 @@ module.exports = function(options) {
         });
 
         it('returns undefined if there are no snapshots before a time', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 0, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 0),
             function(snapshot, next) {
               expect(snapshot).to.equal(undefined);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('errors if no collection is provided', function(done) {
@@ -513,42 +454,33 @@ module.exports = function(options) {
 
       describe('fetching a snapshot after or at a time', function() {
         it('fetches a snapshot after a given time', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 2500, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 2500),
             function(snapshot, next) {
               expect(snapshot).to.eql(snapshot3);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('fetches a snapshot at an exact time', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 2000, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 2000),
             function(snapshot, next) {
               expect(snapshot).to.eql(snapshot2);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('fetches the last snapshot for a null timestamp', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', null, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', null),
             function(snapshot, next) {
               expect(snapshot).to.eql(snapshot3);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('returns an error for a string timestamp', function(done) {
@@ -566,16 +498,13 @@ module.exports = function(options) {
         });
 
         it('returns undefined if there are no snapshots after a time', function(done) {
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 4000, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 4000),
             function(snapshot, next) {
               expect(snapshot).to.equal(undefined);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         it('errors if no collection is provided', function(done) {
@@ -634,55 +563,38 @@ module.exports = function(options) {
         db.on('save', function(collection, snapshot) {
           if (snapshot.v !== 4) return;
 
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),
             function(snapshot, next) {
               expect(snapshot).to.equal(undefined);
               next();
             },
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, next);
-            },
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 2),
             function(snapshot, next) {
               expect(snapshot.v).to.equal(2);
               next();
             },
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 3, next);
-            },
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 3),
             function(snapshot, next) {
               expect(snapshot.v).to.equal(2);
               next();
             },
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
-            },
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
             function(snapshot, next) {
               expect(snapshot.v).to.equal(4);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         var doc = backend.connect().get('books', 'catcher-in-the-rye');
 
-        util.callInSeries([
-          function(next) {
-            doc.create({title: 'Catcher in the Rye'}, next);
-          },
-          function(next) {
-            doc.submitOp({p: ['author'], oi: 'J.F.Salinger'}, next);
-          },
-          function(next) {
-            doc.submitOp({p: ['author'], od: 'J.F.Salinger', oi: 'J.D.Salinger'}, next);
-          },
-          function(next) {
-            doc.submitOp({p: ['author'], od: 'J.D.Salinger', oi: 'J.D. Salinger'}, next);
-          }
-        ]);
+        async.series([
+          doc.create.bind(doc, {title: 'Catcher in the Rye'}),
+          doc.submitOp.bind(doc, {p: ['author'], oi: 'J.F.Salinger'}),
+          doc.submitOp.bind(doc, {p: ['author'], od: 'J.F.Salinger', oi: 'J.D.Salinger'}),
+          doc.submitOp.bind(doc, {p: ['author'], od: 'J.D.Salinger', oi: 'J.D. Salinger'})
+        ], errorHandler(done));
       });
 
       it('can have the saving logic overridden in middleware', function(done) {
@@ -694,55 +606,38 @@ module.exports = function(options) {
         db.on('save', function(collection, snapshot) {
           if (snapshot.v !== 4) return;
 
-          util.callInSeries([
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 1, next);
-            },
+          async.waterfall([
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),
             function(snapshot, next) {
               expect(snapshot).to.equal(undefined);
               next();
             },
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 2, next);
-            },
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 2),
             function(snapshot, next) {
               expect(snapshot).to.equal(undefined);
               next();
             },
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 3, next);
-            },
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 3),
             function(snapshot, next) {
               expect(snapshot.v).to.equal(3);
               next();
             },
-            function(next) {
-              db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 4, next);
-            },
+            db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
             function(snapshot, next) {
               expect(snapshot.v).to.equal(4);
               next();
-            },
-            done
-          ]);
+            }
+          ], done);
         });
 
         var doc = backend.connect().get('books', 'catcher-in-the-rye');
 
-        util.callInSeries([
-          function(next) {
-            doc.create({title: 'Catcher in the Rye'}, next);
-          },
-          function(next) {
-            doc.submitOp({p: ['author'], oi: 'J.F.Salinger'}, next);
-          },
-          function(next) {
-            doc.submitOp({p: ['author'], od: 'J.F.Salinger', oi: 'J.D.Salinger'}, next);
-          },
-          function(next) {
-            doc.submitOp({p: ['author'], od: 'J.D.Salinger', oi: 'J.D. Salinger'}, next);
-          }
-        ]);
+        async.series([
+          doc.create.bind(doc, {title: 'Catcher in the Rye'}),
+          doc.submitOp.bind(doc, {p: ['author'], oi: 'J.F.Salinger'}),
+          doc.submitOp.bind(doc, {p: ['author'], od: 'J.F.Salinger', oi: 'J.D.Salinger'}),
+          doc.submitOp.bind(doc, {p: ['author'], od: 'J.D.Salinger', oi: 'J.D. Salinger'})
+        ], errorHandler(done));
       });
     });
   });
