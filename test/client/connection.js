@@ -1,6 +1,8 @@
 var expect = require('chai').expect;
 var Backend = require('../../lib/backend');
 var Connection = require('../../lib/client/connection');
+var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
+var StreamSocket = require('../../lib/stream-socket');
 
 describe('client connection', function() {
   beforeEach(function() {
@@ -213,6 +215,31 @@ describe('client connection', function() {
           expect(connection.seq).to.equal(2);
           done();
         });
+      });
+    });
+  });
+
+  it('still connects to legacy clients, whose ID changes on reconnection', function(done) {
+    var currentBackend = this.backend;
+    var socket = new StreamSocket();
+    var legacyClient = new LegacyConnection(socket);
+    currentBackend.connect(legacyClient);
+
+    var doc = legacyClient.get('test', '123');
+    doc.create({foo: 'bar'}, function(error) {
+      if (error) return done(error);
+      var initialId = legacyClient.id;
+      expect(initialId).to.equal(legacyClient.agent.clientId);
+      expect(legacyClient.agent.src).to.be.null;
+      legacyClient.close();
+      currentBackend.connect(legacyClient);
+      doc.submitOp({p: ['baz'], oi: 'qux'}, function(error) {
+        if (error) return done(error);
+        var newId = legacyClient.id;
+        expect(newId).not.to.equal(initialId);
+        expect(newId).to.equal(legacyClient.agent.clientId);
+        expect(legacyClient.agent.src).to.be.null;
+        done();
       });
     });
   });
