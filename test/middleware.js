@@ -153,6 +153,7 @@ describe('middleware', function() {
     it('context has request and reply objects', function(done) {
       var snapshot = this.snapshot;
       this.backend.use('reply', function(replyContext, next) {
+        if (replyContext.request.a !== 'qf') return next();
         expect(replyContext).to.have.property('action', 'reply');
         expect(replyContext.request).to.eql({a: 'qf', id: 1, c: 'dogs', q: {age: 3}});
         expect(replyContext.reply).to.eql({
@@ -179,7 +180,8 @@ describe('middleware', function() {
 
     it('can produce errors that get sent back to client', function(done) {
       var errorMessage = 'This is an error from reply middleware';
-      this.backend.use('reply', function(_replyContext, next) {
+      this.backend.use('reply', function(replyContext, next) {
+        if (replyContext.request.a !== 'f') return next();
         next(errorMessage);
       });
       var connection = this.backend.connect();

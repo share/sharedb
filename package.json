@@ -18,6 +18,7 @@
     "lolex": "^5.1.1",
     "mocha": "^6.2.2",
     "nyc": "^14.1.1",
+    "sharedb-legacy": "npm:sharedb@=1.1.0",
     "sinon": "^7.5.0"
   },
   "scripts": {

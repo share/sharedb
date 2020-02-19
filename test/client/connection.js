@@ -1,6 +1,8 @@
 var expect = require('chai').expect;
 var Backend = require('../../lib/backend');
 var Connection = require('../../lib/client/connection');
+var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
+var StreamSocket = require('../../lib/stream-socket');
 
 describe('client connection', function() {
   beforeEach(function() {
@@ -194,6 +196,68 @@ describe('client connection', function() {
       connection.on('disconnected', function() {
         expect(connection.state).equal('disconnected');
         done();
+      });
+    });
+  });
+
+  it('persists its id and seq when reconnecting', function(done) {
+    var backend = this.backend;
+    backend.connect(null, null, function(connection) {
+      var id = connection.id;
+      expect(id).to.be.ok;
+      var doc = connection.get('test', '123');
+      doc.create({foo: 'bar'}, function(error) {
+        if (error) return done(error);
+        expect(connection.seq).to.equal(2);
+        connection.close();
+        backend.connect(connection, null, function() {
+          expect(connection.id).to.equal(id);
+          expect(connection.seq).to.equal(2);
+          done();
+        });
+      });
+    });
+  });
+
+  it('still connects to legacy clients, whose ID changes on reconnection', function(done) {
+    var currentBackend = this.backend;
+    var socket = new StreamSocket();
+    var legacyClient = new LegacyConnection(socket);
+    currentBackend.connect(legacyClient);
+
+    var doc = legacyClient.get('test', '123');
+    doc.create({foo: 'bar'}, function(error) {
+      if (error) return done(error);
+      var initialId = legacyClient.id;
+      expect(initialId).to.equal(legacyClient.agent.clientId);
+      expect(legacyClient.agent.src).to.be.null;
+      legacyClient.close();
+      currentBackend.connect(legacyClient);
+      doc.submitOp({p: ['baz'], oi: 'qux'}, function(error) {
+        if (error) return done(error);
+        var newId = legacyClient.id;
+        expect(newId).not.to.equal(initialId);
+        expect(newId).to.equal(legacyClient.agent.clientId);
+        expect(legacyClient.agent.src).to.be.null;
+        done();
+      });
+    });
+  });
+
+  it('errors when submitting an op with a very large seq', function(done) {
+    this.backend.connect(null, null, function(connection) {
+      var doc = connection.get('test', '123');
+      doc.create({foo: 'bar'}, function(error) {
+        if (error) return done(error);
+        connection.sendOp(doc, {
+          op: {p: ['foo'], od: 'bar'},
+          src: connection.id,
+          seq: Number.MAX_SAFE_INTEGER
+        });
+        doc.once('error', function(error) {
+          expect(error.code).to.equal('ERR_CONNECTION_SEQ_INTEGER_OVERFLOW');
+          done();
+        });
       });
     });
   });

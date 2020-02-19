@@ -355,15 +355,17 @@ module.exports = function() {
     });
 
     it('op submitted during inflight create does not compose and gets flushed', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      doc.create({age: 3});
-      // Submit an op after message is sent but before server has a chance to reply
-      process.nextTick(function() {
-        doc.submitOp({p: ['age'], na: 2}, function(err) {
-          if (err) return done(err);
-          expect(doc.version).equal(2);
-          expect(doc.data).eql({age: 5});
-          done();
+      this.backend.connect(null, null, function(connection) {
+        var doc = connection.get('dogs', 'fido');
+        doc.create({age: 3});
+        // Submit an op after message is sent but before server has a chance to reply
+        process.nextTick(function() {
+          doc.submitOp({p: ['age'], na: 2}, function(err) {
+            if (err) return done(err);
+            expect(doc.version).equal(2);
+            expect(doc.data).eql({age: 5});
+            done();
+          });
         });
       });
     });
@@ -799,35 +801,40 @@ module.exports = function() {
     });
 
     it('snapshot fetch from query does not advance version of doc with pending ops', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.create({name: 'kido'}, function(err) {
-        if (err) return done(err);
-        doc2.fetch(function(err) {
-          if (err) return done(err);
-          doc2.submitOp({p: ['name', 0], si: 'f'}, function(err) {
+      var backend = this.backend;
+      backend.connect(null, null, function(connection1) {
+        backend.connect(null, null, function(connection2) {
+          var doc = connection1.get('dogs', 'fido');
+          var doc2 = connection2.get('dogs', 'fido');
+          doc.create({name: 'kido'}, function(err) {
             if (err) return done(err);
-            expect(doc2.data).eql({name: 'fkido'});
-            doc.connection.createFetchQuery('dogs', {}, null, function(err) {
+            doc2.fetch(function(err) {
               if (err) return done(err);
-              doc.resume();
+              doc2.submitOp({p: ['name', 0], si: 'f'}, function(err) {
+                if (err) return done(err);
+                expect(doc2.data).eql({name: 'fkido'});
+                doc.connection.createFetchQuery('dogs', {}, null, function(err) {
+                  if (err) return done(err);
+                  doc.resume();
+                });
+              });
             });
           });
-        });
-      });
-      process.nextTick(function() {
-        doc.pause();
-        doc.submitOp({p: ['name', 0], sd: 'k'}, function(err) {
-          if (err) return done(err);
-          doc.pause();
-          doc2.fetch(function(err) {
-            if (err) return done(err);
-            expect(doc2.version).equal(3);
-            expect(doc2.data).eql({name: 'fido'});
-            done();
+          process.nextTick(function() {
+            doc.pause();
+            doc.submitOp({p: ['name', 0], sd: 'k'}, function(err) {
+              if (err) return done(err);
+              doc.pause();
+              doc2.fetch(function(err) {
+                if (err) return done(err);
+                expect(doc2.version).equal(3);
+                expect(doc2.data).eql({name: 'fido'});
+                done();
+              });
+            });
+            doc.del();
           });
         });
-        doc.del();
       });
     });
 

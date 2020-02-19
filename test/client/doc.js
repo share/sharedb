@@ -49,6 +49,17 @@ describe('Doc', function() {
     doc.destroy();
   });
 
+  it('errors when trying to set a very large seq', function(done) {
+    var connection = this.connection;
+    connection.seq = Number.MAX_SAFE_INTEGER;
+    var doc = connection.get('dogs', 'fido');
+    doc.create({name: 'fido'});
+    doc.once('error', function(error) {
+      expect(error.code).to.equal('ERR_CONNECTION_SEQ_INTEGER_OVERFLOW');
+      done();
+    });
+  });
+
   describe('when connection closed', function() {
     beforeEach(function(done) {
       this.op1 = [{p: ['snacks'], oi: true}];
