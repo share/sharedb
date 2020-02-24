@@ -1,3 +1,4 @@
+var sinon = require('sinon');
 var expect = require('chai').expect;
 var Backend = require('../../lib/backend');
 var Connection = require('../../lib/client/connection');
@@ -142,11 +143,16 @@ describe('client connection', function() {
       expect(connection.state).equal('connecting');
     });
 
-    it('initial connection.state is connecting, if socket.readyState is OPEN', function() {
-      // https://html.spec.whatwg.org/multipage/web-sockets.html#dom-websocket-open
-      var socket = {readyState: 1};
+    it('initial connection.state is connecting and init handshake, if socket.readyState is OPEN', function() {
+      var socket = {
+        readyState: 1,
+        send: sinon.spy()
+      };
       var connection = new Connection(socket);
       expect(connection.state).equal('connecting');
+      expect(socket.send.calledOnce).to.be.true;
+      var message = JSON.parse(socket.send.getCall(0).args[0]);
+      expect(message.a).to.equal('hs');
     });
 
     it('initial connection.state is disconnected, if socket.readyState is CLOSING', function() {
