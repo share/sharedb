@@ -603,14 +603,14 @@ An `Agent` is the representation of a client's `Connection` state on the server.
 The `Agent` will be made available in all [middleware](#middlewares) requests. The `agent.custom` field is an object that can be used for storing arbitrary information for use in middleware. For example:
 
 ```javascript
-backend.useMiddleware('connect', (request, callback) => {
+backend.use('connect', (request, callback) => {
   // Best practice to clone to prevent mutating the object after connection.
   // You may also want to consider a deep clone, depending on the shape of request.req.
   Object.assign(request.agent.custom, request.req);
   callback();
 });
 
-backend.useMiddleware('readSnapshots', (request, callback) => {
+backend.use('readSnapshots', (request, callback) => {
   const connectionInfo = request.agent.custom;
   const snapshots = request.snapshots;
 
