@@ -95,6 +95,8 @@ __Options__
   through this pub/sub adapter. Defaults to `ShareDB.MemoryPubSub()`.
 * `options.milestoneDb` _(instance of ShareDB.MilestoneDB`)_
   Store snapshots of documents at a specified interval of versions
+* `options.presence` _boolean_
+  Enable presence functionality. Off by default. Note that this feature is not optimized for large numbers of clients and could cause fan-out issues
 
 #### Database Adapters
 * `ShareDB.MemoryDB`, backed by a non-persistent database with no queries

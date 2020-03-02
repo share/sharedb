@@ -18,7 +18,7 @@ describe('DocPresence', function() {
   var presencePauser;
 
   beforeEach(function(done) {
-    backend = new Backend();
+    backend = new Backend({presence: true});
     connection1 = backend.connect();
     connection2 = backend.connect();
 

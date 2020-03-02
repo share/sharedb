@@ -14,7 +14,7 @@ describe('Presence', function() {
   var presencePauser;
 
   beforeEach(function(done) {
-    backend = new Backend();
+    backend = new Backend({presence: true});
     var connectedCount = 0;
     connection1 = backend.connect();
     connection2 = backend.connect();
