@@ -298,10 +298,9 @@ describe('Presence', function() {
     }).to.throw();
   });
 
-  it('throws an error when trying to create a presence with an empty string ID', function() {
-    expect(function() {
-      presence1.create('');
-    }).to.throw();
+  it('assigns an ID if one is not provided', function() {
+    var localPresence = presence1.create();
+    expect(localPresence.presenceId).to.be.ok;
   });
 
   it('returns the error if a local presence cannot be destroyed because of a bad submit', function(done) {

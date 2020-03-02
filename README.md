@@ -707,7 +707,7 @@ presence.create(presenceId): LocalPresence;
 
 Create an instance of [`LocalPresence`](#class-sharedblocalpresence), which can be used to represent local presence. Many or none such local presences may exist on a `Presence` instance.
 
-* `presenceId` _string_: a unique ID representing the local presence. Remember - depending on use-case - the same client might have multiple presences, so this might not necessarily be a user or client ID.
+* `presenceId` _string (optional)_: a unique ID representing the local presence. Remember - depending on use-case - the same client might have multiple presences, so this might not necessarily be a user or client ID. If one is not provided, a random ID will be assigned for you.
 
 #### `destroy`
 
