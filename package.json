@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "arraydiff": "^0.1.1",
-    "async": "^1.4.2",
+    "async": "^2.6.3",
     "fast-deep-equal": "^2.0.1",
     "hat": "0.0.3",
     "ot-json0": "^1.0.1"
