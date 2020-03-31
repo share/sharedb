@@ -76,6 +76,28 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('resubscribes after a destroy', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var presence2a;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      presence2.destroy.bind(presence2),
+      function(next) {
+        presence2a = connection2.getPresence('test-channel');
+        presence2a.subscribe(function(error) {
+          next(error);
+        });
+      },
+      function(next) {
+        localPresence1.submit({index: 5}, errorHandler(done));
+        presence2a.once('receive', function() {
+          next();
+        });
+      }
+    ], done);
+  });
+
   it('requests existing presence from other subscribed clients when subscribing', function(done) {
     var localPresence1 = presence1.create('presence-1');
     async.series([
