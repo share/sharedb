@@ -383,8 +383,10 @@ describe('Presence', function() {
     async.series([
       presence1.subscribe.bind(presence1),
       function(next) {
-        sinon.stub(presence1, 'subscribe').callsFake(function(callback) {
-          callback(new Error('bad'));
+        var handleSubscribe = presence1._handleSubscribe;
+        sinon.stub(presence1, '_handleSubscribe').callsFake(function(error, seq) {
+          error = new Error('bad');
+          handleSubscribe.apply(presence1, [error, seq]);
         });
 
         presence1.once('error', function() {
@@ -392,6 +394,28 @@ describe('Presence', function() {
         });
 
         connection1._setState('disconnected');
+        connection1._setState('connecting');
+        connection1._setState('connected');
+      }
+    ], done);
+  });
+
+  it('emits a subscribe error on reconnection when there are subscribe requests without callbacks', function(done) {
+    async.series([
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        var handleSubscribe = presence1._handleSubscribe;
+        sinon.stub(presence1, '_handleSubscribe').callsFake(function(error, seq) {
+          error = new Error('bad');
+          handleSubscribe.apply(presence1, [error, seq]);
+        });
+
+        presence1.once('error', function() {
+          next();
+        });
+
+        connection1._setState('disconnected');
+        presence1.subscribe();
         connection1._setState('connecting');
         connection1._setState('connected');
       }
