@@ -11,20 +11,20 @@ var statusSpan = document.getElementById('status-span');
 statusSpan.innerHTML = 'Not Connected';
 
 element.style.backgroundColor = 'gray';
-socket.onopen = function() {
+socket.addEventListener('open', function() {
   statusSpan.innerHTML = 'Connected';
   element.style.backgroundColor = 'white';
-};
+});
 
-socket.onclose = function() {
+socket.addEventListener('close', function() {
   statusSpan.innerHTML = 'Closed';
   element.style.backgroundColor = 'gray';
-};
+});
 
-socket.onerror = function() {
+socket.addEventListener('error', function() {
   statusSpan.innerHTML = 'Error';
   element.style.backgroundColor = 'red';
-};
+});
 
 // Create local Doc instance mapped to 'examples' collection document with id 'textarea'
 var doc = connection.get('examples', 'textarea');
