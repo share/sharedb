@@ -656,6 +656,39 @@ module.exports = function() {
       });
     });
 
+    it('unsubscribes synchronously', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      var doc = connection.get('dogs', 'fido');
+      doc.create({name: 'fido'}, function(error) {
+        if (error) return done(error);
+        var callbackCount = 0;
+        var callback = function(error) {
+          if (error) return done(error);
+          if (++callbackCount === 2) {
+            // Should now be unsubscribed
+            expect(doc.wantSubscribe).to.be.false;
+            expect(doc.subscribed).to.be.false;
+            var connection2 = backend.connect();
+            var doc2 = connection2.get('dogs', 'fido');
+            doc2.fetch(function(error) {
+              if (error) return done(error);
+              doc2.submitOp({p: ['name'], oi: 'rover'}, function(error) {
+                if (error) return done(error);
+              });
+              doc.on('op', function() {
+                done(new Error('should not have received op'));
+              });
+              done();
+            });
+          }
+        };
+
+        doc.subscribe(callback);
+        doc.unsubscribe(callback);
+      });
+    });
+
     it('doc destroy stops op updates', function(done) {
       var connection1 = this.backend.connect();
       var connection2 = this.backend.connect();
@@ -757,6 +790,8 @@ module.exports = function() {
         doc2.unsubscribe();
         doc2.subscribe(function(err) {
           if (err) return done(err);
+          expect(doc2.wantSubscribe).to.be.true;
+          expect(doc2.subscribed).to.be.true;
           doc2.on('op', function() {
             done();
           });
@@ -855,16 +890,6 @@ module.exports = function() {
           expect(doc.subscribed).equal(true);
           done();
         });
-      });
-
-      it('is not set to true after subscribe completes if already unsubscribed', function(done) {
-        var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
-        doc.subscribe(function(err) {
-          if (err) return done(err);
-          expect(doc.subscribed).equal(false);
-          done();
-        });
-        doc.unsubscribe();
       });
 
       it('is set to false sychronously in unsubscribe', function(done) {
