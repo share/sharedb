@@ -675,11 +675,11 @@ module.exports = function() {
               if (error) return done(error);
               doc2.submitOp({p: ['name'], oi: 'rover'}, function(error) {
                 if (error) return done(error);
+                done();
               });
               doc.on('op', function() {
                 done(new Error('should not have received op'));
               });
-              done();
             });
           }
         };
