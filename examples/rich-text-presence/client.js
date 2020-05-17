@@ -1,6 +1,6 @@
 var ReconnectingWebSocket = require('reconnecting-websocket');
 var sharedb = require('sharedb/lib/client');
-var richText = require('./rich-text');
+var richText = require('rich-text');
 var Quill = require('quill');
 var QuillCursors = require('quill-cursors');
 var tinycolor = require('tinycolor2');
