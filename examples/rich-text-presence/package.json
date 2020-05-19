@@ -21,7 +21,7 @@
     "quill": "^1.3.7",
     "quill-cursors": "^2.2.1",
     "reconnecting-websocket": "^4.2.0",
-    "rich-text": "^4.0.0",
+    "rich-text": "^4.1.0",
     "sharedb": "file:../../",
     "tinycolor2": "^1.4.1",
     "ws": "^7.2.0"
