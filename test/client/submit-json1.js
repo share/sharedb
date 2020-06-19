@@ -14,6 +14,27 @@ module.exports = function() {
       expect(json1Type.type.compose(firstOp, secondOp)).eql(null);
     });
 
+    it('composes server operations', function(done) {
+      var doc = this.backend.connect().get('dogs', 'fido');
+      var doc2 = this.backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, json1Type.type.uri, function(err) {
+        if (err) return done(err);
+        doc2.fetch(function(err) {
+          if (err) return done(err);
+
+          doc.submitOp(json1Type.removeOp(['age']));
+          doc2.submitOp(json1Type.replaceOp(['age'], 3, 4), function(err) {
+            if (err) return done(err);
+
+            // Ignores replaceOp
+            expect(doc.data).eql({});
+            expect(doc.version).eql(2);
+            done();
+          });
+        });
+      });
+    });
+
     it('create and ops submitted sync get composed even if the composition returns null', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, json1Type.type.uri);
