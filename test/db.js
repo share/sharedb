@@ -40,6 +40,7 @@ module.exports = function(options) {
     require('./client/query-subscribe')({getQuery: getQuery});
     require('./client/query')({getQuery: getQuery});
     require('./client/submit')();
+    require('./client/submit-json1')();
     require('./client/subscribe')();
 
     // Simplified mock of how submit request applies operations. The
