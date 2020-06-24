@@ -936,7 +936,7 @@ module.exports = function() {
 
     it('passing an error in submit middleware rejects an op and calls back with the erorr', function(done) {
       this.backend.use('submit', function(request, next) {
-        if (request.op.op) return next({message: 'Custom error'});
+        if ('op' in request.op) return next({message: 'Custom error'});
         next();
       });
       var doc = this.backend.connect().get('dogs', 'fido');
@@ -955,7 +955,7 @@ module.exports = function() {
 
     it('passing an error in submit middleware rejects an op and emits the erorr', function(done) {
       this.backend.use('submit', function(request, next) {
-        if (request.op.op) return next({message: 'Custom error'});
+        if ('op' in request.op) return next({message: 'Custom error'});
         next();
       });
       var doc = this.backend.connect().get('dogs', 'fido');
@@ -1011,7 +1011,7 @@ module.exports = function() {
 
     it('request.rejectedError() soft rejects an op', function(done) {
       this.backend.use('submit', function(request, next) {
-        if (request.op.op) return next(request.rejectedError());
+        if ('op' in request.op) return next(request.rejectedError());
         next();
       });
       var doc = this.backend.connect().get('dogs', 'fido');
@@ -1030,7 +1030,7 @@ module.exports = function() {
 
     it('request.rejectedError() soft rejects an op without callback', function(done) {
       this.backend.use('submit', function(request, next) {
-        if (request.op.op) return next(request.rejectedError());
+        if ('op' in request.op) return next(request.rejectedError());
         next();
       });
       var doc = this.backend.connect().get('dogs', 'fido');
@@ -1047,9 +1047,9 @@ module.exports = function() {
       });
     });
 
-    it('setting op.op to null makes it a no-op while returning success to the submitting client', function(done) {
+    it('deleting op.op makes it a no-op while returning success to the submitting client', function(done) {
       this.backend.use('submit', function(request, next) {
-        if (request.op) request.op.op = null;
+        if (request.op) delete request.op.op;
         next();
       });
       var doc = this.backend.connect().get('dogs', 'fido');
