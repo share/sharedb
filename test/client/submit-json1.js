@@ -21,15 +21,14 @@ module.exports = function() {
         if (err) return done(err);
         doc2.fetch(function(err) {
           if (err) return done(err);
-
-          doc.submitOp(json1Type.removeOp(['age']));
-          doc2.submitOp(json1Type.replaceOp(['age'], 3, 4), function(err) {
+          doc.submitOp(json1Type.removeOp(['age']), function(err) {
             if (err) return done(err);
-
-            // Ignores replaceOp
-            expect(doc.data).eql({});
-            expect(doc.version).eql(2);
-            done();
+            doc2.submitOp(json1Type.removeOp(['age']), function(err) {
+              if (err) return done(err);
+              expect(doc.data).eql({});
+              expect(doc.version).eql(2);
+              done();
+            });
           });
         });
       });
