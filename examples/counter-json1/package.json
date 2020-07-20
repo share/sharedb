@@ -1,0 +1,29 @@
+{
+  "name": "sharedb-example-counter-json1",
+  "version": "1.0.0",
+  "description": "A simple client/server app using ShareDB (ottype json1) and WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "build": "mkdir -p static/dist/ && ./node_modules/.bin/browserify client.js -o static/dist/bundle.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Dmitry Kharitonov <geakstr@me.com> (https://dkharitonov.me/)",
+  "contributors": [
+    "Dmitry Kharitonov <geakstr@me.com> (https://dkharitonov.me/)",
+    "Avital Oliver <avital@aoliver.org> (https://aoliver.org/)",
+    "Marko Bregant <marko@bregant.si> (https://bregant.si/)"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@teamwork/websocket-json-stream": "^2.0.0",
+    "express": "^4.14.0",
+    "ot-json1": "^1.0.0",
+    "reconnecting-websocket": "^4.2.0",
+    "sharedb": "^1.0.0-beta",
+    "ws": "^7.2.0"
+  },
+  "devDependencies": {
+    "browserify": "^16.5.0"
+  }
+}
