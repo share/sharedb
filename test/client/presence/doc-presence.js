@@ -951,7 +951,11 @@ describe('DocPresence', function() {
 
     async.series([
       doc1.del.bind(doc1),
-      localPresence1.destroy.bind(localPresence1)
+      localPresence1.destroy.bind(localPresence1),
+      function(next) {
+        expect(Object.keys(presence1.localPresences)).to.be.empty;
+        next();
+      }
     ], done);
   });
 });
