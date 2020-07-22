@@ -945,4 +945,17 @@ describe('DocPresence', function() {
       }
     ], done);
   });
+
+  it('does not error when destroying presence for a deleted doc', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      doc1.del.bind(doc1),
+      localPresence1.destroy.bind(localPresence1),
+      function(next) {
+        expect(Object.keys(presence1.localPresences)).to.be.empty;
+        next();
+      }
+    ], done);
+  });
 });
