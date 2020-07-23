@@ -1,6 +1,9 @@
 var Backend = require('../../lib/backend');
 var expect = require('chai').expect;
 var async = require('async');
+var sinon = require('sinon');
+var util = require('../util');
+var errorHandler = util.errorHandler;
 
 describe('Doc', function() {
   beforeEach(function() {
@@ -416,6 +419,153 @@ describe('Doc', function() {
           doc2.submitOp({p: ['colours'], oi: 'white,black,red'}, next);
         }
       ], done);
+    });
+  });
+
+  describe('held ops', function() {
+    var connection1;
+    var connection2;
+    var doc1;
+    var doc2;
+
+    beforeEach(function(done) {
+      connection1 = this.backend.connect();
+      connection2 = this.backend.connect();
+      doc1 = connection1.get('books', '1984');
+      doc2 = connection2.get('books', '1984');
+
+      async.series([
+        doc1.subscribe.bind(doc1),
+        doc1.create.bind(doc1, {title: 'Nineteen Eightyfour'}),
+        doc2.subscribe.bind(doc2)
+      ], done);
+    });
+
+    it('applies a held op locally', function() {
+      doc1.submitHeldOp({p: ['author'], oi: 'George Orwell'});
+      expect(doc1.data.author).to.equal('George Orwell');
+    });
+
+    it('does not send the op to a remote client', function(done) {
+      sinon.spy(connection1, 'send');
+      doc2.on('op', function() {
+        done(new Error('Should not have received op'));
+      });
+      doc1.submitHeldOp({p: ['author'], oi: 'George Orwell'});
+      expect(connection1.send.called).to.be.false;
+      done();
+    });
+
+    it('flushes a held op to a remote client', function(done) {
+      var flush = doc1.submitHeldOp({p: ['author'], oi: 'George Orwell'});
+      flush(errorHandler(done));
+      doc2.on('op', function() {
+        expect(doc2.data.author).to.equal('George Orwell');
+        done();
+      });
+    });
+
+    it('transforms held ops by remote ops', function(done) {
+      var flush = doc1.submitHeldOp({p: ['title', 19], si: ': A Novel'});
+      async.series([
+        doc2.submitOp.bind(doc2, {p: ['title', 15], si: '-'}),
+        doc1.fetch.bind(doc1),
+        flush,
+        doc2.fetch.bind(doc2),
+        function(next) {
+          expect(doc1.data.title).to.equal('Nineteen Eighty-four: A Novel');
+          expect(doc2.data.title).to.equal(doc1.data.title);
+          next();
+        }
+      ], done);
+    });
+
+    it('transforms held ops by local ops synchronously', function(done) {
+      var flush = doc1.submitHeldOp({p: ['title', 19], si: ': A Novel'});
+      doc1.submitOp({p: ['title', 15], si: '-'}, errorHandler(done));
+      flush(errorHandler(done));
+      var count = 0;
+      doc2.on('op', function() {
+        if (++count < 2) return;
+        expect(doc2.data.title).to.equal('Nineteen Eighty-four: A Novel');
+        done();
+      });
+    });
+
+    it('agrees with a remote client about a conflicting local insert', function(done) {
+      var flush = doc1.submitHeldOp({p: ['title', 0], si: '1'});
+      doc1.submitOp({p: ['title', 0], si: '2'}, errorHandler(done));
+      flush(errorHandler(done));
+      doc2.on('op', function() {
+        expect(doc1.data.title).to.equal('21Nineteen Eightyfour');
+        expect(doc2.data.title).to.equal(doc1.data.title);
+        done();
+      });
+    });
+
+    it('submits other ops whilst holding ops', function(done) {
+      doc1.submitHeldOp({p: ['author'], oi: 'George Orwell'});
+      async.series([
+        doc1.submitOp.bind(doc1, {p: ['title', 19], si: ': A Novel'}),
+        doc2.fetch.bind(doc2),
+        function(next) {
+          expect(doc1.data).to.eql({
+            title: 'Nineteen Eightyfour: A Novel',
+            author: 'George Orwell'
+          });
+          expect(doc2.data).to.eql({
+            title: 'Nineteen Eightyfour: A Novel'
+          });
+          next();
+        }
+      ], done);
+    });
+
+    it('holds multiple ops and flushes them one at a time', function(done) {
+      var flush1 = doc1.submitHeldOp({p: ['author'], oi: 'George Orwell'});
+      var flush2 = doc1.submitHeldOp({p: ['title', 19], si: ': A Novel'});
+
+      async.series([
+        flush2,
+        doc2.fetch.bind(doc2),
+        function(next) {
+          expect(doc2.data).to.eql({
+            title: 'Nineteen Eightyfour: A Novel'
+          });
+          next();
+        },
+        flush1,
+        doc2.fetch.bind(doc2),
+        function(next) {
+          expect(doc2.data).to.eql({
+            title: 'Nineteen Eightyfour: A Novel',
+            author: 'George Orwell'
+          });
+          next();
+        }
+      ], done);
+    });
+
+    it('does not apply the flush function twice', function(done) {
+      var flush = doc1.submitHeldOp({p: ['title', 0], si: 'foo '});
+      async.series([
+        flush,
+        flush,
+        function(next) {
+          expect(doc1.data.title).to.equal('foo Nineteen Eightyfour');
+          next();
+        }
+      ], done);
+    });
+
+    it('clears held ops when a document is deleted', function(done) {
+      var flush = doc1.submitHeldOp({p: ['author'], oi: 'George Orwell'});
+      doc1.del(errorHandler(done));
+      flush(function(error) {
+        if (error) return done(error);
+        expect(doc1.data).to.be.undefined;
+        done();
+      });
     });
   });
 });
