@@ -16,7 +16,7 @@ function createDoc(callback) {
   doc.fetch(function(err) {
     if (err) throw err;
     if (doc.type === null) {
-      doc.create({numClicks: 0}, 'json1', callback);
+      doc.create({numClicks: 0}, json1.type.uri, callback);
       return;
     }
     callback();
