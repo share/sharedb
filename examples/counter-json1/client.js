@@ -1,10 +1,10 @@
 var ReconnectingWebSocket = require('reconnecting-websocket');
 var sharedb = require('sharedb/lib/client');
-var json1 = require('ot-json1')
+var json1 = require('ot-json1');
 
 // Open WebSocket connection to ShareDB server
 var socket = new ReconnectingWebSocket('ws://' + window.location.host);
-sharedb.types.register(json1.type)
+sharedb.types.register(json1.type);
 var connection = new sharedb.Connection(socket);
 
 // Create local Doc instance mapped to 'examples' collection document with id 'counter'
@@ -26,7 +26,7 @@ function showNumbers() {
 function increment() {
   // Increment `doc.data.numClicks`. See
   // https://github.com/ottypes/json1/blob/master/spec.md for list of valid operations.
-  doc.submitOp(['numClicks', {ena:1}]);
+  doc.submitOp(['numClicks', {ena: 1}]);
 }
 
 // Expose to index.html
