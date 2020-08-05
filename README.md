@@ -400,6 +400,12 @@ Invokes the given callback function after
 
 Note that `whenNothingPending` does NOT wait for pending `model.query()` calls.
 
+`doc.pause()`
+Prevents own ops being submitted to the server. If subscribed, remote ops will still be received.
+
+`doc.resume()`
+Resume sending own ops to the server if paused. Will flush the queued ops when called.
+
 ### Class: `ShareDB.Query`
 
 `query.ready` _(Boolean)_
