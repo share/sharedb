@@ -492,6 +492,26 @@ describe('Doc', function() {
       });
     });
 
+    it('transforms submitted ops by held ops', function(done) {
+      var flush = doc1.submitHeldOp([{p: ['title', 0], sd: 'Nineteen'}, {p: ['title', 0], si: '19'}]);
+      async.series([
+        doc1.submitOp.bind(doc1, {p: ['title', 9], si: '-'}),
+        doc2.fetch.bind(doc2),
+        function(next) {
+          expect(doc1.data.title).to.equal('19 Eighty-four');
+          expect(doc2.data.title).to.equal('Nineteen Eighty-four');
+          next();
+        },
+        flush,
+        doc2.fetch.bind(doc2),
+        function(next) {
+          expect(doc1.data.title).to.equal('19 Eighty-four');
+          expect(doc2.data.title).to.equal(doc1.data.title);
+          next();
+        }
+      ], done);
+    });
+
     it('agrees with a remote client about a conflicting local insert', function(done) {
       var flush = doc1.submitHeldOp({p: ['title', 0], si: '1'});
       doc1.submitOp({p: ['title', 0], si: '2'}, errorHandler(done));
