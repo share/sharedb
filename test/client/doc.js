@@ -1,6 +1,7 @@
 var Backend = require('../../lib/backend');
 var expect = require('chai').expect;
 var async = require('async');
+var errorHandler = require('../util').errorHandler;
 
 describe('Doc', function() {
   beforeEach(function() {
@@ -265,6 +266,62 @@ describe('Doc', function() {
         doc.fetch();
         verifyConsistency(doc, doc2, doc3, handlers, done);
       });
+    });
+
+    it('emits batch op events for a multi-component local op', function(done) {
+      var doc = this.doc;
+      var beforeOpBatchCount = 0;
+
+      var submittedOp = [
+        {p: ['tricks'], oi: ['fetching']},
+        {p: ['tricks', 0], li: 'stand'}
+      ];
+
+      doc.on('before op batch', function(op, source) {
+        expect(op).to.eql(submittedOp);
+        expect(source).to.be.true;
+        beforeOpBatchCount++;
+      });
+
+      doc.on('op batch', function(op, source) {
+        expect(op).to.eql(submittedOp);
+        expect(source).to.be.true;
+        expect(beforeOpBatchCount).to.equal(1);
+        expect(doc.data).to.eql({tricks: ['stand', 'fetching']});
+        done();
+      });
+
+      doc.submitOp(submittedOp, errorHandler(done));
+    });
+
+    it('emits batch op events for a multi-component remote op', function(done) {
+      var doc = this.doc;
+      var doc2 = this.doc2;
+      var beforeOpBatchCount = 0;
+
+      var submittedOp = [
+        {p: ['tricks'], oi: ['fetching']},
+        {p: ['tricks', 0], li: 'stand'}
+      ];
+
+      doc.on('before op batch', function(op, source) {
+        expect(op).to.eql(submittedOp);
+        expect(source).to.be.false;
+        beforeOpBatchCount++;
+      });
+
+      doc.on('op batch', function(op, source) {
+        expect(op).to.eql(submittedOp);
+        expect(source).to.be.false;
+        expect(beforeOpBatchCount).to.equal(1);
+        expect(doc.data).to.eql({tricks: ['stand', 'fetching']});
+        done();
+      });
+
+      async.series([
+        doc.subscribe.bind(doc),
+        doc2.submitOp.bind(doc2, submittedOp)
+      ], errorHandler(done));
     });
   });
 

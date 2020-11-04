@@ -364,6 +364,12 @@ An operation is about to be applied to the data. `source` will be `false` for op
 `doc.on('op', function(op, source) {...})`
 An operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
+`doc.on('before op batch'), function(op, source) {...})`
+A potentially multi-part operation is about to be applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+
+`doc.on('op batch'), function(op, source) {...})`
+A potentially multi-part operation was applied to the data. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
+
 `doc.on('del', function(data, source) {...})`
 The document was deleted. Document contents before deletion are passed in as an argument. `source` will be `false` for ops received from the server and defaults to `true` for ops generated locally.
 
