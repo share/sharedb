@@ -88,6 +88,38 @@ describe('client connection', function() {
     connection.socket.onerror({message: 'Test'});
   });
 
+  it('connects to a Backend that binds its socket late', function(done) {
+    var backend = this.backend;
+    var socket = new StreamSocket();
+    var connection = new Connection(socket);
+    socket._open();
+    var doc = connection.get('test', '123');
+    doc.fetch(done);
+
+    socket.stream.on('data', function() {
+      // Registering a stream triggers data to get flushed in our tests.
+      // In production, aw web socket might lose messages any time between
+      // connection and calling backend.listen()
+    });
+
+    process.nextTick(function() {
+      backend.listen(socket.stream);
+    });
+  });
+
+  it('connects when binding the Connection late', function(done) {
+    var backend = this.backend;
+    var socket = new StreamSocket();
+    socket._open();
+    backend.listen(socket.stream);
+
+    process.nextTick(function() {
+      var connection = new Connection(socket);
+      var doc = connection.get('test', '123');
+      doc.fetch(done);
+    });
+  });
+
   describe('backend.agentsCount', function() {
     it('updates after connect and connection.close()', function(done) {
       var backend = this.backend;
