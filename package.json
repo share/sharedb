@@ -23,8 +23,8 @@
     "sinon": "^7.5.0"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha && npm run lint",
-    "test-cover": "node_modules/nyc/bin/nyc.js --temp-dir=coverage -r text -r lcov node_modules/mocha/bin/_mocha && npm run lint",
+    "test": "mocha",
+    "test-cover": "nyc --temp-dir=coverage -r text -r lcov npm test",
     "lint": "./node_modules/.bin/eslint --ignore-path .gitignore '**/*.js'",
     "lint:fix": "npm run lint -- --fix"
   },
