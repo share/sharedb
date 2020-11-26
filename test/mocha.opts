@@ -1,4 +1,0 @@
---reporter spec
---check-leaks
---recursive
---file test/setup.js
