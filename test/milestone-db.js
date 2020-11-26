@@ -99,431 +99,436 @@ module.exports = function(options) {
   var create = options.create;
 
   describe('Milestone Database', function() {
-    var db;
-    var backend;
-
-    beforeEach(function(done) {
-      create(function(error, createdDb) {
-        if (error) return done(error);
-        db = createdDb;
-        backend = new Backend({milestoneDb: db});
-        done();
-      });
-    });
-
-    afterEach(function(done) {
-      db.close(done);
-    });
-
-    it('can call close() without a callback', function(done) {
-      create(function(error, db) {
-        if (error) return done(error);
-        db.close();
-        done();
-      });
-    });
-
-    it('stores and fetches a milestone snapshot', function(done) {
-      var snapshot = new Snapshot(
-        'catcher-in-the-rye',
-        2,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye'},
-        null
-      );
-
-      async.waterfall([
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot),
-        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 2),
-        function(retrievedSnapshot, next) {
-          expect(retrievedSnapshot).to.eql(snapshot);
-          next();
-        }
-      ], done);
-    });
-
-    it('fetches the most recent snapshot before the requested version', function(done) {
-      var snapshot1 = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye'},
-        null
-      );
-
-      var snapshot2 = new Snapshot(
-        'catcher-in-the-rye',
-        2,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye', author: 'J.D. Salinger'},
-        null
-      );
-
-      var snapshot10 = new Snapshot(
-        'catcher-in-the-rye',
-        10,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye', author: 'J.D. Salinger', publicationDate: '1951-07-16'},
-        null
-      );
-
-      async.waterfall([
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot10),
-        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
-        function(snapshot, next) {
-          expect(snapshot).to.eql(snapshot2);
-          next();
-        }
-      ], done);
-    });
-
-    it('fetches the most recent snapshot even if they are inserted in the wrong order', function(done) {
-      var snapshot1 = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye'},
-        null
-      );
-
-      var snapshot2 = new Snapshot(
-        'catcher-in-the-rye',
-        2,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye', author: 'J.D. Salinger'},
-        null
-      );
-
-      async.waterfall([
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
-        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
-        function(snapshot, next) {
-          expect(snapshot).to.eql(snapshot2);
-          next();
-        }
-      ], done);
-    });
-
-    it('fetches the most recent snapshot when the version is null', function(done) {
-      var snapshot1 = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye'},
-        null
-      );
-
-      var snapshot2 = new Snapshot(
-        'catcher-in-the-rye',
-        2,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye', author: 'J.D. Salinger'},
-        null
-      );
-
-      async.waterfall([
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
-        db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
-        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
-        function(snapshot, next) {
-          expect(snapshot).to.eql(snapshot2);
-          next();
-        }
-      ], done);
-    });
-
-    it('errors when fetching an undefined version', function(done) {
-      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    it('errors when fetching version -1', function(done) {
-      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', -1, function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    it('errors when fetching version "foo"', function(done) {
-      db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 'foo', function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    it('errors when fetching a null collection', function(done) {
-      db.getMilestoneSnapshot(null, 'catcher-in-the-rye', 1, function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    it('errors when fetching a null ID', function(done) {
-      db.getMilestoneSnapshot('books', null, 1, function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    it('errors when saving a null collection', function(done) {
-      var snapshot = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye'},
-        null
-      );
-
-      db.saveMilestoneSnapshot(null, snapshot, function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    it('returns undefined if no snapshot exists', function(done) {
-      async.waterfall([
-        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),
-        function(snapshot, next) {
-          expect(snapshot).to.equal(undefined);
-          next();
-        }
-      ], done);
-    });
-
-    it('does not store a milestone snapshot on commit', function(done) {
-      var doc = backend.connect().get('books', 'catcher-in-the-rye');
-      async.waterfall([
-        doc.create.bind(doc, {title: 'Catcher in the Rye'}),
-        db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
-        function(snapshot, next) {
-          expect(snapshot).to.equal(undefined);
-          next();
-        }
-      ], done);
-    });
-
-    it('can save without a callback', function(done) {
-      var snapshot = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        {title: 'Catcher in the Rye'},
-        null
-      );
-
-      db.on('save', function(collection, snapshot) {
-        expect(collection).to.equal('books');
-        expect(snapshot).to.eql(snapshot);
-        done();
-      });
-
-      db.saveMilestoneSnapshot('books', snapshot);
-    });
-
-    it('errors when the snapshot is undefined', function(done) {
-      db.saveMilestoneSnapshot('books', undefined, function(error) {
-        expect(error).instanceOf(Error);
-        done();
-      });
-    });
-
-    describe('snapshots with timestamps', function() {
-      var snapshot1 = new Snapshot(
-        'catcher-in-the-rye',
-        1,
-        'http://sharejs.org/types/JSONv0',
-        {
-          title: 'Catcher in the Rye'
-        },
-        {
-          ctime: 1000,
-          mtime: 1000
-        }
-      );
-
-      var snapshot2 = new Snapshot(
-        'catcher-in-the-rye',
-        2,
-        'http://sharejs.org/types/JSONv0',
-        {
-          title: 'Catcher in the Rye',
-          author: 'JD Salinger'
-        },
-        {
-          ctime: 1000,
-          mtime: 2000
-        }
-      );
-
-      var snapshot3 = new Snapshot(
-        'catcher-in-the-rye',
-        3,
-        'http://sharejs.org/types/JSONv0',
-        {
-          title: 'Catcher in the Rye',
-          author: 'J.D. Salinger'
-        },
-        {
-          ctime: 1000,
-          mtime: 3000
-        }
-      );
+    describe('default options', function() {
+      var db;
+      var backend;
 
       beforeEach(function(done) {
-        async.series([
-          db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
-          db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
-          db.saveMilestoneSnapshot.bind(db, 'books', snapshot3)
+        create(function(error, createdDb) {
+          if (error) return done(error);
+          db = createdDb;
+          backend = new Backend({milestoneDb: db});
+          done();
+        });
+      });
+
+      afterEach(function(done) {
+        backend.close(done);
+      });
+
+      it('can call close() without a callback', function(done) {
+        create(function(error, db) {
+          if (error) return done(error);
+          db.close();
+          done();
+        });
+      });
+
+      it('stores and fetches a milestone snapshot', function(done) {
+        var snapshot = new Snapshot(
+          'catcher-in-the-rye',
+          2,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye'},
+          null
+        );
+
+        async.waterfall([
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot),
+          db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 2),
+          function(retrievedSnapshot, next) {
+            expect(retrievedSnapshot).to.eql(snapshot);
+            next();
+          }
         ], done);
       });
 
-      describe('fetching a snapshot before or at a time', function() {
-        it('fetches a snapshot before a given time', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 2500),
-            function(snapshot, next) {
-              expect(snapshot).to.eql(snapshot2);
-              next();
-            }
-          ], done);
-        });
+      it('fetches the most recent snapshot before the requested version', function(done) {
+        var snapshot1 = new Snapshot(
+          'catcher-in-the-rye',
+          1,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye'},
+          null
+        );
 
-        it('fetches a snapshot at an exact time', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 2000),
-            function(snapshot, next) {
-              expect(snapshot).to.eql(snapshot2);
-              next();
-            }
-          ], done);
-        });
+        var snapshot2 = new Snapshot(
+          'catcher-in-the-rye',
+          2,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye', author: 'J.D. Salinger'},
+          null
+        );
 
-        it('fetches the first snapshot for a null timestamp', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', null),
-            function(snapshot, next) {
-              expect(snapshot).to.eql(snapshot1);
-              next();
-            }
-          ], done);
-        });
+        var snapshot10 = new Snapshot(
+          'catcher-in-the-rye',
+          10,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye', author: 'J.D. Salinger', publicationDate: '1951-07-16'},
+          null
+        );
 
-        it('returns an error for a string timestamp', function(done) {
-          db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function(error) {
-            expect(error).instanceOf(Error);
-            done();
-          });
-        });
+        async.waterfall([
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot10),
+          db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
+          function(snapshot, next) {
+            expect(snapshot).to.eql(snapshot2);
+            next();
+          }
+        ], done);
+      });
 
-        it('returns an error for a negative timestamp', function(done) {
-          db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', -1, function(error) {
-            expect(error).instanceOf(Error);
-            done();
-          });
-        });
+      it('fetches the most recent snapshot even if they are inserted in the wrong order', function(done) {
+        var snapshot1 = new Snapshot(
+          'catcher-in-the-rye',
+          1,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye'},
+          null
+        );
 
-        it('returns undefined if there are no snapshots before a time', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 0),
-            function(snapshot, next) {
-              expect(snapshot).to.equal(undefined);
-              next();
-            }
-          ], done);
-        });
+        var snapshot2 = new Snapshot(
+          'catcher-in-the-rye',
+          2,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye', author: 'J.D. Salinger'},
+          null
+        );
 
-        it('errors if no collection is provided', function(done) {
-          db.getMilestoneSnapshotAtOrBeforeTime(undefined, 'catcher-in-the-rye', 0, function(error) {
-            expect(error).instanceOf(Error);
-            done();
-          });
-        });
+        async.waterfall([
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+          db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 4),
+          function(snapshot, next) {
+            expect(snapshot).to.eql(snapshot2);
+            next();
+          }
+        ], done);
+      });
 
-        it('errors if no ID is provided', function(done) {
-          db.getMilestoneSnapshotAtOrBeforeTime('books', undefined, 0, function(error) {
-            expect(error).instanceOf(Error);
-            done();
-          });
+      it('fetches the most recent snapshot when the version is null', function(done) {
+        var snapshot1 = new Snapshot(
+          'catcher-in-the-rye',
+          1,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye'},
+          null
+        );
+
+        var snapshot2 = new Snapshot(
+          'catcher-in-the-rye',
+          2,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye', author: 'J.D. Salinger'},
+          null
+        );
+
+        async.waterfall([
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+          db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+          db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
+          function(snapshot, next) {
+            expect(snapshot).to.eql(snapshot2);
+            next();
+          }
+        ], done);
+      });
+
+      it('errors when fetching an undefined version', function(done) {
+        db.getMilestoneSnapshot('books', 'catcher-in-the-rye', undefined, function(error) {
+          expect(error).instanceOf(Error);
+          done();
         });
       });
 
-      describe('fetching a snapshot after or at a time', function() {
-        it('fetches a snapshot after a given time', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 2500),
-            function(snapshot, next) {
-              expect(snapshot).to.eql(snapshot3);
-              next();
-            }
+      it('errors when fetching version -1', function(done) {
+        db.getMilestoneSnapshot('books', 'catcher-in-the-rye', -1, function(error) {
+          expect(error).instanceOf(Error);
+          done();
+        });
+      });
+
+      it('errors when fetching version "foo"', function(done) {
+        db.getMilestoneSnapshot('books', 'catcher-in-the-rye', 'foo', function(error) {
+          expect(error).instanceOf(Error);
+          done();
+        });
+      });
+
+      it('errors when fetching a null collection', function(done) {
+        db.getMilestoneSnapshot(null, 'catcher-in-the-rye', 1, function(error) {
+          expect(error).instanceOf(Error);
+          done();
+        });
+      });
+
+      it('errors when fetching a null ID', function(done) {
+        db.getMilestoneSnapshot('books', null, 1, function(error) {
+          expect(error).instanceOf(Error);
+          done();
+        });
+      });
+
+      it('errors when saving a null collection', function(done) {
+        var snapshot = new Snapshot(
+          'catcher-in-the-rye',
+          1,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye'},
+          null
+        );
+
+        db.saveMilestoneSnapshot(null, snapshot, function(error) {
+          expect(error).instanceOf(Error);
+          done();
+        });
+      });
+
+      it('returns undefined if no snapshot exists', function(done) {
+        async.waterfall([
+          db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),
+          function(snapshot, next) {
+            expect(snapshot).to.equal(undefined);
+            next();
+          }
+        ], done);
+      });
+
+      it('does not store a milestone snapshot on commit', function(done) {
+        var doc = backend.connect().get('books', 'catcher-in-the-rye');
+        async.waterfall([
+          doc.create.bind(doc, {title: 'Catcher in the Rye'}),
+          db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', null),
+          function(snapshot, next) {
+            expect(snapshot).to.equal(undefined);
+            next();
+          }
+        ], done);
+      });
+
+      it('can save without a callback', function(done) {
+        var snapshot = new Snapshot(
+          'catcher-in-the-rye',
+          1,
+          'http://sharejs.org/types/JSONv0',
+          {title: 'Catcher in the Rye'},
+          null
+        );
+
+        db.on('save', function(collection, snapshot) {
+          expect(collection).to.equal('books');
+          expect(snapshot).to.eql(snapshot);
+          done();
+        });
+
+        db.saveMilestoneSnapshot('books', snapshot);
+      });
+
+      it('errors when the snapshot is undefined', function(done) {
+        db.saveMilestoneSnapshot('books', undefined, function(error) {
+          expect(error).instanceOf(Error);
+          done();
+        });
+      });
+
+      describe('snapshots with timestamps', function() {
+        var snapshot1 = new Snapshot(
+          'catcher-in-the-rye',
+          1,
+          'http://sharejs.org/types/JSONv0',
+          {
+            title: 'Catcher in the Rye'
+          },
+          {
+            ctime: 1000,
+            mtime: 1000
+          }
+        );
+
+        var snapshot2 = new Snapshot(
+          'catcher-in-the-rye',
+          2,
+          'http://sharejs.org/types/JSONv0',
+          {
+            title: 'Catcher in the Rye',
+            author: 'JD Salinger'
+          },
+          {
+            ctime: 1000,
+            mtime: 2000
+          }
+        );
+
+        var snapshot3 = new Snapshot(
+          'catcher-in-the-rye',
+          3,
+          'http://sharejs.org/types/JSONv0',
+          {
+            title: 'Catcher in the Rye',
+            author: 'J.D. Salinger'
+          },
+          {
+            ctime: 1000,
+            mtime: 3000
+          }
+        );
+
+        beforeEach(function(done) {
+          async.series([
+            db.saveMilestoneSnapshot.bind(db, 'books', snapshot1),
+            db.saveMilestoneSnapshot.bind(db, 'books', snapshot2),
+            db.saveMilestoneSnapshot.bind(db, 'books', snapshot3)
           ], done);
         });
 
-        it('fetches a snapshot at an exact time', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 2000),
-            function(snapshot, next) {
-              expect(snapshot).to.eql(snapshot2);
-              next();
-            }
-          ], done);
-        });
+        describe('fetching a snapshot before or at a time', function() {
+          it('fetches a snapshot before a given time', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 2500),
+              function(snapshot, next) {
+                expect(snapshot).to.eql(snapshot2);
+                next();
+              }
+            ], done);
+          });
 
-        it('fetches the last snapshot for a null timestamp', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', null),
-            function(snapshot, next) {
-              expect(snapshot).to.eql(snapshot3);
-              next();
-            }
-          ], done);
-        });
+          it('fetches a snapshot at an exact time', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 2000),
+              function(snapshot, next) {
+                expect(snapshot).to.eql(snapshot2);
+                next();
+              }
+            ], done);
+          });
 
-        it('returns an error for a string timestamp', function(done) {
-          db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function(error) {
-            expect(error).instanceOf(Error);
-            done();
+          it('fetches the first snapshot for a null timestamp', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', null),
+              function(snapshot, next) {
+                expect(snapshot).to.eql(snapshot1);
+                next();
+              }
+            ], done);
+          });
+
+          it('returns an error for a string timestamp', function(done) {
+            db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
+          });
+
+          it('returns an error for a negative timestamp', function(done) {
+            db.getMilestoneSnapshotAtOrBeforeTime('books', 'catcher-in-the-rye', -1, function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
+          });
+
+          it('returns undefined if there are no snapshots before a time', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrBeforeTime.bind(db, 'books', 'catcher-in-the-rye', 0),
+              function(snapshot, next) {
+                expect(snapshot).to.equal(undefined);
+                next();
+              }
+            ], done);
+          });
+
+          it('errors if no collection is provided', function(done) {
+            db.getMilestoneSnapshotAtOrBeforeTime(undefined, 'catcher-in-the-rye', 0, function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
+          });
+
+          it('errors if no ID is provided', function(done) {
+            db.getMilestoneSnapshotAtOrBeforeTime('books', undefined, 0, function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
           });
         });
 
-        it('returns an error for a negative timestamp', function(done) {
-          db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', -1, function(error) {
-            expect(error).instanceOf(Error);
-            done();
+        describe('fetching a snapshot after or at a time', function() {
+          it('fetches a snapshot after a given time', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 2500),
+              function(snapshot, next) {
+                expect(snapshot).to.eql(snapshot3);
+                next();
+              }
+            ], done);
           });
-        });
 
-        it('returns undefined if there are no snapshots after a time', function(done) {
-          async.waterfall([
-            db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 4000),
-            function(snapshot, next) {
-              expect(snapshot).to.equal(undefined);
-              next();
-            }
-          ], done);
-        });
-
-        it('errors if no collection is provided', function(done) {
-          db.getMilestoneSnapshotAtOrAfterTime(undefined, 'catcher-in-the-rye', 0, function(error) {
-            expect(error).instanceOf(Error);
-            done();
+          it('fetches a snapshot at an exact time', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 2000),
+              function(snapshot, next) {
+                expect(snapshot).to.eql(snapshot2);
+                next();
+              }
+            ], done);
           });
-        });
 
-        it('errors if no ID is provided', function(done) {
-          db.getMilestoneSnapshotAtOrAfterTime('books', undefined, 0, function(error) {
-            expect(error).instanceOf(Error);
-            done();
+          it('fetches the last snapshot for a null timestamp', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', null),
+              function(snapshot, next) {
+                expect(snapshot).to.eql(snapshot3);
+                next();
+              }
+            ], done);
+          });
+
+          it('returns an error for a string timestamp', function(done) {
+            db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', 'not-a-timestamp', function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
+          });
+
+          it('returns an error for a negative timestamp', function(done) {
+            db.getMilestoneSnapshotAtOrAfterTime('books', 'catcher-in-the-rye', -1, function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
+          });
+
+          it('returns undefined if there are no snapshots after a time', function(done) {
+            async.waterfall([
+              db.getMilestoneSnapshotAtOrAfterTime.bind(db, 'books', 'catcher-in-the-rye', 4000),
+              function(snapshot, next) {
+                expect(snapshot).to.equal(undefined);
+                next();
+              }
+            ], done);
+          });
+
+          it('errors if no collection is provided', function(done) {
+            db.getMilestoneSnapshotAtOrAfterTime(undefined, 'catcher-in-the-rye', 0, function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
+          });
+
+          it('errors if no ID is provided', function(done) {
+            db.getMilestoneSnapshotAtOrAfterTime('books', undefined, 0, function(error) {
+              expect(error).instanceOf(Error);
+              done();
+            });
           });
         });
       });
     });
 
     describe('milestones enabled for every version', function() {
+      var db;
+      var backend;
+
       beforeEach(function(done) {
         var options = {interval: 1};
 
@@ -533,6 +538,10 @@ module.exports = function(options) {
           backend = new Backend({milestoneDb: db});
           done();
         });
+      });
+
+      afterEach(function(done) {
+        backend.close(done);
       });
 
       it('stores a milestone snapshot on commit', function(done) {
@@ -548,6 +557,9 @@ module.exports = function(options) {
     });
 
     describe('milestones enabled for every other version', function() {
+      var db;
+      var backend;
+
       beforeEach(function(done) {
         var options = {interval: 2};
 
@@ -557,6 +569,10 @@ module.exports = function(options) {
           backend = new Backend({milestoneDb: db});
           done();
         });
+      });
+
+      afterEach(function(done) {
+        backend.close(done);
       });
 
       it('only stores even-numbered versions', function(done) {
