@@ -36,11 +36,15 @@ describe('client connection', function() {
     connection.close();
   });
 
-  it('ends the agent steam on call to agent.close()', function(done) {
+  it('ends the agent stream on call to agent.close()', function(done) {
+    var isDone = false;
+    var finish = function() {
+      if (!isDone) done();
+    };
+
     this.backend.use('connect', function(request, next) {
-      request.agent.stream.on('end', function() {
-        done();
-      });
+      request.agent.stream.on('close', finish);
+      request.agent.stream.on('end', finish);
       request.agent.close();
       next();
     });
