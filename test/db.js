@@ -36,6 +36,16 @@ module.exports = function(options) {
       });
     });
 
+    it('calls db.close() multiple times', function(done) {
+      var db = this.db;
+      db.close(function(error) {
+        if (error) return done(error);
+        db.close(function(error) {
+          done(error);
+        });
+      });
+    });
+
     require('./client/projections')({getQuery: getQuery});
     require('./client/query-subscribe')({getQuery: getQuery});
     require('./client/query')({getQuery: getQuery});
