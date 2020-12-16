@@ -272,19 +272,27 @@ module.exports = function() {
                 done(new Error('fido on connection2 should not have received any ops, got:' +
                   JSON.stringify(op)));
               });
-              // Issue some operations on connection1.
-              connection.get('dogs', 'fido').submitOp([{p: ['age'], na: 1}]);
-              connection.get('dogs', 'spot').submitOp([{p: ['age'], na: 1}]);
-              // Check that connection2 receives the op for spot but not fido.
-              connection2.once('receive', function() {
-                // 'receive' happens before the client processes the message. Wait an extra tick so we
-                // can check the effects of the message.
-                process.nextTick(function() {
-                  expect(fido.data).eql(undefined);
-                  expect(spot.data).eql({age: 6});
-                  done();
-                });
-              });
+
+              var fido1 = connection.get('dogs', 'fido');
+              var spot1 = connection.get('dogs', 'spot');
+
+              async.parallel([
+                // Check that connection2 receives the op for spot but not fido.
+                function(cb) {
+                  connection2.on('receive', function() {
+                    // 'receive' happens before the client processes the message. Wait an extra tick so we
+                    // can check the effects of the message.
+                    process.nextTick(function() {
+                      expect(fido.data).eql(undefined);
+                      expect(spot.data).eql({age: 6});
+                      cb();
+                    });
+                  });
+                },
+                // Issue some operations on connection1.
+                fido1.submitOp.bind(fido1, [{p: ['age'], na: 1}]),
+                spot1.submitOp.bind(spot1, [{p: ['age'], na: 1}])
+              ], done);
             });
             connection2.endBulk();
           });
