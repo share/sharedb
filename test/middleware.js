@@ -2,6 +2,7 @@ var Backend = require('../lib/backend');
 var expect = require('chai').expect;
 var util = require('./util');
 var types = require('../lib/types');
+var errorHandler = util.errorHandler;
 
 describe('middleware', function() {
   beforeEach(function() {
@@ -312,6 +313,106 @@ describe('middleware', function() {
           });
         });
       });
+    });
+  });
+
+  describe('extra information (x)', function() {
+    var connection;
+    var db;
+    var doc;
+
+    beforeEach(function(done) {
+      connection = this.backend.connect();
+      db = this.backend.db;
+      doc = connection.get('dogs', 'fido');
+
+      doc.create({name: 'fido'}, done);
+      // Need to actively enable this feature
+      doc.submitSource = true;
+    });
+
+    it('has the source in commit middleware', function(done) {
+      this.backend.use('commit', function(request) {
+        expect(request.extra).to.eql({source: 'trainer'});
+        done();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {source: 'trainer'}, errorHandler(done));
+    });
+
+    it('has the source in afterWrite middleware', function(done) {
+      this.backend.use('afterWrite', function(request) {
+        expect(request.extra).to.eql({source: 'trainer'});
+        done();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {source: 'trainer'}, errorHandler(done));
+    });
+
+    it('does not commit extra information to the database', function(done) {
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {source: 'trainer'}, function(error) {
+        if (error) return done(error);
+        var ops = db.ops.dogs.fido;
+        ops.forEach(function(op) {
+          expect('x' in op).to.be.false;
+        });
+        done();
+      });
+    });
+
+    it('does not submit the source if it is disabled', function(done) {
+      doc.submitSource = false;
+
+      this.backend.use('commit', function(request) {
+        expect('source' in request.extra).to.be.false;
+        done();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {source: 'trainer'}, errorHandler(done));
+    });
+
+    it('composes ops with the same source', function(done) {
+      doc.submitSource = true;
+
+      this.backend.use('commit', function(request) {
+        expect(request.op.op).to.have.length(3);
+        expect(request.extra).to.eql({source: {type: 'trainer'}});
+        done();
+      });
+
+      var source = {type: 'trainer'};
+      doc.submitOp([{p: ['tricks'], oi: []}], {source: source}, errorHandler(done));
+      doc.submitOp([{p: ['tricks', 0], li: 'fetch'}], {source: source}, errorHandler(done));
+      doc.submitOp([{p: ['tricks', 1], li: 'stay'}], {source: source}, errorHandler(done));
+    });
+
+    it('does not compose ops with the different sources', function(done) {
+      doc.submitSource = true;
+
+      this.backend.use('commit', function(request) {
+        expect(request.op.op).to.have.length(2);
+        expect(request.extra).to.eql({source: {type: 'trainer'}});
+        done();
+      });
+
+      var source1 = {type: 'trainer'};
+      var source2 = {type: 'owner'};
+      doc.submitOp([{p: ['tricks'], oi: []}], {source: source1}, errorHandler(done));
+      doc.submitOp([{p: ['tricks', 0], li: 'fetch'}], {source: source1}, errorHandler(done));
+      doc.submitOp([{p: ['tricks', 1], li: 'stay'}], {source: source2}, errorHandler(done));
+    });
+
+    it('composes ops with different sources when disabled', function(done) {
+      doc.submitSource = false;
+
+      this.backend.use('commit', function(request) {
+        expect(request.op.op).to.have.length(3);
+        done();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: []}], {source: 'a'}, errorHandler(done));
+      doc.submitOp([{p: ['tricks', 0], li: 'fetch'}], {source: 'b'}, errorHandler(done));
+      doc.submitOp([{p: ['tricks', 1], li: 'stay'}], {source: 'c'}, errorHandler(done));
     });
   });
 });
