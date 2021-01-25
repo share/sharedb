@@ -628,6 +628,16 @@ Fetch snapshots that match the provided query. In most cases, querying the backi
 * `options` _Object_: an object that may contain a `db` property, which specifies which database to run the query against. These extra databases can be attached via the `extraDbs` option in the `Backend` constructor
 * `callback` _Function_: a callback with the signature `function (error: Error, snapshots: Snapshot[], extra: Object): void;`, where `snapshots` is an array of the snapshots matching the query, and `extra` is an (optional) object that the database adapter might return with more information about the results (such as counts)
 
+#### `on`
+
+```javascript
+backend.on('submitRequestEnd', callback): void;
+```
+
+A submit request is about to return to the client. This is called whether the request was a success or a failure.
+
+* `callback` _Function_: callback for handling the event: `function (error, request): void;`
+
 ### Class: `ShareDB.Agent`
 
 An `Agent` is the representation of a client's `Connection` state on the server. If the `Connection` was created through `backend.connect` (ie the client is running on the server), then the `Agent` associated with a `Connection` can be accessed through a direct reference: `connection.agent`.
