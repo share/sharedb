@@ -100,5 +100,45 @@ describe('Backend', function() {
         });
       });
     });
+
+    describe('submitRequestEnd', function() {
+      it('emits after write', function(done) {
+        var afterWriteCalled = false;
+
+        backend.use(backend.MIDDLEWARE_ACTIONS.afterWrite, function(request, next) {
+          afterWriteCalled = true;
+          next();
+        });
+
+        backend.on('submitRequestEnd', function(error, request) {
+          expect(error).not.to.be.ok;
+          expect(request).to.be.ok;
+          expect(afterWriteCalled).to.be.true;
+          done();
+        });
+
+        var op = {op: {p: ['publicationYear'], oi: 1949}};
+        backend.submit(null, 'books', '1984', op, null, function(error) {
+          if (error) done(error);
+        });
+      });
+
+      it('emits after an error is raised in the middleware', function(done) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.submit, function(request, next) {
+          next(new Error());
+        });
+
+        backend.on('submitRequestEnd', function(error, request) {
+          expect(error).to.be.ok;
+          expect(request).to.be.ok;
+          done();
+        });
+
+        var op = {op: {p: ['publicationYear'], oi: 1949}};
+        backend.submit(null, 'books', '1984', op, null, function() {
+          // Swallow the error
+        });
+      });
+    });
   });
 });
