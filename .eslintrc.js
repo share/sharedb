@@ -28,6 +28,8 @@ const SHAREDB_RULES = {
   'no-unused-vars': ['error', {vars: 'all', args: 'after-used'}],
   // It's more readable to ensure we only have one statement per line
   'max-statements-per-line': ['error', {max: 1}],
+  // ES3 doesn't support spread
+  'prefer-spread': 'off',
   // as-needed quote props are easier to write
   'quote-props': ['error', 'as-needed'],
   'require-jsdoc': 'off',
