@@ -65,7 +65,7 @@ Optional
 > An instance of a ShareDB [milestone adapter]({% link adapters/milestone.md %}) that provides the data store for [milestone snapshots]({% link document-history.md %}#milestone-snapshots), which are historical snapshots of documents stored at a specified version interval.
 
 {: .info }
-> If this option is omitted, milestone snapshots will **not** be enabled, but historic snapshots *may* still be fetched.
+> If this option is omitted, milestone snapshots will **not** be enabled, but document history *may* still be accessed with a potential [performance penalty]({% link document-history.md %}#milestone-snapshots).
 
 {: .d-inline-block }
 
@@ -343,7 +343,7 @@ backend.getOps(agent, index, id, from, to [, options [, callback]])
 
 `to` -- number
 
-> The last op version. This version will *not* be fetched (ie `to` is non-inclusive). If set to `null`, then ops will be fetched up to the latest version
+> The last op version. This version will *not* be fetched (i.e. `to` is non-inclusive). If set to `null`, then ops will be fetched up to the latest version
 
 
 {: .d-inline-block }

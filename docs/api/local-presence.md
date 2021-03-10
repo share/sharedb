@@ -48,7 +48,7 @@ Optional
 
 Send the current value of presence to other subscribers, without updating it. This is like [`submit()`](#submit) but without changing the value.
 
-This can be useful if local presence is set to periodically expire (eg after a period of inactivity).
+This can be useful if local presence is set to periodically expire (e.g. after a period of inactivity).
 
 ```javascript
 localPresence.send([callback])

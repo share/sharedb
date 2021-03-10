@@ -53,4 +53,4 @@ doc.submitOp([{retain: 5}, {insert: ' ipsum'}])
 ```
 
 {: .warn }
-The short-hand name can also be used (eg `'rich-text'`), but these don't have to be unique, so types may clash if multiple types with the same name have been registered. Best practice is to use the URI.
+The short-hand name can also be used (e.g. `'rich-text'`), but these don't have to be unique, so types may clash if multiple types with the same name have been registered. Best practice is to use the URI.

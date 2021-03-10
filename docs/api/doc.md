@@ -53,6 +53,7 @@ A `Doc` instance can be obtained with [`connection.getDoc()`]({% link api/connec
 
 > Default: `false`
 
+<!-- TODO: Add documentation on what it means to compose ops -->
 > Set to `true` to prevent ops from being composed together. This is read at the time of calling [`submitOp()`](#submitop), so it may be toggled on before submitting a specific op, and toggled off again afterwards
 
 ### `submitSource` -- boolean
@@ -277,6 +278,7 @@ doc.del([options [, callback]])
 ```
 
 {: .info }
+<!-- TODO: Add more detail on tombstones, how to "truly" delete docs, etc. -->
 ShareDB documents and their ops are never truly deleted from the database. Instead, they will be tombstoned.
 
 {: .d-inline-block }

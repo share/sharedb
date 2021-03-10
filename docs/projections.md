@@ -13,7 +13,7 @@ Currently, only [`json0`]({% link types/json0.md %}) supports projections.
 
 Once configured, the projected collection looks just like a real collection -- except documents only have the fields that have been specified.
 
-Operations on the projected collection work, but only a small portion of the data can be seen.
+Operations on the projected collection work, but only a small portion of the data can be seen and altered.
 
 ## Usage
 

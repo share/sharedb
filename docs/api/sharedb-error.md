@@ -47,7 +47,7 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 
 > If a client on an old version of a document submits an op, that op needs to be transformed by all the ops that have been applied to the document in the meantime. If the server cannot fetch these ops from the database, then this error is returned.
 
-> The most common case of this would be ops being deleted from the database. For example, let's assume we have a TTL set up on the ops in our database. Let's also say we have a client that is so old that the op corresponding to its version has been deleted by the TTL policy. If this client then attempts to submit an op, the server will not be able to find the ops required to transform the op to apply to the current version of the snapshot.
+> The most common case of this would be ops being deleted from the database. For example, let's assume we have a TTL set up on the ops in our database. Let's also say we have a client that is so out-of-date that the op corresponding to its version has been deleted by the TTL policy. If this client then attempts to submit an op, the server will not be able to find the ops required to transform the op to apply to the current version of the snapshot.
 
 > Other causes of this error may be dropping the ops collection all together, or having the database corrupted in some other way.
 
@@ -77,7 +77,7 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 
 > The default type being used by the client does not match the default type expected by the server.
 
-> This will typically only happen when using a different default type to the built-in `json0` used by ShareDB by default (eg if using a fork). The exact same type must be used by both the client and the server, and should be registered as the default type:
+> This will typically only happen when using a different default type to the built-in `json0` used by ShareDB by default (e.g. if using a fork). The exact same type must be used by both the client and the server, and should be registered as the default type:
 
 > ```javascript
 > var ShareDB = require('sharedb');
