@@ -474,5 +474,74 @@ describe('Doc', function() {
         }
       ], done);
     });
+
+    describe('with an op collision', function() {
+      function testScenario(preventInvertInRollback, done) {
+        var doc1 = this.backend.connect().get('dogs', 'snoopy');
+        var doc2 = this.backend.connect().get('dogs', 'snoopy');
+        doc2.preventInvertInRollback = preventInvertInRollback;
+
+        var pauseSubmit = false;
+        var fireSubmit;
+        var invertHaveBeenCalled = false;
+
+        this.backend.use('submit', function(request, callback) {
+          if (pauseSubmit) {
+            fireSubmit = function() {
+              pauseSubmit = false;
+              callback();
+            };
+          } else {
+            fireSubmit = null;
+            callback();
+          }
+        });
+        async.series([
+          doc1.create.bind(doc1, {colours: ['white']}),
+          doc1.whenNothingPending.bind(doc1),
+          doc2.fetch.bind(doc2),
+          doc2.whenNothingPending.bind(doc2),
+          function(next) {
+            // Wrap invert to test that it has been called
+            var originalInvert = doc2.type.invert;
+            doc2.type.invert = function(op) {
+              invertHaveBeenCalled = true;
+              return originalInvert(op);
+            };
+            next();
+          },
+          doc1.submitOp.bind(doc1, {p: ['colours'], oi: 'white,black'}),
+          function(next) {
+            pauseSubmit = true;
+            doc2.submitOp({p: ['colours', '0'], li: 'black'}, function(error) {
+              expect(error.message).to.equal('Referenced element not a list');
+              next();
+            });
+
+            doc2.fetch(function(error) {
+              if (error) return next(error);
+              fireSubmit();
+            });
+          },
+          function(next) {
+            expect(invertHaveBeenCalled).to.eql(!preventInvertInRollback);
+            expect(doc2.data).to.eql(doc1.data);
+            next();
+          }
+        ], done);
+      }
+
+      it('calls doc type invert by default', function(done) {
+        var preventInvertInRollback = false;
+        var testScenarioBound = testScenario.bind(this);
+        testScenarioBound(preventInvertInRollback, done);
+      });
+
+      it('does not call doc type invert if preventInvertInRollback is `true`', function(done) {
+        var preventInvertInRollback = true;
+        var testScenarioBound = testScenario.bind(this);
+        testScenarioBound(preventInvertInRollback, done);
+      });
+    });
   });
 });
