@@ -14,12 +14,12 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 title: ShareDB
-baseurl: "" # the subpath of your site, e.g. /blog
+baseurl: "/sharedb" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 
 # Build settings
 markdown: kramdown
-theme: just-the-docs
+remote_theme: pmarsceill/just-the-docs
 permalink: /:path/:name
 
 # Exclude from processing.
