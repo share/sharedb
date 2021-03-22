@@ -20,7 +20,7 @@ The pub/sub adapter is responsible for notifying other ShareDB instances of chan
 ShareDB ships with an in-memory Pub/Sub, which can be used for a single, standalone ShareDB instance.
 
 {: .info }
-Unlike the [database adapter]({% link adapters/database.md %}), the in-memory Pub/Sub adapter **is** suitable for use in a Production environment, where only a single, standalone ShareDB instance is being used.
+Unlike the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}), the in-memory Pub/Sub adapter **is** suitable for use in a Production environment, where only a single, standalone ShareDB instance is being used.
 
 ### ShareDBRedisPubSub
 
@@ -32,7 +32,7 @@ Unlike the [database adapter]({% link adapters/database.md %}), the in-memory Pu
 
 ## Usage
 
-An instance of a pub/sub adapter should be provided to the [`Backend()` constructor]({% link api/backend.md %}#backend-constructor)'s `pubsub` option:
+An instance of a pub/sub adapter should be provided to the [`Backend()` constructor]({{ site.baseurl }}{% link api/backend.md %}#backend-constructor)'s `pubsub` option:
 
 ```js
 const backend = new Backend({

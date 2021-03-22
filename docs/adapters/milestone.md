@@ -11,7 +11,7 @@ parent: Adapters
 1. TOC
 {:toc}
 
-The milestone adapter is responsible for storing periodic snapshots of documents, primarily in order to speed up [document history]({% link document-history.md %}).
+The milestone adapter is responsible for storing periodic snapshots of documents, primarily in order to speed up [document history]({{ site.baseurl }}{% link document-history.md %}).
 
 ## Available adapters
 
@@ -21,7 +21,7 @@ The milestone adapter is responsible for storing periodic snapshots of documents
 
 ## Usage
 
-An instance of a milestone adapter should be provided to the [`Backend()` constructor]({% link api/backend.md %}#backend-constructor)'s `milestoneDb` option:
+An instance of a milestone adapter should be provided to the [`Backend()` constructor]({{ site.baseurl }}{% link api/backend.md %}#backend-constructor)'s `milestoneDb` option:
 
 ```js
 const backend = new Backend({
@@ -31,7 +31,7 @@ const backend = new Backend({
 
 ## Requesting snapshots
 
-Adapters will define default snapshot behaviour. However, this logic can be overridden using the `saveMilestoneSnapshot` option in [middleware]({% link middleware/index.md %}).
+Adapters will define default snapshot behaviour. However, this logic can be overridden using the `saveMilestoneSnapshot` option in [middleware]({{ site.baseurl }}{% link middleware/index.md %}).
 
 Setting `context.saveMilestoneSnapshot` to `true` will request a snapshot be saved, and setting it to `false` means a snapshot will not be saved.
 

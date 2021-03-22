@@ -15,7 +15,7 @@ ShareDB provides a realtime collaborative platform based on [Operational Transfo
 
 Transforming and handling ops is delegated to an underlying OT type.
 
-ShareDB ships with a single, default type -- [`json0`]({% link types/json0.md %}).
+ShareDB ships with a single, default type -- [`json0`]({{ site.baseurl }}{% link types/json0.md %}).
 
 ## Registering types
 
@@ -44,7 +44,7 @@ Client.types.register(richText.type)
 
 ## Using types
 
-A [registered](#registering-types) type can be used by specifying its name or URI when creating a [`Doc`]({% link api/doc.md %}):
+A [registered](#registering-types) type can be used by specifying its name or URI when creating a [`Doc`]({{ site.baseurl }}{% link api/doc.md %}):
 
 ```js
 doc.create([{insert: 'Lorem'}], 'http://sharejs.org/types/rich-text/v1')

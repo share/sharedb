@@ -10,9 +10,9 @@ parent: API
 1. TOC
 {:toc}
 
-The `Backend` class represents the server-side instance of ShareDB. It is primarily responsible for connecting to clients, and sending requests to the [database adapters]({% link adapters/database.md %}).
+The `Backend` class represents the server-side instance of ShareDB. It is primarily responsible for connecting to clients, and sending requests to the [database adapters]({{ site.baseurl }}{% link adapters/database.md %}).
 
-It is also responsible for some [configuration](#backend-constructor), setting up [middleware]({% link middleware/index.md %}) and defining [projections]({% link projections.md %}).
+It is also responsible for some [configuration](#backend-constructor), setting up [middleware]({{ site.baseurl }}{% link middleware/index.md %}) and defining [projections]({{ site.baseurl }}{% link projections.md %}).
 
 ## Backend() constructor
 
@@ -25,28 +25,28 @@ new Backend([options])
 
 {: .d-inline-block }
 
-`db` -- [DB]({% link adapters/database.md %})
+`db` -- [DB]({{ site.baseurl }}{% link adapters/database.md %})
 
 Optional
 {: .label .label-grey }
 
 > Default: new `MemoryDB` instance
 
-> An instance of a ShareDB [database adapter]({% link adapters/database.md %}) that provides the data store for ShareDB
+> An instance of a ShareDB [database adapter]({{ site.baseurl }}{% link adapters/database.md %}) that provides the data store for ShareDB
 
 {: .warn }
 > The default option -- a new `MemoryDB` instance -- is a **non-persistent**, in-memory adapter and should **not** be used in production environments.
 
 {: .d-inline-block }
 
-`pubsub` -- [PubSub]({% link adapters/pub-sub.md %})
+`pubsub` -- [PubSub]({{ site.baseurl }}{% link adapters/pub-sub.md %})
 
 Optional
 {: .label .label-grey }
 
 > Default: new `MemoryPubSub` instance
 
-> An instance of a ShareDB [Pub/Sub adapter]({% link adapters/pub-sub.md %}) that provides a channel for notifying other ShareDB instances of changes to data.
+> An instance of a ShareDB [Pub/Sub adapter]({{ site.baseurl }}{% link adapters/pub-sub.md %}) that provides a channel for notifying other ShareDB instances of changes to data.
 
 {: .info }
 > The default option -- a new `MemoryPubSub` instance -- is an in-memory adapter.
@@ -55,17 +55,17 @@ Optional
 
 {: .d-inline-block }
 
-`milestoneDb` -- [MilestoneDB]({% link adapters/milestone.md %})
+`milestoneDb` -- [MilestoneDB]({{ site.baseurl }}{% link adapters/milestone.md %})
 
 Optional
 {: .label .label-grey }
 
 > Default: `null`
 
-> An instance of a ShareDB [milestone adapter]({% link adapters/milestone.md %}) that provides the data store for [milestone snapshots]({% link document-history.md %}#milestone-snapshots), which are historical snapshots of documents stored at a specified version interval.
+> An instance of a ShareDB [milestone adapter]({{ site.baseurl }}{% link adapters/milestone.md %}) that provides the data store for [milestone snapshots]({{ site.baseurl }}{% link document-history.md %}#milestone-snapshots), which are historical snapshots of documents stored at a specified version interval.
 
 {: .info }
-> If this option is omitted, milestone snapshots will **not** be enabled, but document history *may* still be accessed with a potential [performance penalty]({% link document-history.md %}#milestone-snapshots).
+> If this option is omitted, milestone snapshots will **not** be enabled, but document history *may* still be accessed with a potential [performance penalty]({{ site.baseurl }}{% link document-history.md %}#milestone-snapshots).
 
 {: .d-inline-block }
 
@@ -76,7 +76,7 @@ Optional
 
 > Default: `{}`
 
-> An object whose values are extra `DB` instances which can be [queried]({% link api/query.md %}). The keys are the names that can be passed into the query options `db` field
+> An object whose values are extra `DB` instances which can be [queried]({{ site.baseurl }}{% link api/query.md %}). The keys are the names that can be passed into the query options `db` field
 
 {: .d-inline-block }
 
@@ -87,7 +87,7 @@ Optional
 
 > Default: `false`
 
-> If set to `true`, any changes committed will *not* be published on [Pub/Sub]({% link pub-sub.md %})
+> If set to `true`, any changes committed will *not* be published on [Pub/Sub]({{ site.baseurl }}{% link pub-sub.md %})
 
 {: .d-inline-block }
 
@@ -109,19 +109,19 @@ Optional
 
 > Default: `false`
 
-> If set to `true`, enables [Presence]({% link presence.md %}) functionality
+> If set to `true`, enables [Presence]({{ site.baseurl }}{% link presence.md %}) functionality
 
 ## Properties
 
 ### `MIDDLEWARE_ACTIONS` -- Object
 
-> Map of available [middleware actions]({% link middleware/index.md %}#actions)
+> Map of available [middleware actions]({{ site.baseurl }}{% link middleware/index.md %}#actions)
 
 ## Methods
 
 ### connect()
 
-Connects to ShareDB and returns an instance of a [`Connection`]({% link api/connection.md %}) client for interacting with ShareDB. This is the server-side equivalent of `new Connection(socket)` in the browser.
+Connects to ShareDB and returns an instance of a [`Connection`]({{ site.baseurl }}{% link api/connection.md %}) client for interacting with ShareDB. This is the server-side equivalent of `new Connection(socket)` in the browser.
 
 ```js
 backend.connect([connection [, request]])
@@ -129,14 +129,14 @@ backend.connect([connection [, request]])
 
 {: .d-inline-block }
 
-`connection` -- [Connection]({% link api/connection.md %})
+`connection` -- [Connection]({{ site.baseurl }}{% link api/connection.md %})
 
 Optional
 {: .label .label-grey }
 
-> Default: a new [`Connection`]({% link api/connection.md %}) instance
+> Default: a new [`Connection`]({{ site.baseurl }}{% link api/connection.md %}) instance
 
-> A [`Connection`]({% link api/connection.md %}) instance to bind to the `Backend`
+> A [`Connection`]({{ site.baseurl }}{% link api/connection.md %}) instance to bind to the `Backend`
 
 {: .d-inline-block }
 
@@ -147,11 +147,11 @@ Optional
 
 > Default: `{}`
 
-> A connection context object that can contain information such as cookies or session data that will be made available in the [middleware]({% link middleware/index.md %}) on [`agent.custom`]({% link api/agent.md %}#custom)
+> A connection context object that can contain information such as cookies or session data that will be made available in the [middleware]({{ site.baseurl }}{% link middleware/index.md %}) on [`agent.custom`]({{ site.baseurl }}{% link api/agent.md %}#custom)
 
 Return value
 
-Returns a [`Connection`]({% link api/connection.md %})
+Returns a [`Connection`]({{ site.baseurl }}{% link api/connection.md %})
 
 ### listen()
 
@@ -163,7 +163,7 @@ backend.listen(stream [, request])
 
 `stream` -- [Stream](https://nodejs.org/api/stream.html)
 
-> A [`Stream`](https://nodejs.org/api/stream.html) (or `Stream`-like object) that will be used to communicate between the new [`Agent`]({% link api/agent.md %}) and the `Backend`
+> A [`Stream`](https://nodejs.org/api/stream.html) (or `Stream`-like object) that will be used to communicate between the new [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) and the `Backend`
 
 {: .d-inline-block }
 
@@ -174,11 +174,11 @@ Optional
 
 > Default: `{}`
 
-> A connection context object that can contain information such as cookies or session data that will be made available in the [middleware]({% link middleware/index.md %}) on [`agent.custom`]({% link api/agent.md %}#custom)
+> A connection context object that can contain information such as cookies or session data that will be made available in the [middleware]({{ site.baseurl }}{% link middleware/index.md %}) on [`agent.custom`]({{ site.baseurl }}{% link api/agent.md %}#custom)
 
 Return value
 
-Returns an [`Agent`]({% link api/agent.md %}), which will also be available in the [middleware]({% link middleware/index.md %})
+Returns an [`Agent`]({{ site.baseurl }}{% link api/agent.md %}), which will also be available in the [middleware]({{ site.baseurl }}{% link middleware/index.md %})
 
 ### close()
 
@@ -203,7 +203,7 @@ Optional
 
 ### use()
 
-Registers [middleware]({% link middleware/index.md %}).
+Registers [middleware]({{ site.baseurl }}{% link middleware/index.md %}).
 
 ```js
 backend.use(action, middleware)
@@ -221,11 +221,11 @@ backend.use(action, middleware)
 > }
 > ```
 
-> A [middleware]({% link middleware/index.md %}) function
+> A [middleware]({{ site.baseurl }}{% link middleware/index.md %}) function
 
 addProjection()
 
-Adds a [projection]({% link projections.md %})
+Adds a [projection]({{ site.baseurl }}{% link projections.md %})
 
 ```js
 backend.addProjection(name, collection, fields)
@@ -248,7 +248,7 @@ backend.addProjection(name, collection, fields)
 
 ### addProjection()
 
-Defines a [projection]({% link projections.md %}).
+Defines a [projection]({{ site.baseurl }}{% link projections.md %}).
 
 ```js
 backend.addProjection(name, collection, fields)
@@ -277,13 +277,13 @@ Submits an operation to the `Backend`
 backend.submit(agent, index, id, op [, options [, callback]])
 ```
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> An [`Agent`]({% link api/agent.md %}) instance to pass to the middleware
+> An [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) instance to pass to the middleware
 
 `index` -- string
 
-> The name of the collection or [projection]({% link projections.md %})
+> The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
 `id` -- string
 
@@ -302,7 +302,7 @@ Optional
 
 > Default: `{}`
 
-> Options passed through to the [database adapter]({% link adapters/database.md %})'s `commit` method. Any options that are valid there can be used here
+> Options passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %})'s `commit` method. Any options that are valid there can be used here
 
 {: .d-inline-block }
 
@@ -325,13 +325,13 @@ Fetches the ops for a document between the requested version numbers, where the 
 backend.getOps(agent, index, id, from, to [, options [, callback]])
 ```
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> An [`Agent`]({% link api/agent.md %}) instance to pass to the middleware
+> An [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) instance to pass to the middleware
 
 `index` -- string
 
-> The name of the collection or [projection]({% link projections.md %})
+> The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
 `id` -- string
 
@@ -385,13 +385,13 @@ Fetches the ops for multiple documents in a collection between the requested ver
 backend.getOpsBulk(agent, index, fromMap, toMap [, options [, callback]])
 ```
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> An [`Agent`]({% link api/agent.md %}) instance to pass to the middleware
+> An [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) instance to pass to the middleware
 
 `index` -- string
 
-> The name of the collection or [projection]({% link projections.md %})
+> The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
 `id` -- string
 
@@ -460,13 +460,13 @@ Fetch the current snapshot of a document
 backend.fetch(agent, index, id, [, options [, callback]])
 ```
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> An [`Agent`]({% link api/agent.md %}) instance to pass to the middleware
+> An [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) instance to pass to the middleware
 
 `index` -- string
 
-> The name of the collection or [projection]({% link projections.md %})
+> The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
 `id` -- string
 
@@ -511,13 +511,13 @@ Fetch multiple document snapshots from a collection
 backend.fetchBulk(agent, index, ids, [, options [, callback]])
 ```
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> An [`Agent`]({% link api/agent.md %}) instance to pass to the middleware
+> An [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) instance to pass to the middleware
 
 `index` -- string
 
-> The name of the collection or [projection]({% link projections.md %})
+> The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
 `ids` -- string[]
 
@@ -562,17 +562,17 @@ Fetch snapshots that match the provided query. In most cases, querying the backi
 backend.queryFetch(agent, index, query, [, options [, callback]])
 ```
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> An [`Agent`]({% link api/agent.md %}) instance to pass to the middleware
+> An [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) instance to pass to the middleware
 
 `index` -- string
 
-> The name of the collection or [projection]({% link projections.md %})
+> The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
 `query` -- Object
 
-> A query object, whose format will depend on the [database adapter]({% link adapters/database.md %}) being used
+> A query object, whose format will depend on the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}) being used
 
 {: .d-inline-block }
 

@@ -16,13 +16,13 @@ copy:
 
 The `Doc` class is the client-side representation of a ShareDB document.
 
-A `Doc` instance can be obtained with [`connection.getDoc()`]({% link api/connection.md %}#getdoc).
+A `Doc` instance can be obtained with [`connection.getDoc()`]({{ site.baseurl }}{% link api/connection.md %}#getdoc).
 
 ## Properties
 
-### `type` -- [Type]({% link types/index.md %})
+### `type` -- [Type]({{ site.baseurl }}{% link types/index.md %})
 
-> The [type]({% link types/index.md %}) of the document
+> The [type]({{ site.baseurl }}{% link types/index.md %}) of the document
 
 {: .info }
 > If a document has been fetched, and its `type` remains unset, then the document has not yet been created.
@@ -134,7 +134,7 @@ Optional
 
 ### ingestSnapshot()
 
-Ingest [snapshot]({% link api/snapshot.md %}) data.
+Ingest [snapshot]({{ site.baseurl }}{% link api/snapshot.md %}) data.
 
 ```js
 doc.ingestSnapshot(snapshot [, callback])
@@ -144,12 +144,12 @@ doc.ingestSnapshot(snapshot [, callback])
 This method is generally called internally as a result of [`fetch()`](#fetch) or [`subscribe()`](#subscribe), and not directly from consumer code. Consumers *may* want to use this method to ingest data that was transferred to the client externally to the client's ShareDB connection.
 
 
-`snapshot` -- [Snapshot]({% link api/snapshot.md %})
+`snapshot` -- [Snapshot]({{ site.baseurl }}{% link api/snapshot.md %})
 
 > The snapshot to ingest
 
 {: .warn }
-> The snapshot **must** include its [`data`]({% link api/snapshot.md %}#data--object), [`v`]({% link api/snapshot.md %}#v--number) and [`type`]({% link api/snapshot.md %}#type--type) properties
+> The snapshot **must** include its [`data`]({{ site.baseurl }}{% link api/snapshot.md %}#data--object), [`v`]({{ site.baseurl }}{% link api/snapshot.md %}#v--number) and [`type`]({{ site.baseurl }}{% link api/snapshot.md %}#type--type) properties
 
 {: .d-inline-block }
 
@@ -166,7 +166,7 @@ Optional
 
 ### destroy()
 
-Unsubscribe and stop firing events. Also removes the document reference from its [`Connection`]({% link api/connection.md %}), allowing the `Doc` to be garbage-collected.
+Unsubscribe and stop firing events. Also removes the document reference from its [`Connection`]({{ site.baseurl }}{% link api/connection.md %}), allowing the `Doc` to be garbage-collected.
 
 ```js
 doc.destroy([callback])
@@ -195,11 +195,11 @@ doc.create(data [, type [, options [, callback]]])
 
 `data` -- Object
 
-> The document contents. The structure will depend on the document's [type]({% link types/index.md %})
+> The document contents. The structure will depend on the document's [type]({{ site.baseurl }}{% link types/index.md %})
 
-`type` -- [Type]({% link types/index.md %})
+`type` -- [Type]({{ site.baseurl }}{% link types/index.md %})
 
-> The document's [type]({% link types/index.md %})
+> The document's [type]({{ site.baseurl }}{% link types/index.md %})
 
 {: .d-inline-block }
 
@@ -239,7 +239,7 @@ doc.submitOp(op [, options [, callback]])
 
 `op` -- Object
 
-> The op to submit. The structure of `op` depends on the document's [type]({% link types/index.md %})
+> The op to submit. The structure of `op` depends on the document's [type]({{ site.baseurl }}{% link types/index.md %})
 
 {: .d-inline-block }
 
@@ -397,7 +397,7 @@ doc.on('op', function(op, source) { ... })
 ```
 
 {: .info }
-The difference between this event and [`'op batch'`](#op-batch) is that for [`json0`]({% link types/json0.md %}), the op will be shattered into its constituent parts.
+The difference between this event and [`'op batch'`](#op-batch) is that for [`json0`]({{ site.baseurl }}{% link types/json0.md %}), the op will be shattered into its constituent parts.
 <br/>
 For example, `[{p: ['list', 0], li: 'a'}, {p: ['list', 1], li: 'b'}]` would be split into two components: `[{p: ['list', 0], li: 'a'}]` and `[{p: ['list', 1], li: 'b'}]`.
 <br/>
@@ -467,6 +467,6 @@ An error occurred. This event will usually be emitted because of an asynchronous
 doc.on('error', function(error) { ... })
 ```
 
-`error` -- [ShareDBError]({% link api/sharedb-error.md %})
+`error` -- [ShareDBError]({{ site.baseurl }}{% link api/sharedb-error.md %})
 
 > The error that occurred

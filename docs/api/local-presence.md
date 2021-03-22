@@ -10,9 +10,9 @@ parent: API
 1. TOC
 {:toc}
 
-`LocalPresence` represents the [presence]({% link presence.md %}) of the local client. For example, this might be the position of a caret in a text document; which field has been highlighted in a complex JSON object; etc.
+`LocalPresence` represents the [presence]({{ site.baseurl }}{% link presence.md %}) of the local client. For example, this might be the position of a caret in a text document; which field has been highlighted in a complex JSON object; etc.
 
-Local presence is created from a parent [`Presence`]({% link api/presence.md %}) instance using [`presence.create()`]({% link api/presence.md %}#create).
+Local presence is created from a parent [`Presence`]({{ site.baseurl }}{% link api/presence.md %}) instance using [`presence.create()`]({{ site.baseurl }}{% link api/presence.md %}#create).
 
 ## Methods
 
@@ -26,7 +26,7 @@ localPresence.submit(presence [, callback])
 
 `presence` -- Object
 
-> The presence object to broadcast. The structure of `presence` will depend on the [type]({% link types/index.md %})
+> The presence object to broadcast. The structure of `presence` will depend on the [type]({{ site.baseurl }}{% link types/index.md %})
 
 {: .info }
 > A value of `null` will be interpreted as the client no longer being present

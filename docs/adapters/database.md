@@ -36,7 +36,7 @@ ShareDB ships with an in-memory, non-persistent database. This is useful for tes
 
 ## Usage
 
-An instance of a database adapter should be provided to the [`Backend()` constructor]({% link api/backend.md %}#backend-constructor)'s `db` option:
+An instance of a database adapter should be provided to the [`Backend()` constructor]({{ site.baseurl }}{% link api/backend.md %}#backend-constructor)'s `db` option:
 
 ```js
 const backend = new Backend({
