@@ -209,7 +209,7 @@ Registers [middleware]({% link middleware/index.md %}).
 backend.use(action, middleware)
 ```
 
-`action` -- string | string[]
+`action` -- string \| string[]
 
 > An action, or array of action names defining when to apply the middleware
 
