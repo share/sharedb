@@ -53,7 +53,7 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 
 ### `ERR_MAX_SUBMIT_RETRIES_EXCEEDED`
 
-> The number of retries defined by the [`maxSubmitRetries`]({% link api/backend.md %}#options) option has been exceeded by a submission.
+> The number of retries defined by the [`maxSubmitRetries`]({{ site.baseurl }}{% link api/backend.md %}#options) option has been exceeded by a submission.
 
 ### `ERR_DOC_ALREADY_CREATED`
 
@@ -69,9 +69,9 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 
 ### `ERR_DOC_TYPE_NOT_RECOGNIZED`
 
-> The specified document [type]({% link types/index.md %}) has not been registered with ShareDB.
+> The specified document [type]({{ site.baseurl }}{% link types/index.md %}) has not been registered with ShareDB.
 
-> This error can usually be remedied by remembering to [register]({% link types/index.md %}#installing-other-types) any types you need.
+> This error can usually be remedied by remembering to [register]({{ site.baseurl }}{% link types/index.md %}#installing-other-types) any types you need.
 
 ### `ERR_DEFAULT_TYPE_MISMATCH`
 
@@ -95,4 +95,4 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 
 ### `ERR_TYPE_CANNOT_BE_PROJECTED`
 
-> The document's type cannot be projected. [`json0`]({% link types/json0.md %}) is currently the only type that supports projections.
+> The document's type cannot be projected. [`json0`]({{ site.baseurl }}{% link types/json0.md %}) is currently the only type that supports projections.

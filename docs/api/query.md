@@ -10,7 +10,7 @@ parent: API
 1. TOC
 {:toc}
 
-Representation of a query made through [`connection.createFetchQuery()`]({% link api/connection.md %}#createfetchquery) or [`connection.createSubscribeQuery()`]({% link api/connection.md %}#createsubscribequery).
+Representation of a query made through [`connection.createFetchQuery()`]({{ site.baseurl }}{% link api/connection.md %}#createfetchquery) or [`connection.createSubscribeQuery()`]({{ site.baseurl }}{% link api/connection.md %}#createsubscribequery).
 
 ## Properties
 
@@ -20,11 +20,11 @@ Representation of a query made through [`connection.createFetchQuery()`]({% link
 
 ### `results` -- Array
 
-> Query results, as an array of [`Doc`]({% link api/doc.md %}) instances
+> Query results, as an array of [`Doc`]({{ site.baseurl }}{% link api/doc.md %}) instances
 
 ### `extra` -- Object
 
-> Extra query results that are not an array of `Doc`s. Available for certain [database adapters]({% link adapters/database.md %}) and queries
+> Extra query results that are not an array of `Doc`s. Available for certain [database adapters]({{ site.baseurl }}{% link adapters/database.md %}) and queries
 
 ## Methods
 
@@ -55,7 +55,7 @@ Optional
 
 ### `'ready'`
 
-The initial query results were loaded from the server. Triggered on [`connection.createFetchQuery()`]({% link api/connection.md %}#createfetchquery) or [`connection.createSubscribeQuery()`]({% link api/connection.md %}#createsubscribequery).
+The initial query results were loaded from the server. Triggered on [`connection.createFetchQuery()`]({{ site.baseurl }}{% link api/connection.md %}#createfetchquery) or [`connection.createSubscribeQuery()`]({{ site.baseurl }}{% link api/connection.md %}#createsubscribequery).
 
 ```js
 query.on('ready', function() { ... })
@@ -71,7 +71,7 @@ query.on('changed', function(results) { ... })
 
 `results` -- Array
 
-> Query results, as an array of [`Doc`]({% link api/doc.md %}) instances
+> Query results, as an array of [`Doc`]({{ site.baseurl }}{% link api/doc.md %}) instances
 
 ### `'insert'`
 
@@ -83,7 +83,7 @@ query.on('insert', function(docs, index) { ... })
 
 `docs` -- Array
 
-> Array of inserted [`Doc`]({% link api/doc.md %})s
+> Array of inserted [`Doc`]({{ site.baseurl }}{% link api/doc.md %})s
 
 `index` -- number
 
@@ -99,7 +99,7 @@ query.on('move', function(docs, from, to) { ... })
 
 `docs` -- Array
 
-> Array of moved [`Doc`]({% link api/doc.md %})s
+> Array of moved [`Doc`]({{ site.baseurl }}{% link api/doc.md %})s
 
 `from` -- number
 
@@ -119,7 +119,7 @@ query.on('remove', function(docs, index) { ... })
 
 `docs` -- Array
 
-> Array of removed [`Doc`]({% link api/doc.md %})s
+> Array of removed [`Doc`]({{ site.baseurl }}{% link api/doc.md %})s
 
 `index` -- number
 
@@ -145,6 +145,6 @@ There was an error receiving updates to a subscription.
 query.on('error', function(error) { ... })
 ```
 
-`error` -- [ShareDBError]({% link api/sharedb-error.md %})
+`error` -- [ShareDBError]({{ site.baseurl }}{% link api/sharedb-error.md %})
 
 > The error that occurred

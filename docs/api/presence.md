@@ -10,11 +10,11 @@ parent: API
 1. TOC
 {:toc}
 
-Representation of the [presence]({% link presence.md %}) data associated with a given channel.
+Representation of the [presence]({{ site.baseurl }}{% link presence.md %}) data associated with a given channel.
 
-A `Presence` instance can be obtained with [`connection.getPresence()`]({% link api/connection.md %}#getpresence) or [`connection.getDocPresence()`]({% link api/connection.md %}#getdocpresence).
+A `Presence` instance can be obtained with [`connection.getPresence()`]({{ site.baseurl }}{% link api/connection.md %}#getpresence) or [`connection.getDocPresence()`]({{ site.baseurl }}{% link api/connection.md %}#getdocpresence).
 
-If created with [`connection.getDocPresence()`]({% link api/connection.md %}#getdocpresence), this will represent the presence data associated with a given [`Doc`]({% link api/doc.md %}).
+If created with [`connection.getDocPresence()`]({{ site.baseurl }}{% link api/connection.md %}#getdocpresence), this will represent the presence data associated with a given [`Doc`]({{ site.baseurl }}{% link api/doc.md %}).
 
 ## Properties
 
@@ -24,7 +24,7 @@ If created with [`connection.getDocPresence()`]({% link api/connection.md %}#get
 
 ### `localPresences` -- Object
 
-> Map of local presence IDs to their [`LocalPresence`]({% link api/local-presence.md %}) instances
+> Map of local presence IDs to their [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}) instances
 
 ## Methods
 
@@ -75,7 +75,7 @@ Optional
 
 ### create()
 
-Create an instance of [`LocalPresence`]({% link api/local-presence.md %}), which can be used to represent the client's presence. Many -- or none -- such local presences may exist on a `Presence` instance.
+Create an instance of [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}), which can be used to represent the client's presence. Many -- or none -- such local presences may exist on a `Presence` instance.
 
 ```javascript
 presence.create([presenceId])
@@ -95,11 +95,11 @@ Optional
 
 Return value
 
-> A new [`LocalPresence`]({% link api/local-presence.md %}) instance
+> A new [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}) instance
 
 ### destroy()
 
-Clear all [`LocalPresence`]({% link api/local-presence.md %}) instances associated with this `Presence`, setting them all to have a value of `null`, and sending the update to remote subscribers.
+Clear all [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}) instances associated with this `Presence`, setting them all to have a value of `null`, and sending the update to remote subscribers.
 
 Also deletes this `Presence` instance for garbage-collection.
 
@@ -141,7 +141,7 @@ presence.on('receive', function(id, value) { ... });
 
 `value` -- Object
 
-> The presence value. The structure of this object will depend on the [type]({% link types/index.md %})
+> The presence value. The structure of this object will depend on the [type]({{ site.baseurl }}{% link types/index.md %})
 
 ### `'error'`
 
@@ -151,6 +151,6 @@ An error has occurred.
 presence.on('error', function(error) { ... })
 ```
 
-`error` -- [ShareDBError]({% link api/sharedb-error.md %})
+`error` -- [ShareDBError]({{ site.baseurl }}{% link api/sharedb-error.md %})
 
 > The error that occurred

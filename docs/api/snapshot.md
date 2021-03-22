@@ -13,13 +13,13 @@ parent: API
 Represents a **read-only** ShareDB document at a particular version number.
 
 {: .info }
-Snapshots can **not** be used to manipulate the current version of the document stored in the database. That should be achieved by using a [`Doc`]({% link api/doc.md %}).
+Snapshots can **not** be used to manipulate the current version of the document stored in the database. That should be achieved by using a [`Doc`]({{ site.baseurl }}{% link api/doc.md %}).
 
 ## Properties
 
-### `type` -- [Type]({% link types/index.md %})
+### `type` -- [Type]({{ site.baseurl }}{% link types/index.md %})
 
-> The document [type]({% link types/index.md %})
+> The document [type]({{ site.baseurl }}{% link types/index.md %})
 
 {: .info }
 > Document types can change between versions if the document is deleted, and created again.

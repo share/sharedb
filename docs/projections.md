@@ -6,10 +6,10 @@ layout: default
 
 # Projections
 
-Some [types]({% link types/index.md %}) support exposing a projection of a real collection, with a specified set of allowed fields.
+Some [types]({{ site.baseurl }}{% link types/index.md %}) support exposing a projection of a real collection, with a specified set of allowed fields.
 
 {: .info }
-Currently, only [`json0`]({% link types/json0.md %}) supports projections.
+Currently, only [`json0`]({{ site.baseurl }}{% link types/json0.md %}) supports projections.
 
 Once configured, the projected collection looks just like a real collection -- except documents only have the fields that have been specified.
 
@@ -17,7 +17,7 @@ Operations on the projected collection work, but only a small portion of the dat
 
 ## Usage
 
-Projections are configured using [`backend.addProjection()`]({% link api/backend.md %}#addprojection). For example, imagine we have a collection `users` with lots of information that should not be leaked. To add a projection `names`, which only has access to the `firstName` and `lastName` properties on a user:
+Projections are configured using [`backend.addProjection()`]({{ site.baseurl }}{% link api/backend.md %}#addprojection). For example, imagine we have a collection `users` with lots of information that should not be leaked. To add a projection `names`, which only has access to the `firstName` and `lastName` properties on a user:
 
 ```js
 backend.addProjection('names', 'users', {firstName: true, lastName: true})

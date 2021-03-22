@@ -14,18 +14,18 @@ copy:
     `op` -- Object
     > The submitted op
 
-    `snapshot` -- [`Snapshot`]({% link api/snapshot.md %})
+    `snapshot` -- [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
     > The snapshot
 
     `extra` -- Object
     > `extra.source` -- Object
-    >> The submitted source when [`doc.submitSource`]({% link api/doc.md %}http://localhost:4000/api/doc#submitsource--boolean) is set to `true`
+    >> The submitted source when [`doc.submitSource`]({{ site.baseurl }}{% link api/doc.md %}http://localhost:4000/api/doc#submitsource--boolean) is set to `true`
 
     `saveMilestoneSnapshot` -- boolean
-    > Flag to control [saving a milestone snapshot]({% link adapters/milestone.md#requesting-snapshots %})
+    > Flag to control [saving a milestone snapshot]({{ site.baseurl }}{% link adapters/milestone.md#requesting-snapshots %})
 
     `suppressPublish` -- boolean
-    > Flag to prevent broadcasting over [pub/sub]({% link pub-sub.md %})
+    > Flag to prevent broadcasting over [pub/sub]({{ site.baseurl }}{% link pub-sub.md %})
 
     `retries` -- number
     > The number of times the op has attempted to submit
@@ -48,7 +48,7 @@ This can be particularly useful for authentication.
 
 ## Registering middleware
 
-Middleware is registered on the server with [`backend.use()`]({% link api/backend.md %}#use):
+Middleware is registered on the server with [`backend.use()`]({{ site.baseurl }}{% link api/backend.md %}#use):
 
 ```js
 backend.use(action, function(context, next) {
@@ -64,7 +64,7 @@ The `action` should be one of the values listed [below](#actions).
 
 ## Actions
 
-The actions represent different stages of information flow through the server. These hooks are also available on [`backend.MIDDLEWARE_ACTIONS`]({% link api/backend.md %}#middleware_actions--object).
+The actions represent different stages of information flow through the server. These hooks are also available on [`backend.MIDDLEWARE_ACTIONS`]({{ site.baseurl }}{% link api/backend.md %}#middleware_actions--object).
 
 All of the actions will have these `context` properties:
 
@@ -72,13 +72,13 @@ All of the actions will have these `context` properties:
 
 > The triggered middleware action
 
-`agent` -- [Agent]({% link api/agent.md %})
+`agent` -- [Agent]({{ site.baseurl }}{% link api/agent.md %})
 
-> The [`Agent`]({% link api/agent.md %}) communicating with the client
+> The [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) communicating with the client
 
-`backend` -- [Backend]({% link api/backend.md %})
+`backend` -- [Backend]({{ site.baseurl }}{% link api/backend.md %})
 
-> The [`Backend`]({% link api/backend.md %}) handling the request
+> The [`Backend`]({{ site.baseurl }}{% link api/backend.md %}) handling the request
 
 ### `'connect'`
 
@@ -92,7 +92,7 @@ This action has these additional `context` properties:
 
 `req` -- Object
 
-> The `request` argument provided to [`backend.listen()`]({% link api/backend.md %}#listen)
+> The `request` argument provided to [`backend.listen()`]({{ site.baseurl }}{% link api/backend.md %}#listen)
 
 ### `'receive'`
 
@@ -130,7 +130,7 @@ This action has these additional `context` properties:
 
 `presence` -- Object
 
-> The presence object being sent. Its shape depends on its [type]({% link types/index.md %})
+> The presence object being sent. Its shape depends on its [type]({{ site.baseurl }}{% link types/index.md %})
 
 ### `'readSnapshots'`
 
@@ -142,9 +142,9 @@ This action has these additional `context` properties:
 
 > The collection the snapshots belong to
 
-`snapshots` -- [Snapshot[]]({% link api/snapshot.md %})
+`snapshots` -- [Snapshot[]]({{ site.baseurl }}{% link api/snapshot.md %})
 
-> The [`Snapshot`]({% link api/snapshot.md %})s being read
+> The [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})s being read
 
 `snapshotType` -- string
 

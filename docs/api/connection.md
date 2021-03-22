@@ -12,18 +12,18 @@ parent: API
 
 ## Properties
 
-### `agent` -- [`Agent`]({% link api/agent.md %})
+### `agent` -- [`Agent`]({{ site.baseurl }}{% link api/agent.md %})
 
-> The [`Agent`]({% link api/agent.md %}) associated with this `Connection`.
+> The [`Agent`]({{ site.baseurl }}{% link api/agent.md %}) associated with this `Connection`.
 
 {: .warn }
-> This property is **only** populated if the `Connection` is running on the server, and was created through [`backend.connect()`]({% link api/backend.md %}#connect()).
+> This property is **only** populated if the `Connection` is running on the server, and was created through [`backend.connect()`]({{ site.baseurl }}{% link api/backend.md %}#connect()).
 
 ## Methods
 
 ### get()
 
-Get a [`Doc`]({% link api/doc.md %}) instance for the given `collection` and `id`.
+Get a [`Doc`]({{ site.baseurl }}{% link api/doc.md %}) instance for the given `collection` and `id`.
 
 ```js
 collection.get(collection, id)
@@ -42,7 +42,7 @@ Calling `get()` multiple times on the same `Connection` instance will return the
 
 Return value
 
-> A [`Doc`]({% link api/doc.md %}) instance
+> A [`Doc`]({{ site.baseurl }}{% link api/doc.md %}) instance
 
 ### createFetchQuery()
 
@@ -58,7 +58,7 @@ connection.createFetchQuery(collection, query [, options [, callback]])
 
 `query` -- Object
 
-> A query object, whose format will depend on the [database adapter]({% link adapters/database.md %}) being used
+> A query object, whose format will depend on the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}) being used
 
 {: .d-inline-block }
 `options` -- Object
@@ -74,11 +74,11 @@ Optional
 
 > `options.*` -- any
 
-> > All other options are passed through to the [database adapter]({% link adapters/database.md %})
+> > All other options are passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %})
 
 Return value
 
-> A [`Query`]({% link api/query.md %}) instance
+> A [`Query`]({{ site.baseurl }}{% link api/query.md %}) instance
 
 ### createSubscribeQuery()
 
@@ -94,7 +94,7 @@ connection.createSubscribeQuery(collection, query [, options [, callback]])
 
 `query` -- Object
 
-> A query object, whose format will depend on the [database adapter]({% link adapters/database.md %}) being used
+> A query object, whose format will depend on the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}) being used
 
 {: .d-inline-block }
 
@@ -111,11 +111,11 @@ Optional
 
 > `options.*` -- any
 
-> > All other options are passed through to the [database adapter]({% link adapters/database.md %})
+> > All other options are passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %})
 
 Return value
 
-> A [`Query`]({% link api/query.md %}) instance
+> A [`Query`]({{ site.baseurl }}{% link api/query.md %}) instance
 
 ### fetchSnapshot()
 
@@ -150,7 +150,7 @@ Optional
 > function(error, snapshot) { ... }
 > ```
 
-> A callback called with the requested [`Snapshot`]({% link api/snapshot.md %})
+> A callback called with the requested [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
 
 ### fetchSnapshotByTimestamp()
 
@@ -185,11 +185,11 @@ Optional
 > function(error, snapshot) { ... }
 > ```
 
-> A callback called with the requested [`Snapshot`]({% link api/snapshot.md %})
+> A callback called with the requested [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
 
 ### getPresence()
 
-Get a [`Presence`]({% link api/presence.md %}) instance that can be used to subscribe to presence information from other clients, and create instances of [`LocalPresence`]({% link api/local-presence.md %}).
+Get a [`Presence`]({{ site.baseurl }}{% link api/presence.md %}) instance that can be used to subscribe to presence information from other clients, and create instances of [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}).
 
 ```js
 connection.getPresence(channel)
@@ -197,17 +197,17 @@ connection.getPresence(channel)
 
 `channel` -- string
 
-> The channel associated with this presence. All [`Presence`]({% link api/presence.md %}) instances subscribed to the same channel will receive the same notifications
+> The channel associated with this presence. All [`Presence`]({{ site.baseurl }}{% link api/presence.md %}) instances subscribed to the same channel will receive the same notifications
 
 Return value
 
-> A [`Presence`]({% link api/presence.md %}) instance for the given `channel`
+> A [`Presence`]({{ site.baseurl }}{% link api/presence.md %}) instance for the given `channel`
 
 ### getDocPresence()
 
-Get a special [`Presence`]({% link api/presence.md %}) instance tied to a given document.
+Get a special [`Presence`]({{ site.baseurl }}{% link api/presence.md %}) instance tied to a given document.
 
-This can be used to subscribe to presence information from other clients, and create instances of [`LocalPresence`]({% link api/local-presence.md %}).
+This can be used to subscribe to presence information from other clients, and create instances of [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}).
 
 Presence updates are synchronized with ops to keep presence current, and avoid "flickering" -- where presence updates and ops arrive out-of-order.
 
@@ -216,7 +216,7 @@ connection.getDocPresence(collection, id)
 ```
 
 {: .warn }
-The document **must** be of a [type]({% link types/index.md %}) that supports [presence]({% link presence.md %}).
+The document **must** be of a [type]({{ site.baseurl }}{% link types/index.md %}) that supports [presence]({{ site.baseurl }}{% link presence.md %}).
 
 `collection` -- string
 
@@ -228,4 +228,4 @@ The document **must** be of a [type]({% link types/index.md %}) that supports [p
 
 Return value
 
-> A [`Presence`]({% link api/presence.md %}) instance tied to the given document
+> A [`Presence`]({{ site.baseurl }}{% link api/presence.md %}) instance tied to the given document

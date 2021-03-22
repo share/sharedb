@@ -21,7 +21,7 @@ npm install --save sharedb
 If your server and client have separate dependencies, ShareDB should be added as a dependency to **both** packages.
 
 <!-- TODO: Link to types -->
-You may also wish to install other [OT types]({% link types/index.md %}).
+You may also wish to install other [OT types]({{ site.baseurl }}{% link types/index.md %}).
 
 ## Examples
 
