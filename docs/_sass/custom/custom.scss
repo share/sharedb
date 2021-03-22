@@ -1,0 +1,37 @@
+/**
+ * Add call-out support: https://github.com/pmarsceill/just-the-docs/issues/171#issuecomment-538794741
+ */
+$callouts: (
+  info: ($blue-300, rgba($blue-000, .2), 'Note'),
+  warn: ($yellow-300, rgba($yellow-000, .2), 'Note'),
+  danger: ($red-300, rgba($red-000, .2), 'Note')
+);
+
+@each $class, $props in $callouts {
+  .#{$class} {
+    background: nth($props, 2);
+    border-left: $border-radius solid nth($props, 1);
+    border-radius: $border-radius;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08);
+    padding: .8rem;
+
+    &::before {
+      color: nth($props, 1);
+      content: nth($props, 3);
+      display: block;
+      font-weight: bold;
+      font-size: .75em;
+      padding-bottom: .125rem;
+    }
+
+    br {
+      content: '';
+      display: block;
+      margin-top: .5rem;
+    }
+  }
+}
+
+.label-grey {
+  background: rgba($grey-dk-000, 1);
+}
