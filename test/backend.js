@@ -1,8 +1,19 @@
 var Backend = require('../lib/backend');
 var expect = require('chai').expect;
+var sinon = require('sinon');
 
 describe('Backend', function() {
   var backend;
+  var agent = {
+    custom: {
+      foo: 'bar'
+    }
+  };
+  var fetchOptions = {
+    snapshotOptions: {
+      fizz: 'buzz'
+    }
+  };
 
   beforeEach(function() {
     backend = new Backend();
@@ -65,6 +76,32 @@ describe('Backend', function() {
         backend.fetch(null, 'books', '1984', options, function(error, doc) {
           if (error) return done(error);
           expect(doc.m).to.be.ok;
+          done();
+        });
+      });
+
+      it('passes agent.custom and snapshot options to db', function(done) {
+        var getSnapshotSpy = sinon.spy(backend.db, 'getSnapshot');
+        backend.fetch(agent, 'books', '1984', fetchOptions, function(error) {
+          if (error) return done(error);
+          expect(getSnapshotSpy.args[0][3]).to.deep.equal({
+            custom: agent.custom,
+            fizz: 'buzz'
+          });
+          done();
+        });
+      });
+    });
+
+    describe('fetchBulk', function() {
+      it('passes agent.custom and snapshot options to db', function(done) {
+        var getSnapshotBulk = sinon.spy(backend.db, 'getSnapshotBulk');
+        backend.fetchBulk(agent, 'books', ['1984'], fetchOptions, function(error) {
+          if (error) return done(error);
+          expect(getSnapshotBulk.args[0][3]).to.deep.equal({
+            custom: agent.custom,
+            fizz: 'buzz'
+          });
           done();
         });
       });
