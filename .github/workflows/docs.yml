@@ -1,0 +1,25 @@
+name: Docs
+
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - docs/**
+  pull_request:
+    branches:
+    - master
+    paths:
+    - docs/**
+
+jobs:
+  docs:
+    name: Jekyll
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: cd docs && bundle install
+    - name: Build
+      run: cd docs && bundle exec jekyll build
