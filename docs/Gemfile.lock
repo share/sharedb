@@ -196,10 +196,6 @@ GEM
       gemoji (~> 3.0)
       html-pipeline (~> 2.2)
       jekyll (>= 3.0, < 5.0)
-    just-the-docs (0.3.3)
-      jekyll (>= 3.8.5)
-      jekyll-seo-tag (~> 2.0)
-      rake (>= 12.3.1, < 13.1.0)
     kramdown (2.3.0)
       rexml
     kramdown-parser-gfm (1.1.0)
@@ -226,7 +222,6 @@ GEM
       forwardable-extended (~> 2.6)
     public_suffix (3.1.1)
     racc (1.5.2)
-    rake (13.0.3)
     rb-fsevent (0.10.4)
     rb-inotify (0.10.1)
       ffi (~> 1.0)
@@ -269,9 +264,7 @@ PLATFORMS
 DEPENDENCIES
   github-pages (~> 211)
   jekyll-feed (~> 0.6)
-  just-the-docs
   kramdown-parser-gfm
-  minima (~> 2.0)
   tzinfo (~> 1.2)
   tzinfo-data
   wdm (~> 0.1.0)

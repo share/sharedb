@@ -43,11 +43,6 @@ jobs:
         parallel: true
     - name: Test sharedb-mongo
       run: scripts/test-sharedb-mongo.sh
-    - name: Build docs
-      run: |
-        cd docs
-        bundle install
-        bundle exec jekyll build
 
   finish:
     needs: test
