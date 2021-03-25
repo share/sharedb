@@ -54,7 +54,7 @@ module.exports = function() {
       connection.get('dogs', 'fido').create({age: 3}, function(err) {
         if (err) return done(err);
         expect(getSnapshotSpy.args[0][3]).to.deep.equal({
-          custom: {foo: 'bar'}
+          agentCustom: {foo: 'bar'}
         });
         done();
       });

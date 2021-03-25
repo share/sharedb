@@ -85,7 +85,7 @@ describe('Backend', function() {
         backend.fetch(agent, 'books', '1984', fetchOptions, function(error) {
           if (error) return done(error);
           expect(getSnapshotSpy.args[0][3]).to.deep.equal({
-            custom: agent.custom,
+            agentCustom: agent.custom,
             fizz: 'buzz'
           });
           done();
@@ -99,7 +99,7 @@ describe('Backend', function() {
         backend.fetchBulk(agent, 'books', ['1984'], fetchOptions, function(error) {
           if (error) return done(error);
           expect(getSnapshotBulk.args[0][3]).to.deep.equal({
-            custom: agent.custom,
+            agentCustom: agent.custom,
             fizz: 'buzz'
           });
           done();
