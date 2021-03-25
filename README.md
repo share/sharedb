@@ -46,3 +46,20 @@ https://share.github.io/sharedb/
 ### Leaderboard
 
 [<img src="examples/leaderboard/demo.gif" height="436">](examples/leaderboard)
+
+## Development
+
+### Documentation
+
+The documentation is stored as Markdown files, but sometimes it can be useful to run these locally. The docs are served using [Jekyll](https://jekyllrb.com/), and require Ruby >2.4.0 and [Bundler](https://bundler.io/):
+
+```bash
+gem install jekyll bundler
+```
+
+The docs can be built locally and served with live reload:
+
+```bash
+npm run docs:install
+npm run docs:start
+```

@@ -23,6 +23,9 @@
     "sinon": "^7.5.0"
   },
   "scripts": {
+    "docs:install": "cd docs && bundle install",
+    "docs:build": "cd docs && bundle exec jekyll build",
+    "docs:start": "cd docs && bundle exec jekyll serve --livereload",
     "test": "mocha",
     "test-cover": "nyc --temp-dir=coverage -r text -r lcov npm test",
     "lint": "./node_modules/.bin/eslint --ignore-path .gitignore '**/*.js'",
