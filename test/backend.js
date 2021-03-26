@@ -136,17 +136,6 @@ describe('Backend', function() {
           done();
         });
       });
-
-      it('passes agent.custom and snapshot options to db', function(done) {
-        var getSnapshotSpy = sinon.spy(backend.db, 'getSnapshot');
-        backend.subscribe(agent, 'books', '1984', null, function(error) {
-          if (error) return done(error);
-          expect(getSnapshotSpy.args[0][3]).to.deep.equal({
-            agentCustom: agent.custom
-          });
-          done();
-        });
-      });
     });
 
     describe('submitRequestEnd', function() {
