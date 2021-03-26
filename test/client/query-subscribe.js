@@ -438,7 +438,49 @@ module.exports = function(options) {
         expect(query.extra).eql(2);
         done();
       });
-      connection.get('dogs', 'fido').on('error', done).create({age: 3});
+      connection.get('dogs', 'fido').on('error', errored).create({age: 3});
+    });
+
+    describe('passing agent.custom to the DB adapter', function() {
+      var connection;
+      var expectedArg = {
+        agentCustom2: {foo: 'bar'}
+      };
+      beforeEach('set up', function() {
+        connection = this.backend.connect();
+        connection.agent.custom = {
+          foo: 'bar'
+        };
+      });
+
+      it('sends agentCustom to the db\'s getSnapshot call', function(done) {
+        var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery);
+        var getSnapshotSpy = sinon.spy(this.backend.db, 'getSnapshot');
+
+        query.on('insert', function() {
+          expect(getSnapshotSpy.callCount).to.equal(2);
+          expect(getSnapshotSpy.getCall(1).args[3]).to.deep.equal(expectedArg);
+          done();
+        });
+        connection.get('dogs', 'fido').create({age: 3});
+      });
+
+      it('sends agentCustom to the db\'s getSnapshotBulk call', function(done) {
+        // Ensures that getSnapshotBulk is called, instead of getSnapshot
+        this.backend.db.canPollDoc = function() {
+          return false;
+        };
+
+        var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery);
+        var getSnapshotBulkSpy = sinon.spy(this.backend.db, 'getSnapshotBulk');
+
+        query.on('insert', function() {
+          expect(getSnapshotBulkSpy.callCount).to.equal(1);
+          expect(getSnapshotBulkSpy.getCall(0).args[3]).to.deep.equal(expectedArg);
+          done();
+        });
+        connection.get('dogs', 'fido').create({age: 3});
+      });
     });
 
     it('changing a filtered property removes from a subscribed query', function(done) {
