@@ -95,10 +95,10 @@ describe('Backend', function() {
 
     describe('fetchBulk', function() {
       it('passes agent.custom and snapshot options to db', function(done) {
-        var getSnapshotBulk = sinon.spy(backend.db, 'getSnapshotBulk');
+        var getSnapshotBulkSpy = sinon.spy(backend.db, 'getSnapshotBulk');
         backend.fetchBulk(agent, 'books', ['1984'], fetchOptions, function(error) {
           if (error) return done(error);
-          expect(getSnapshotBulk.args[0][3]).to.deep.equal({
+          expect(getSnapshotBulkSpy.getCall(0).args[3]).to.deep.equal({
             agentCustom: agent.custom,
             fizz: 'buzz'
           });
@@ -133,6 +133,17 @@ describe('Backend', function() {
         };
         backend.subscribe(null, 'books', '1984', null, options, function(error) {
           expect(error.code).to.equal('ERR_DATABASE_METHOD_NOT_IMPLEMENTED');
+          done();
+        });
+      });
+
+      it('passes agent.custom and snapshot options to db', function(done) {
+        var getSnapshotSpy = sinon.spy(backend.db, 'getSnapshot');
+        backend.subscribe(agent, 'books', '1984', null, function(error) {
+          if (error) return done(error);
+          expect(getSnapshotSpy.args[0][3]).to.deep.equal({
+            agentCustom: agent.custom
+          });
           done();
         });
       });
