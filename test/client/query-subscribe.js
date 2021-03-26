@@ -1,6 +1,7 @@
 var expect = require('chai').expect;
 var async = require('async');
 var util = require('../util');
+var sinon = require('sinon');
 
 module.exports = function(options) {
   var getQuery = options.getQuery;
@@ -438,13 +439,13 @@ module.exports = function(options) {
         expect(query.extra).eql(2);
         done();
       });
-      connection.get('dogs', 'fido').on('error', errored).create({age: 3});
+      connection.get('dogs', 'fido').on('error', done).create({age: 3});
     });
 
     describe('passing agent.custom to the DB adapter', function() {
       var connection;
       var expectedArg = {
-        agentCustom2: {foo: 'bar'}
+        agentCustom: {foo: 'bar'}
       };
       beforeEach('set up', function() {
         connection = this.backend.connect();
