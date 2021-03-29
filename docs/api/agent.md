@@ -5,10 +5,11 @@ parent: API
 ---
 
 # Agent
+
 {: .no_toc }
 
 1. TOC
-{:toc}
+   {:toc}
 
 An `Agent` is the representation of a client's [`Connection`]({{ site.baseurl }}{% link api/connection.md %}) state on the server.
 
@@ -22,6 +23,9 @@ If the `Connection` was created through [`backend.connect()`]({{ site.baseurl }}
 ### `custom` -- Object
 
 > An object that consumers can use to pass information around through the middleware.
+
+{: .info }
+The `agent.custom` is passed onto the `options` field in [database adapter]({{ site.baseurl }}{% link adapters/database.md %}) calls as `options.agentCustom`. This allows further customisation at the database level e.g. [in `sharedb-mongo` middleware](https://github.com/share/sharedb-mongo#middlewares).
 
 ### `backend` -- [Backend]({{ site.baseurl }}{% link api/backend.md %})
 
