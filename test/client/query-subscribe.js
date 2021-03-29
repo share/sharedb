@@ -459,6 +459,8 @@ module.exports = function(options) {
         var getSnapshotSpy = sinon.spy(this.backend.db, 'getSnapshot');
 
         query.on('insert', function() {
+          // The first call to getSnapshot is when the document is created
+          // The seconds call is when the event is triggered, and is the one we are testing here
           expect(getSnapshotSpy.callCount).to.equal(2);
           expect(getSnapshotSpy.getCall(1).args[3]).to.deep.equal(expectedArg);
           done();
