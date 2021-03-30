@@ -1,5 +1,6 @@
 var async = require('async');
 var expect = require('chai').expect;
+var sinon = require('sinon');
 var types = require('../../lib/types');
 var deserializedType = require('./deserialized-type');
 var numberType = require('./number-type');
@@ -40,6 +41,21 @@ module.exports = function() {
         if (err) return done(err);
         expect(doc.data).eql({age: 3});
         expect(doc.version).eql(1);
+        done();
+      });
+    });
+
+    it('can create a new doc and pass options to getSnapshot', function(done) {
+      var connection = this.backend.connect();
+      connection.agent.custom = {
+        foo: 'bar'
+      };
+      var getSnapshotSpy = sinon.spy(this.backend.db, 'getSnapshot');
+      connection.get('dogs', 'fido').create({age: 3}, function(err) {
+        if (err) return done(err);
+        expect(getSnapshotSpy.args[0][3]).to.deep.equal({
+          agentCustom: {foo: 'bar'}
+        });
         done();
       });
     });
