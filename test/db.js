@@ -3,15 +3,27 @@ var expect = require('chai').expect;
 var Backend = require('../lib/backend');
 var ot = require('../lib/ot');
 
+/**
+ * Run the DB test suite. Useful for testing external DB adapters:
+ * require('sharedb/test/db')(options);
+ *
+ * options.create() should instantiate a database adapter and call the
+ * provided callback with it.
+ * options.create = function(callback) {
+ *   // Create instance of Db
+ *   callback(error, db);
+ * }
+ *
+ * options.getQuery() is optional, and only needed if the adapter supports
+ * queries. It needs to accept the "generic" query provided by the
+ * test suite, and return a query specific to the adapter.
+ * options.getQuery = function(genericQuery) {
+ *   // map genericQuery into adapter-specific query
+ *   return mappedQuery;
+ * }
+ */
 module.exports = function(options) {
   var create = options.create;
-  function getQuery(queryOptions) {
-    for (var key in queryOptions.query) {
-      var mongoKey = (key[0] === '$' || (key.indexOf('.') !== -1));
-      if (mongoKey) throw new Error('unsupported in tests: ' + key);
-    }
-    return options.getQuery(queryOptions);
-  }
 
   describe('db', function() {
     beforeEach(function(done) {
@@ -46,9 +58,12 @@ module.exports = function(options) {
       });
     });
 
-    require('./client/projections')({getQuery: getQuery});
-    require('./client/query-subscribe')({getQuery: getQuery});
-    require('./client/query')({getQuery: getQuery});
+    if (options.getQuery) {
+      require('./client/query-subscribe')({getQuery: options.getQuery});
+      require('./client/query')({getQuery: options.getQuery});
+    }
+
+    require('./client/projections')({getQuery: options.getQuery});
     require('./client/submit')();
     require('./client/submit-json1')();
     require('./client/subscribe')();
@@ -739,102 +754,104 @@ module.exports = function(options) {
       });
     });
 
-    describe('queryPoll', function() {
-      it('returns data in the collection', function(done) {
-        var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
-        var db = this.db;
-        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
-          if (err) return done(err);
-          var dbQuery = getQuery({query: {x: 5}});
-          db.queryPoll('testcollection', dbQuery, null, function(err, ids) {
+    if (options.getQuery) {
+      describe('queryPoll', function() {
+        it('returns data in the collection', function(done) {
+          var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
+          var db = this.db;
+          db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
             if (err) return done(err);
-            expect(ids).eql(['test']);
+            var dbQuery = options.getQuery({query: {x: 5}});
+            db.queryPoll('testcollection', dbQuery, null, function(err, ids) {
+              if (err) return done(err);
+              expect(ids).eql(['test']);
+              done();
+            });
+          });
+        });
+
+        it('returns nothing when there is no data', function(done) {
+          var dbQuery = options.getQuery({query: {x: 5}});
+          this.db.queryPoll('testcollection', dbQuery, null, function(err, ids) {
+            if (err) return done(err);
+            expect(ids).eql([]);
             done();
           });
         });
       });
 
-      it('returns nothing when there is no data', function(done) {
-        var dbQuery = getQuery({query: {x: 5}});
-        this.db.queryPoll('testcollection', dbQuery, null, function(err, ids) {
-          if (err) return done(err);
-          expect(ids).eql([]);
-          done();
-        });
-      });
-    });
+      describe('queryPollDoc', function() {
+        it('returns false when the document does not exist', function(done) {
+          var dbQuery = options.getQuery({query: {}});
+          if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
 
-    describe('queryPollDoc', function() {
-      it('returns false when the document does not exist', function(done) {
-        var dbQuery = getQuery({query: {}});
-        if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
-
-        var db = this.db;
-        db.queryPollDoc('testcollection', 'doesnotexist', dbQuery, null, function(err, result) {
-          if (err) return done(err);
-          expect(result).equal(false);
-          done();
-        });
-      });
-
-      it('returns true when the document matches', function(done) {
-        var dbQuery = getQuery({query: {x: 5}});
-        if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
-
-        var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
-        var db = this.db;
-        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
-          if (err) return done(err);
-          db.queryPollDoc('testcollection', 'test', dbQuery, null, function(err, result) {
-            if (err) return done(err);
-            expect(result).equal(true);
-            done();
-          });
-        });
-      });
-
-      it('returns false when the document does not match', function(done) {
-        var dbQuery = getQuery({query: {x: 6}});
-        if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
-
-        var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
-        var db = this.db;
-        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
-          if (err) return done(err);
-          db.queryPollDoc('testcollection', 'test', dbQuery, null, function(err, result) {
+          var db = this.db;
+          db.queryPollDoc('testcollection', 'doesnotexist', dbQuery, null, function(err, result) {
             if (err) return done(err);
             expect(result).equal(false);
             done();
           });
         });
-      });
-    });
 
-    describe('getQuery', function() {
-      it('getQuery argument order', function(done) {
-        // test that getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]})
-        // sorts by foo first, then bar
-        var snapshots = [
-          {type: 'json0', id: '0', v: 1, data: {foo: 1, bar: 1}, m: null},
-          {type: 'json0', id: '1', v: 1, data: {foo: 2, bar: 1}, m: null},
-          {type: 'json0', id: '2', v: 1, data: {foo: 1, bar: 2}, m: null},
-          {type: 'json0', id: '3', v: 1, data: {foo: 2, bar: 2}, m: null}
-        ];
-        var db = this.db;
-        var dbQuery = getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]});
+        it('returns true when the document matches', function(done) {
+          var dbQuery = options.getQuery({query: {x: 5}});
+          if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
 
-        async.each(snapshots, function(snapshot, cb) {
-          db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, cb);
-        }, function(err) {
-          if (err) throw err;
-          db.query('testcollection', dbQuery, null, null, function(err, results) {
-            if (err) throw err;
-            expect(results).eql(
-              [snapshots[2], snapshots[0], snapshots[3], snapshots[1]]);
-            done();
+          var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
+          var db = this.db;
+          db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
+            if (err) return done(err);
+            db.queryPollDoc('testcollection', 'test', dbQuery, null, function(err, result) {
+              if (err) return done(err);
+              expect(result).equal(true);
+              done();
+            });
+          });
+        });
+
+        it('returns false when the document does not match', function(done) {
+          var dbQuery = options.getQuery({query: {x: 6}});
+          if (!this.db.canPollDoc('testcollection', dbQuery)) return done();
+
+          var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
+          var db = this.db;
+          db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
+            if (err) return done(err);
+            db.queryPollDoc('testcollection', 'test', dbQuery, null, function(err, result) {
+              if (err) return done(err);
+              expect(result).equal(false);
+              done();
+            });
           });
         });
       });
-    });
+
+      describe('getQuery', function() {
+        it('getQuery argument order', function(done) {
+          // test that options.getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]})
+          // sorts by foo first, then bar
+          var snapshots = [
+            {type: 'json0', id: '0', v: 1, data: {foo: 1, bar: 1}, m: null},
+            {type: 'json0', id: '1', v: 1, data: {foo: 2, bar: 1}, m: null},
+            {type: 'json0', id: '2', v: 1, data: {foo: 1, bar: 2}, m: null},
+            {type: 'json0', id: '3', v: 1, data: {foo: 2, bar: 2}, m: null}
+          ];
+          var db = this.db;
+          var dbQuery = options.getQuery({query: {}, sort: [['foo', 1], ['bar', -1]]});
+
+          async.each(snapshots, function(snapshot, cb) {
+            db.commit('testcollection', snapshot.id, {v: 0, create: {}}, snapshot, null, cb);
+          }, function(err) {
+            if (err) throw err;
+            db.query('testcollection', dbQuery, null, null, function(err, results) {
+              if (err) throw err;
+              expect(results).eql(
+                [snapshots[2], snapshots[0], snapshots[3], snapshots[1]]);
+              done();
+            });
+          });
+        });
+      });
+    }
   });
 };

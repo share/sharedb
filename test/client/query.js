@@ -7,7 +7,6 @@ module.exports = function(options) {
 
   describe('client query', function() {
     before(function() {
-      if (!getQuery) return this.skip();
       this.matchAllDbQuery = getQuery({query: {}});
     });
 

@@ -8,7 +8,6 @@ module.exports = function(options) {
 
   describe('client query subscribe', function() {
     before(function() {
-      if (!getQuery) return this.skip();
       this.matchAllDbQuery = getQuery({query: {}});
     });
 

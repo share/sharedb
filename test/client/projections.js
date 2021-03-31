@@ -3,7 +3,7 @@ var util = require('../util');
 
 module.exports = function(options) {
   var getQuery = options.getQuery;
-  var matchAllQuery = getQuery({query: {}});
+  var matchAllQuery = getQuery && getQuery({query: {}});
 
   describe('client projections', function() {
     beforeEach(function(done) {
@@ -26,18 +26,20 @@ module.exports = function(options) {
       });
     });
 
-    ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
-      it('snapshot ' + method, function(done) {
-        var connection2 = this.backend.connect();
-        connection2[method]('dogs_summary', matchAllQuery, null, function(err, results) {
-          if (err) return done(err);
-          expect(results.length).eql(1);
-          expect(results[0].data).eql({age: 3, owner: {name: 'jim'}});
-          expect(results[0].version).eql(1);
-          done();
+    if (getQuery) {
+      ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
+        it('snapshot ' + method, function(done) {
+          var connection2 = this.backend.connect();
+          connection2[method]('dogs_summary', matchAllQuery, null, function(err, results) {
+            if (err) return done(err);
+            expect(results.length).eql(1);
+            expect(results[0].data).eql({age: 3, owner: {name: 'jim'}});
+            expect(results[0].version).eql(1);
+            done();
+          });
         });
       });
-    });
+    }
 
     function opTests(test) {
       it('projected field', function(done) {
@@ -133,116 +135,118 @@ module.exports = function(options) {
       opTests(test);
     });
 
-    describe('op fetch query', function() {
-      function test(op, expected, done) {
-        var connection = this.connection;
-        var connection2 = this.backend.connect();
-        var fido = connection2.get('dogs_summary', 'fido');
-        fido.fetch(function(err) {
-          if (err) return done(err);
-          connection.get('dogs', 'fido').submitOp(op, function(err) {
+    if (getQuery) {
+      describe('op fetch query', function() {
+        function test(op, expected, done) {
+          var connection = this.connection;
+          var connection2 = this.backend.connect();
+          var fido = connection2.get('dogs_summary', 'fido');
+          fido.fetch(function(err) {
             if (err) return done(err);
-            connection2.createFetchQuery('dogs_summary', matchAllQuery, null, function(err) {
+            connection.get('dogs', 'fido').submitOp(op, function(err) {
               if (err) return done(err);
+              connection2.createFetchQuery('dogs_summary', matchAllQuery, null, function(err) {
+                if (err) return done(err);
+                expect(fido.data).eql(expected);
+                expect(fido.version).eql(2);
+                done();
+              });
+            });
+          });
+        };
+        opTests(test);
+      });
+
+      describe('op subscribe query', function() {
+        function test(op, expected, done) {
+          var connection = this.connection;
+          var connection2 = this.backend.connect();
+          var fido = connection2.get('dogs_summary', 'fido');
+          connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
+            if (err) return done(err);
+            fido.on('op', function() {
               expect(fido.data).eql(expected);
               expect(fido.version).eql(2);
               done();
             });
+            connection.get('dogs', 'fido').submitOp(op);
+          });
+        };
+        opTests(test);
+      });
+
+      function queryUpdateTests(test) {
+        it('doc create', function(done) {
+          test.call(this,
+            function(connection, callback) {
+              var data = {age: 5, color: 'spotted', owner: {name: 'sue'}, litter: {count: 6}};
+              connection.get('dogs', 'spot').create(data, callback);
+            },
+            function(err, results) {
+              var sorted = util.sortById(results.slice());
+              expect(sorted.length).eql(2);
+              expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
+              expect(util.pluck(sorted, 'data')).eql([
+                {age: 3, owner: {name: 'jim'}},
+                {age: 5, owner: {name: 'sue'}}
+              ]);
+              done();
+            }
+          );
+        });
+      }
+
+      describe('subscribe query', function() {
+        function test(trigger, callback) {
+          var connection = this.connection;
+          var connection2 = this.backend.connect();
+          var query = connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
+            if (err) return callback(err);
+            query.on('insert', function() {
+              callback(null, query.results);
+            });
+            trigger(connection);
+          });
+        }
+        queryUpdateTests(test);
+
+        it('query subscribe on projection will update based on fields not in projection', function(done) {
+          // Create a query on a field not in the projection. The query doesn't
+          // match the doc created in beforeEach
+          var fido = this.connection.get('dogs', 'fido');
+          var connection2 = this.backend.connect();
+          var dbQuery = getQuery({query: {color: 'black'}});
+          var query = connection2.createSubscribeQuery('dogs_summary', dbQuery, null, function(err, results) {
+            if (err) return done(err);
+            expect(results).to.have.length(0);
+
+            // Submit an op on a field not in the projection, where the op should
+            // cause the doc to be included in the query results
+            fido.submitOp({p: ['color'], od: 'gold', oi: 'black'}, null, function(err) {
+              if (err) return done(err);
+              setTimeout(function() {
+                expect(query.results).to.have.length(1);
+                expect(query.results[0].id).to.equal('fido');
+                expect(query.results[0].data).to.eql({age: 3, owner: {name: 'jim'}});
+                done();
+              }, 10);
+            });
           });
         });
-      };
-      opTests(test);
-    });
+      });
 
-    describe('op subscribe query', function() {
-      function test(op, expected, done) {
-        var connection = this.connection;
-        var connection2 = this.backend.connect();
-        var fido = connection2.get('dogs_summary', 'fido');
-        connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
-          if (err) return done(err);
-          fido.on('op', function() {
-            expect(fido.data).eql(expected);
-            expect(fido.version).eql(2);
-            done();
+      describe('fetch query', function() {
+        function test(trigger, callback) {
+          var connection = this.connection;
+          var connection2 = this.backend.connect();
+          trigger(connection, function(err) {
+            if (err) return callback(err);
+            connection2.createFetchQuery('dogs_summary', matchAllQuery, null, callback);
           });
-          connection.get('dogs', 'fido').submitOp(op);
-        });
-      };
-      opTests(test);
-    });
-
-    function queryUpdateTests(test) {
-      it('doc create', function(done) {
-        test.call(this,
-          function(connection, callback) {
-            var data = {age: 5, color: 'spotted', owner: {name: 'sue'}, litter: {count: 6}};
-            connection.get('dogs', 'spot').create(data, callback);
-          },
-          function(err, results) {
-            var sorted = util.sortById(results.slice());
-            expect(sorted.length).eql(2);
-            expect(util.pluck(sorted, 'id')).eql(['fido', 'spot']);
-            expect(util.pluck(sorted, 'data')).eql([
-              {age: 3, owner: {name: 'jim'}},
-              {age: 5, owner: {name: 'sue'}}
-            ]);
-            done();
-          }
-        );
+        }
+        queryUpdateTests(test);
       });
     }
-
-    describe('subscribe query', function() {
-      function test(trigger, callback) {
-        var connection = this.connection;
-        var connection2 = this.backend.connect();
-        var query = connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
-          if (err) return callback(err);
-          query.on('insert', function() {
-            callback(null, query.results);
-          });
-          trigger(connection);
-        });
-      }
-      queryUpdateTests(test);
-
-      it('query subscribe on projection will update based on fields not in projection', function(done) {
-        // Create a query on a field not in the projection. The query doesn't
-        // match the doc created in beforeEach
-        var fido = this.connection.get('dogs', 'fido');
-        var connection2 = this.backend.connect();
-        var dbQuery = getQuery({query: {color: 'black'}});
-        var query = connection2.createSubscribeQuery('dogs_summary', dbQuery, null, function(err, results) {
-          if (err) return done(err);
-          expect(results).to.have.length(0);
-
-          // Submit an op on a field not in the projection, where the op should
-          // cause the doc to be included in the query results
-          fido.submitOp({p: ['color'], od: 'gold', oi: 'black'}, null, function(err) {
-            if (err) return done(err);
-            setTimeout(function() {
-              expect(query.results).to.have.length(1);
-              expect(query.results[0].id).to.equal('fido');
-              expect(query.results[0].data).to.eql({age: 3, owner: {name: 'jim'}});
-              done();
-            }, 10);
-          });
-        });
-      });
-    });
-
-    describe('fetch query', function() {
-      function test(trigger, callback) {
-        var connection = this.connection;
-        var connection2 = this.backend.connect();
-        trigger(connection, function(err) {
-          if (err) return callback(err);
-          connection2.createFetchQuery('dogs_summary', matchAllQuery, null, callback);
-        });
-      }
-      queryUpdateTests(test);
-    });
 
     describe('submit on projected doc', function() {
       function test(op, expected, done) {
