@@ -226,7 +226,9 @@ describe('middleware', function() {
         });
         var op = {create: {type: types.defaultType.uri}};
         var options = {testOption: true};
-        this.backend.submit(null, 'dogs', 'fido', op, options, doneAfter);
+        var connection = this.backend.connect();
+        var agent = connection.agent;
+        this.backend.submit(agent, 'dogs', 'fido', op, options, doneAfter);
       });
     });
   });
