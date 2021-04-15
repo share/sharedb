@@ -147,15 +147,15 @@ This action has these additional `context` properties:
 
 `collection` -- string
 
-> The query's target collection
+> The name of the query's target collection
 
 `projection` -- string
 
-> The query's [projection]({{ site.baseurl }}{% link projections.md %})
+> The name of the query's [projection]({{ site.baseurl }}{% link projections.md %})
 
 `fields` -- Object
 
-> The query's projection fields
+> The query's projection [fields]({{ site.baseurl }}{% link api/backend.md %}#addprojection)
 
 `channel` -- string
 

@@ -40,7 +40,7 @@ query.on('ready', () => {
 
 ## Subscribe query
 
-A subscribe query acts similarly to a [fetch query](#fetch-query), except a subscribe query will update its own [`results`]({{ site.baseurl }}{% link api/query.md %}#results--array) in response to documents being [added]({{ site.baseurl }}{% link api/query.md %}#insert), [removed]({{ site.baseurl }}{% link api/query.md %}#remove) or [moved]({{ site.baseurl }}{% link api/query.md %}#move) (eg if the query is sorted).
+A subscribe query acts similarly to a [fetch query](#fetch-query), except a subscribe query will update its own [`results`]({{ site.baseurl }}{% link api/query.md %}#results--array) in response to documents being [added]({{ site.baseurl }}{% link api/query.md %}#insert), [removed]({{ site.baseurl }}{% link api/query.md %}#remove) or [moved]({{ site.baseurl }}{% link api/query.md %}#move) (e.g. if the query is sorted).
 
 {: .warn }
 A subscribe query will **not** subscribe the returned `Doc` instances. If you want the documents themselves to *also* receive updates, you will need to subscribe them manually using [`doc.subscribe()`]({{ site.baseurl }}{% link api/doc.md %}#subscribe).
@@ -119,6 +119,8 @@ query.on('changed', () => {
   // ]
 })
 ```
+
+So, as per our query, the `query.results` will always contain the first 3 values, sorted in ascending order, regardless of what the original values were when first subscribing.
 
 {: .warn }
 After they've been created, queries cannot be updated. If you want a new page of results, you'll have to create a new query.
