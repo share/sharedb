@@ -33,6 +33,9 @@ copy:
     `maxRetries` -- number
     > The maximum number of times to retry submitting the op
 
+    `channels` -- string[]
+    > The [pub/sub]({{ site.baseurl }}{% link pub-sub.md %}) channels the op will publish to
+
 ---
 
 # Middleware
@@ -131,6 +134,44 @@ This action has these additional `context` properties:
 `presence` -- Object
 
 > The presence object being sent. Its shape depends on its [type]({{ site.baseurl }}{% link types/index.md %})
+
+### `'query'`
+
+A new query request is about to be submitted to the database
+
+This action has these additional `context` properties:
+
+`index` -- string
+
+> The name of the query's collection or [projection]({{ site.baseurl }}{% link projections.md %})
+
+`collection` -- string
+
+> The name of the query's target collection
+
+`projection` -- string
+
+> The name of the query's [projection]({{ site.baseurl }}{% link projections.md %})
+
+`fields` -- Object
+
+> The query's projection [fields]({{ site.baseurl }}{% link api/backend.md %}#addprojection)
+
+`channel` -- string
+
+> The [Pub/Sub]({{ site.baseurl }}{% link adapters/pub-sub.md %}) channel the query will subscribe to. Defaults to its collection channel.
+
+`query` -- Object
+
+> The query being submitted to the database adapter
+
+`options` -- Object
+
+> The query [options]({{ site.baseurl }}{% link api/connection.md %}#createfetchquery)
+
+`db` -- [DB]({{ site.baseurl }}{% link adapters/database.md %})
+
+> The database the query will be run against
 
 ### `'readSnapshots'`
 
