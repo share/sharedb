@@ -4,7 +4,7 @@
   "description": "React Leaderboard backed by ShareDB",
   "main": "server.js",
   "scripts": {
-    "build": "mkdir -p static/dist/ && ./node_modules/.bin/browserify -t [ babelify --presets [ react ] ] client/index.jsx -o static/dist/bundle.js",
+    "build": "browserify -t [ babelify --presets [ react ] ] client/index.jsx -o static/dist/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server/index.js"
   },
