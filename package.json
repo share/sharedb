@@ -22,6 +22,9 @@
     "sharedb-legacy": "npm:sharedb@=1.1.0",
     "sinon": "^7.5.0"
   },
+  "files": [
+    "lib/"
+  ],
   "scripts": {
     "docs:install": "cd docs && bundle install",
     "docs:build": "cd docs && bundle exec jekyll build",
