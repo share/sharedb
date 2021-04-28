@@ -4,7 +4,7 @@
   "description": "An example of presence using ShareDB and Quill",
   "main": "server.js",
   "scripts": {
-    "build": "mkdir -p static/dist/ && ./node_modules/.bin/browserify client.js -o static/dist/bundle.js",
+    "build": "browserify client.js -o static/dist/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
