@@ -115,7 +115,7 @@ Optional
 
 ### `MIDDLEWARE_ACTIONS` -- Object
 
-> Map of available [middleware actions]({{ site.baseurl }}{% link middleware/index.md %}#actions)
+> Map of available [middleware actions]({{ site.baseurl }}{% link middleware/actions.md %})
 
 ## Methods
 
