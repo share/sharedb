@@ -43,7 +43,7 @@ query.on('ready', () => {
 A subscribe query acts similarly to a [fetch query](#fetch-query), except a subscribe query will update its own [`results`]({{ site.baseurl }}{% link api/query.md %}#results--array) in response to documents being [added]({{ site.baseurl }}{% link api/query.md %}#insert), [removed]({{ site.baseurl }}{% link api/query.md %}#remove) or [moved]({{ site.baseurl }}{% link api/query.md %}#move) (e.g. if the query is sorted).
 
 {: .warn }
-A subscribe query will automatically subscribe any matched `Doc` instances, and they **cannot be unsubscribed**.
+A subscribed query will automatically cause any matched `Doc` instances to receive ops as if they were subscribed. The docs **cannot be unsubscribed individually**.
 
 Subscribe queries can be created similarly to fetch queries, but you may also be interested in [other events]({{ site.baseurl }}{% link api/query.md %}#events):
 
