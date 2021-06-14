@@ -18,9 +18,10 @@ jobs:
         - 10
         - 12
         - 14
+        - 16
     services:
       mongodb:
-        image: mongo:3.6
+        image: mongo:4.4
         ports:
         - 27017:27017
     timeout-minutes: 10
