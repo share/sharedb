@@ -796,6 +796,27 @@ describe('DocPresence', function() {
     ], done);
   });
 
+  it('errors local presence when listening to ops on a type that does not support presence', function(done) {
+    var jsonDoc = connection1.get('books', 'emma');
+    var jsonPresence = connection1.getDocPresence('books', 'emma');
+    var localJsonPresence = jsonPresence.create('json-presence');
+    localJsonPresence.submit({index: 1}, function() {
+      // Swallow error, which is expected since presence is unsupported
+    });
+
+    async.series([
+      jsonDoc.create.bind(jsonDoc, {title: 'Emma'}, 'json0'),
+      function(next) {
+        localJsonPresence.once('error', function(error) {
+          expect(error.code).to.eql('ERR_TYPE_DOES_NOT_SUPPORT_PRESENCE');
+          next();
+        });
+
+        jsonDoc.submitOp({p: ['author'], oi: 'Jane Austen'});
+      }
+    ], done);
+  });
+
   it('returns errors sent from the middleware', function(done) {
     backend.use(backend.MIDDLEWARE_ACTIONS.sendPresence, function(request, callback) {
       callback('some error');
