@@ -1,3 +1,7 @@
+## v2.0
+
+### Breaking changes
+
 ## v1.0-beta
 
 ### Breaking changes
