@@ -73,7 +73,7 @@ module.exports = function() {
                 return done();
               }
               // Add listeners on connection2 for remote operations.
-              fido.on('before op', function(op) {
+              fido.on('beforeOpComponent', function(op) {
                 done(new Error('fido on connection2 should not have received any ops, got:' +
                   JSON.stringify(op)));
               });
@@ -268,7 +268,7 @@ module.exports = function() {
                 return done();
               }
               // Add listeners on connection2 for those operations.
-              fido.on('before op', function(op) {
+              fido.on('beforeOpComponent', function(op) {
                 done(new Error('fido on connection2 should not have received any ops, got:' +
                   JSON.stringify(op)));
               });
@@ -436,7 +436,7 @@ module.exports = function() {
             if (err) return done(err);
             doc.submitOp({p: ['age'], na: 1}, function(err) {
               if (err) return done(err);
-              doc2.on('op', function() {
+              doc2.on('opComponent', function() {
                 done();
               });
               doc2[method]();
@@ -603,7 +603,7 @@ module.exports = function() {
         if (err) return done(err);
         doc2.subscribe(function(err) {
           if (err) return done(err);
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             expect(doc2.version).eql(2);
             expect(doc2.data).eql({age: 4});
             done();
@@ -620,7 +620,7 @@ module.exports = function() {
         if (err) return done(err);
         doc2.subscribe(function(err) {
           if (err) return done(err);
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             done();
           });
           doc2.connection.close();
@@ -637,7 +637,7 @@ module.exports = function() {
         if (err) return done(err);
         doc2.subscribe(function(err) {
           if (err) return done(err);
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             done();
           });
           backend.suppressPublish = true;
@@ -653,7 +653,7 @@ module.exports = function() {
         if (err) return done(err);
         doc2.subscribe(function(err) {
           if (err) return done(err);
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             done();
           });
           doc2.unsubscribe(function(err) {
@@ -685,7 +685,7 @@ module.exports = function() {
                 if (error) return done(error);
                 done();
               });
-              doc.on('op', function() {
+              doc.on('opComponent', function() {
                 done(new Error('should not have received op'));
               });
             });
@@ -706,7 +706,7 @@ module.exports = function() {
         if (err) return done(err);
         doc2.subscribe(function(err) {
           if (err) return done(err);
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             done(new Error('Should not get op event'));
           });
           doc2.destroy(function(err) {
@@ -756,7 +756,7 @@ module.exports = function() {
             }
           ], function(err) {
             if (err) return done(err);
-            fido.on('op', function() {
+            fido.on('opComponent', function() {
               done();
             });
             doc.submitOp({p: ['age'], na: 1}, done);
@@ -774,7 +774,7 @@ module.exports = function() {
         if (err) return done(err);
         doc2.subscribe(function(err) {
           if (err) return done(err);
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             expect(doc2.version).eql(2);
             expect(doc2.data).eql({age: 4});
             done();
@@ -800,7 +800,7 @@ module.exports = function() {
           if (err) return done(err);
           expect(doc2.wantSubscribe).to.be.true;
           expect(doc2.subscribed).to.be.true;
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             done();
           });
           doc.submitOp({p: ['age'], na: 1});
@@ -820,7 +820,7 @@ module.exports = function() {
             [{p: ['age'], na: 1}],
             [{p: ['age'], na: 5}]
           ];
-          doc2.on('op', function(op) {
+          doc2.on('opComponent', function(op) {
             var item = expected.shift();
             expect(op).eql(item);
             if (expected.length) return;
@@ -852,7 +852,7 @@ module.exports = function() {
         doc2.subscribe(function(err) {
           if (err) return done(err);
           var wait = 4;
-          doc2.on('op', function() {
+          doc2.on('opComponent', function() {
             if (--wait) return;
             expect(doc2.version).eql(5);
             expect(doc2.data).eql({age: 122});

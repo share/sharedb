@@ -372,12 +372,51 @@ The document was created. The doc will now have a [`type`](#type--type)
 
 > {{ page.copy.event_source }}
 
-### `'before op'`
+### `'beforeOpComponent'`
 
 An operation is about to be applied to the [`data`](#data--object)
 
 ```js
-doc.on('before op', function(op, source) { ... })
+doc.on('beforeOpComponent', function(op, source) { ... })
+```
+
+`op` -- Object
+
+> The op that will be applied to the document
+
+`source` -- boolean \| any
+
+> {{ page.copy.event_source }}
+
+### `'opComponent'`
+
+An operation was applied to the data.
+
+```js
+doc.on('opComponent', function(op, source) { ... })
+```
+
+{: .info }
+The difference between this event and [`'op'`](#op) is that for [`json0`]({{ site.baseurl }}{% link types/json0.md %}), the op will be shattered into its constituent parts.
+<br/>
+For example, `[{p: ['list', 0], li: 'a'}, {p: ['list', 1], li: 'b'}]` would be split into two components: `[{p: ['list', 0], li: 'a'}]` and `[{p: ['list', 1], li: 'b'}]`.
+<br/>
+The `'opComponent'` event will be called once for each of these op components, but `'op'` will only be called once.
+
+`op` -- Object
+
+> The op that was applied to the document
+
+`source` -- boolean \| any
+
+> {{ page.copy.event_source }}
+
+### `'beforeOp'`
+
+A potentially multi-part operation is about to be applied to the [`data`](#data--object).
+
+```js
+doc.on('beforeOp', function(op, source) { ... })
 ```
 
 `op` -- Object
@@ -390,49 +429,10 @@ doc.on('before op', function(op, source) { ... })
 
 ### `'op'`
 
-An operation was applied to the data.
-
-```js
-doc.on('op', function(op, source) { ... })
-```
-
-{: .info }
-The difference between this event and [`'op batch'`](#op-batch) is that for [`json0`]({{ site.baseurl }}{% link types/json0.md %}), the op will be shattered into its constituent parts.
-<br/>
-For example, `[{p: ['list', 0], li: 'a'}, {p: ['list', 1], li: 'b'}]` would be split into two components: `[{p: ['list', 0], li: 'a'}]` and `[{p: ['list', 1], li: 'b'}]`.
-<br/>
-The `'op'` event will be called once for each of these op components, but `'op batch'` will only be called once.
-
-`op` -- Object
-
-> The op that was applied to the document
-
-`source` -- boolean \| any
-
-> {{ page.copy.event_source }}
-
-### `'before op batch'`
-
-A potentially multi-part operation is about to be applied to the [`data`](#data--object).
-
-```js
-doc.on('before op batch', function(op, source) { ... })
-```
-
-`op` -- Object
-
-> The op that will be applied to the document
-
-`source` -- boolean \| any
-
-> {{ page.copy.event_source }}
-
-### `'op batch'`
-
 A potentially multi-part operation was applied to the [`data`](#data--object)
 
 ```js
-doc.on('op batch', function(op, source) { ... })
+doc.on('op', function(op, source) { ... })
 ```
 
 `op` -- Object

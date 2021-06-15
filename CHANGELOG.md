@@ -3,6 +3,11 @@
 ### Breaking changes
 
 * Drop Node.js v10 support
+* Rename `Doc` op events:
+  * `before op batch` -> `beforeOp`
+  * `before op` -> `beforeOpComponent`
+  * `op` -> `opComponent`
+  * `op batch` -> `op`
 
 ## v1.0-beta
 

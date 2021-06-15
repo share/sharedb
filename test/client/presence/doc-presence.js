@@ -284,7 +284,7 @@ describe('DocPresence', function() {
       function(next) {
         doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
 
-        doc2.once('op', function() {
+        doc2.once('opComponent', function() {
           presencePauser.resume();
         });
 
@@ -324,7 +324,7 @@ describe('DocPresence', function() {
         // doc2 has received this op, so we know that when we finally receive our
         // presence, it will be stale
         doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
-        doc2.once('op', function() {
+        doc2.once('opComponent', function() {
           next();
         });
       },
@@ -350,7 +350,7 @@ describe('DocPresence', function() {
           doc1.submitOp({index: 0, value: 'The'}, function(error) {
             if (error) return done(error);
             doc1.submitOp({index: 3, value: ' '}, errorHandler(done));
-            doc2.on('op', function() {
+            doc2.on('opComponent', function() {
               // This will get fired for v3 and then v4, so check for the later one
               if (doc1.version === 4 && doc2.version === 4) {
                 // Only once doc2 has received the ops, should we resume our
@@ -395,7 +395,7 @@ describe('DocPresence', function() {
       },
       function(next) {
         doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
-        doc2.once('op', function() {
+        doc2.once('opComponent', function() {
           next();
         });
       },
@@ -417,7 +417,7 @@ describe('DocPresence', function() {
           ], errorHandler(done));
         };
 
-        doc2.on('op', function() {
+        doc2.on('opComponent', function() {
           if (doc2.version !== 5) return;
           presencePauser.resume();
           presence2.once('receive', function(id, presence) {
