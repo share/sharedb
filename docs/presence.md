@@ -8,6 +8,9 @@ layout: default
 
 ShareDB supports sharing "presence": transient information about a client's whereabouts in a given document. For example, this might be their position in a text document; their mouse pointer coordinates on the screen; or a selected field in a form.
 
+{: .info }
+Presence needs to be enabled in the [`Backend`]({{ site.baseurl }}{% link api/backend.md %}).
+
 ## Usage
 
 ### Untyped presence
