@@ -19,7 +19,10 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-ruby@v1
+      with:
+        ruby-version: 2.7
     - name: Install
-      run: cd docs && bundle install
+      run: cd docs && gem install bundler && bundle install
     - name: Build
       run: cd docs && bundle exec jekyll build
