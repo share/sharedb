@@ -102,7 +102,7 @@ Optional
 
 {: .d-inline-block }
 
-`presenceEnabled` -- boolean
+`presence` -- boolean
 
 Optional
 {: .label .label-grey }
@@ -223,29 +223,6 @@ backend.use(action, middleware)
 
 > A [middleware]({{ site.baseurl }}{% link middleware/index.md %}) function
 
-addProjection()
-
-Adds a [projection]({{ site.baseurl }}{% link projections.md %})
-
-```js
-backend.addProjection(name, collection, fields)
-```
-
-`name` -- string
-
-> The name of the projection
-
-`collection` -- string
-
-> The name of the collection on which to apply the projection
-
-`fields` -- Object
-
-> A declaration of which fields to include in the projection, such as `{field1: true}`
-
-{: .warn }
-> Defining sub-field projections is **not** supported.
-
 ### addProjection()
 
 Defines a [projection]({{ site.baseurl }}{% link projections.md %}).
@@ -268,6 +245,9 @@ backend.addProjection(name, collection, fields)
 > ```js
 > share.addProjection('names', 'users', {name: true})
 > ```
+
+{: .warn }
+> Defining sub-field projections is **not** supported.
 
 ### submit()
 
