@@ -61,7 +61,7 @@ describe('Backend', function() {
           opsOptions: {metadata: true}
         };
         var getOpsSpy = sinon.spy(backend.db, 'getOps');
-        backend.getOps(agent, 'books', '1984', 0, null, options, function(error, ops) {
+        backend.getOps(agent, 'books', '1984', 0, null, options, function(error) {
           if (error) return done(error);
           expect(getOpsSpy.getCall(0).args[4]).to.deep.equal({
             agentCustom: agent.custom,
@@ -75,12 +75,12 @@ describe('Backend', function() {
     describe('getOpsBulk', function() {
       it('fetches all the ops', function(done) {
         backend.getOpsBulk(agent, 'books', {
-          '1984': 0,
+          1984: 0
         }, {
-          '1984': null,
+          1984: null
         }, null, function(error, opsPerDoc) {
           if (error) return done(error);
-          const ops = opsPerDoc['1984'];
+          var ops = opsPerDoc['1984'];
           expect(ops).to.have.length(2);
           expect(ops[0].create.data).to.eql({title: '1984'});
           expect(ops[1].op).to.eql([{p: ['author'], oi: 'George Orwell'}]);
@@ -93,12 +93,12 @@ describe('Backend', function() {
           opsOptions: {metadata: true}
         };
         backend.getOpsBulk(agent, 'books', {
-          '1984': 0,
+          1984: 0
         }, {
-          '1984': null,
+          1984: null
         }, options, function(error, opsPerDoc) {
           if (error) return done(error);
-          const ops = opsPerDoc['1984'];
+          var ops = opsPerDoc['1984'];
           expect(ops).to.have.length(2);
           expect(ops[0].m).to.be.ok;
           expect(ops[1].m).to.be.ok;
@@ -112,10 +112,10 @@ describe('Backend', function() {
         };
         var getOpsBulkSpy = sinon.spy(backend.db, 'getOpsBulk');
         backend.getOpsBulk(agent, 'books', {
-          '1984': 0,
+          1984: 0
         }, {
-          '1984': null,
-        }, options, function(error, opsPerDoc) {
+          1984: null
+        }, options, function(error) {
           if (error) return done(error);
           expect(getOpsBulkSpy.getCall(0).args[3]).to.deep.equal({
             agentCustom: agent.custom,
