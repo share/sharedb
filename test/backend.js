@@ -55,6 +55,75 @@ describe('Backend', function() {
           done();
         });
       });
+
+      it('passes agent.custom and snapshot options to db', function(done) {
+        var options = {
+          opsOptions: {metadata: true}
+        };
+        var getOpsSpy = sinon.spy(backend.db, 'getOps');
+        backend.getOps(agent, 'books', '1984', 0, null, options, function(error) {
+          if (error) return done(error);
+          expect(getOpsSpy.getCall(0).args[4]).to.deep.equal({
+            agentCustom: agent.custom,
+            metadata: true
+          });
+          done();
+        });
+      });
+    });
+
+    describe('getOpsBulk', function() {
+      it('fetches all the ops', function(done) {
+        backend.getOpsBulk(agent, 'books', {
+          1984: 0
+        }, {
+          1984: null
+        }, null, function(error, opsPerDoc) {
+          if (error) return done(error);
+          var ops = opsPerDoc['1984'];
+          expect(ops).to.have.length(2);
+          expect(ops[0].create.data).to.eql({title: '1984'});
+          expect(ops[1].op).to.eql([{p: ['author'], oi: 'George Orwell'}]);
+          done();
+        });
+      });
+
+      it('fetches the ops with metadata', function(done) {
+        var options = {
+          opsOptions: {metadata: true}
+        };
+        backend.getOpsBulk(agent, 'books', {
+          1984: 0
+        }, {
+          1984: null
+        }, options, function(error, opsPerDoc) {
+          if (error) return done(error);
+          var ops = opsPerDoc['1984'];
+          expect(ops).to.have.length(2);
+          expect(ops[0].m).to.be.ok;
+          expect(ops[1].m).to.be.ok;
+          done();
+        });
+      });
+
+      it('passes agent.custom and snapshot options to db', function(done) {
+        var options = {
+          opsOptions: {metadata: true}
+        };
+        var getOpsBulkSpy = sinon.spy(backend.db, 'getOpsBulk');
+        backend.getOpsBulk(agent, 'books', {
+          1984: 0
+        }, {
+          1984: null
+        }, options, function(error) {
+          if (error) return done(error);
+          expect(getOpsBulkSpy.getCall(0).args[3]).to.deep.equal({
+            agentCustom: agent.custom,
+            metadata: true
+          });
+          done();
+        });
+      });
     });
 
     describe('fetch', function() {
