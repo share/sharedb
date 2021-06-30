@@ -23,7 +23,8 @@
     "sinon": "^7.5.0"
   },
   "files": [
-    "lib/"
+    "lib/",
+    "test/"
   ],
   "scripts": {
     "docs:install": "cd docs && bundle install",
