@@ -141,7 +141,7 @@ doc.ingestSnapshot(snapshot [, callback])
 ```
 
 {: .warn }
-This method is generally called internally as a result of [`fetch()`](#fetch) or [`subscribe()`](#subscribe), and not directly from consumer code. Consumers *may* want to use this method to ingest data that was transferred to the client externally to the client's ShareDB connection.
+This method is generally called internally as a result of [`fetch()`](#fetch) or [`subscribe()`](#subscribe), and not directly from consumer code. Consumers *may* want to use this method to ingest data that was transferred to the client externally to the client's ShareDB connection. To generate a snapshot from a fetched `Doc`, you can do the following: `const snapshot = { v: doc.version, data: doc.data, type: doc.type }`.
 
 
 `snapshot` -- [Snapshot]({{ site.baseurl }}{% link api/snapshot.md %})
