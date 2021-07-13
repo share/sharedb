@@ -447,7 +447,12 @@ describe('ot', function() {
 
     it('returns an error if the snapshot has an unknown type', function() {
       var snapshot = {type: 'unknown-type', data: {}};
-      var ops = [];
+      var ops = [
+        {
+          v: 1,
+          op: [{p: ['title'], oi: 'Title'}]
+        }
+      ];
       var error = ot.applyOps(snapshot, ops);
       expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
     });
