@@ -1,6 +1,6 @@
 {
   "name": "sharedb",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "JSON OT database backend",
   "main": "lib/index.js",
   "dependencies": {
@@ -15,6 +15,7 @@
     "coveralls": "^3.0.7",
     "eslint": "^6.5.1",
     "eslint-config-google": "^0.14.0",
+    "ot-json0-v2": "ottypes/json0",
     "lolex": "^5.1.1",
     "mocha": "^8.2.1",
     "nyc": "^14.1.1",
@@ -23,7 +24,8 @@
     "sinon": "^7.5.0"
   },
   "files": [
-    "lib/"
+    "lib/",
+    "test/"
   ],
   "scripts": {
     "docs:install": "cd docs && bundle install",
