@@ -53,9 +53,7 @@ module.exports = function() {
       var getSnapshotSpy = sinon.spy(this.backend.db, 'getSnapshot');
       connection.get('dogs', 'fido').create({age: 3}, function(err) {
         if (err) return done(err);
-        expect(getSnapshotSpy.args[0][3]).to.deep.equal({
-          agentCustom: {foo: 'bar'}
-        });
+        expect(getSnapshotSpy.firstCall.args[3]).to.haveOwnProperty('agentCustom').that.deep.equals({foo: 'bar'});
         done();
       });
     });
