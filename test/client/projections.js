@@ -220,17 +220,16 @@ module.exports = function(options) {
             if (err) return done(err);
             expect(results).to.have.length(0);
 
+            query.once('changed', function() {
+              expect(query.results).to.have.length(1);
+              expect(query.results[0].id).to.equal('fido');
+              expect(query.results[0].data).to.eql({age: 3, owner: {name: 'jim'}});
+              done();
+            });
+
             // Submit an op on a field not in the projection, where the op should
             // cause the doc to be included in the query results
-            fido.submitOp({p: ['color'], od: 'gold', oi: 'black'}, null, function(err) {
-              if (err) return done(err);
-              setTimeout(function() {
-                expect(query.results).to.have.length(1);
-                expect(query.results[0].id).to.equal('fido');
-                expect(query.results[0].data).to.eql({age: 3, owner: {name: 'jim'}});
-                done();
-              }, 10);
-            });
+            fido.submitOp({p: ['color'], od: 'gold', oi: 'black'}, null, util.errorHandler(done));
           });
         });
       });
