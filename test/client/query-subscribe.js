@@ -216,19 +216,28 @@ module.exports = function(options) {
         }
       ], function(err) {
         if (err) return done(err);
-        var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
-          if (err) return done(err);
+        var query = connection.createSubscribeQuery('dogs', matchAllDbQuery);
+        query.on('error', done);
+
+        query.once('ready', function() {
           connection.close();
+
           connection2.get('dogs', 'fido').fetch(function(err) {
             if (err) return done(err);
-            connection2.get('dogs', 'fido').del();
-            connection2.get('dogs', 'taco').on('error', done).create({age: 2});
-            process.nextTick(function() {
+            async.parallel([
+              function(cb) {
+                connection2.get('dogs', 'fido').del(cb);
+              },
+              function(cb) {
+                connection2.get('dogs', 'taco').create({age: 2}, cb);
+              }
+            ], function(error) {
+              if (error) return done(error);
               backend.connect(connection);
             });
           });
         });
-        query.on('error', done);
+
         var wait = 2;
         function finish() {
           if (--wait) return;
@@ -237,12 +246,12 @@ module.exports = function(options) {
           expect(util.pluck(results, 'data')).eql([{age: 5}, {age: 2}]);
           done();
         }
-        query.on('insert', function(docs) {
+        query.once('insert', function(docs) {
           expect(util.pluck(docs, 'id')).eql(['taco']);
           expect(util.pluck(docs, 'data')).eql([{age: 2}]);
           finish();
         });
-        query.on('remove', function(docs) {
+        query.once('remove', function(docs) {
           expect(util.pluck(docs, 'id')).eql(['fido']);
           // We don't assert the value of data, because the del op could be
           // applied by the client before or after the query result is removed.
