@@ -441,16 +441,15 @@ describe('SnapshotVersionRequest', function() {
     });
   });
 
-  describe('invalid json0 path', function() {
+  describe('invalid json0v2 path', function() {
     beforeEach(function(done) {
       var doc = backend.connect().get('series', 'his-dark-materials');
-      doc.create([{title: 'Golden Compass'}], function(error) {
-        if (error) return done(error);
-        doc.submitOp({p: ['0', 'title'], od: 'Golden Compass', oi: 'Northern Lights'}, function(error) {
-          if (error) return done(error);
-          doc.submitOp({p: ['1'], li: {title: 'Subtle Knife'}}, done);
-        });
-      });
+      async.series([
+        doc.create.bind(doc, [{title: 'Golden Compass'}]),
+        doc.submitOp.bind(doc, {p: ['0', 'title'], od: 'Golden Compass', oi: 'Northern Lights'}),
+        doc.submitOp.bind(doc, {p: ['1'], li: {title: 'Subtle Knife'}}),
+        doc.submitOp.bind(doc, {p: ['1'], lm: '0'})
+      ], done);
     });
 
     describe('json0v1', function() {
@@ -477,10 +476,21 @@ describe('SnapshotVersionRequest', function() {
         types.register(defaultType);
       });
 
-      it('fetches v2 with json0v2', function(done) {
+      it('fetches a string-indexed list insertion with json0v2', function(done) {
         backend.connect().fetchSnapshot('series', 'his-dark-materials', 2, function(error, snapshot) {
           if (error) return done(error);
           expect(snapshot.data).to.eql([{title: 'Northern Lights'}]);
+          done();
+        });
+      });
+
+      it('fetches a list move using a string target', function(done) {
+        backend.connect().fetchSnapshot('series', 'his-dark-materials', 4, function(error, snapshot) {
+          if (error) return done(error);
+          expect(snapshot.data).to.eql([
+            {title: 'Subtle Knife'},
+            {title: 'Northern Lights'}
+          ]);
           done();
         });
       });
