@@ -475,4 +475,19 @@ describe('Doc', function() {
       ], done);
     });
   });
+
+  describe('snapshot generation', function() {
+    var doc;
+    beforeEach(function(done) {
+      doc = this.connection.get('dogs', 'scooby');
+      doc.create({name: 'Scooby'}, function(error) {
+        if (error) return done(error);
+        doc.whenNothingPending(done);
+      });
+    });
+
+    it('generates a snapshot', function() {
+      expect(doc.createSnapshot()).to.eql({v: 1, data: {name: 'Scooby'}});
+    });
+  });
 });
