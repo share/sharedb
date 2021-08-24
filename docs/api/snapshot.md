@@ -17,9 +17,9 @@ Snapshots can **not** be used to manipulate the current version of the document 
 
 ## Properties
 
-### `type` -- [Type]({{ site.baseurl }}{% link types/index.md %})
+### `type` -- string
 
-> The document [type]({{ site.baseurl }}{% link types/index.md %})
+> The URI of the document [type]({{ site.baseurl }}{% link types/index.md %})
 
 {: .info }
 > Document types can change between versions if the document is deleted, and created again.
