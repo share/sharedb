@@ -476,7 +476,7 @@ describe('Doc', function() {
     });
   });
 
-  describe('snapshot generation', function() {
+  describe('toSnapshot', function() {
     var doc;
     beforeEach(function(done) {
       doc = this.connection.get('dogs', 'scooby');
@@ -487,7 +487,11 @@ describe('Doc', function() {
     });
 
     it('generates a snapshot', function() {
-      expect(doc.createSnapshot()).to.eql({v: 1, data: {name: 'Scooby'}});
+      expect(doc.toSnapshot()).to.eql({
+        v: 1,
+        data: {name: 'Scooby'},
+        type: 'http://sharejs.org/types/JSONv0'
+      });
     });
   });
 });
