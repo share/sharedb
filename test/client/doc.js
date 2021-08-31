@@ -480,10 +480,7 @@ describe('Doc', function() {
     var doc;
     beforeEach(function(done) {
       doc = this.connection.get('dogs', 'scooby');
-      doc.create({name: 'Scooby'}, function(error) {
-        if (error) return done(error);
-        doc.whenNothingPending(done);
-      });
+      doc.create({name: 'Scooby'}, done);
     });
 
     it('generates a snapshot', function() {
