@@ -490,5 +490,15 @@ describe('Doc', function() {
         type: 'http://sharejs.org/types/JSONv0'
       });
     });
+
+    it('clones snapshot data to guard against mutation', function() {
+      var snapshot = doc.toSnapshot();
+      doc.data.name = 'Shaggy';
+      expect(snapshot).to.eql({
+        v: 1,
+        data: {name: 'Scooby'},
+        type: 'http://sharejs.org/types/JSONv0'
+      });
+    });
   });
 });
