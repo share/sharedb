@@ -1,3 +1,9 @@
+## v2.0
+
+### Breaking changes
+
+* Drop Node.js v10 support
+
 ## v1.0-beta
 
 ### Breaking changes
