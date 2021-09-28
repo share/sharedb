@@ -491,22 +491,12 @@ describe('Doc', function() {
       });
     });
 
-    it('clones snapshot data to guard against mutation by default', function() {
+    it('clones snapshot data to guard against mutation', function() {
       var snapshot = doc.toSnapshot();
       doc.data.name = 'Shaggy';
       expect(snapshot).to.eql({
         v: 1,
         data: {name: 'Scooby'},
-        type: 'http://sharejs.org/types/JSONv0'
-      });
-    });
-
-    it('supports opting out of cloning snapshot data', function() {
-      var snapshot = doc.toSnapshot(true);
-      doc.data.name = 'Shaggy';
-      expect(snapshot).to.eql({
-        v: 1,
-        data: {name: 'Shaggy'},
         type: 'http://sharejs.org/types/JSONv0'
       });
     });
