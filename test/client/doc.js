@@ -515,4 +515,30 @@ describe('Doc', function() {
       ], done);
     });
   });
+
+  describe('toSnapshot', function() {
+    var doc;
+    beforeEach(function(done) {
+      doc = this.connection.get('dogs', 'scooby');
+      doc.create({name: 'Scooby'}, done);
+    });
+
+    it('generates a snapshot', function() {
+      expect(doc.toSnapshot()).to.eql({
+        v: 1,
+        data: {name: 'Scooby'},
+        type: 'http://sharejs.org/types/JSONv0'
+      });
+    });
+
+    it('clones snapshot data to guard against mutation', function() {
+      var snapshot = doc.toSnapshot();
+      doc.data.name = 'Shaggy';
+      expect(snapshot).to.eql({
+        v: 1,
+        data: {name: 'Scooby'},
+        type: 'http://sharejs.org/types/JSONv0'
+      });
+    });
+  });
 });

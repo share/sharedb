@@ -1,6 +1,7 @@
 var expect = require('chai').expect;
 var projections = require('../lib/projections');
 var type = require('../lib/types').defaultType.uri;
+var clone = require('../lib/util').clone;
 
 describe('projection utility methods', function() {
   describe('projectSnapshot', function() {
@@ -385,7 +386,3 @@ describe('projection utility methods', function() {
     });
   });
 });
-
-function clone(obj) {
-  return (obj === undefined) ? undefined : JSON.parse(JSON.stringify(obj));
-}
