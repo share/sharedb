@@ -111,6 +111,21 @@ Optional
 
 > If set to `true`, enables [Presence]({{ site.baseurl }}{% link presence.md %}) functionality
 
+{: .d-inline-block }
+
+`errorHandler` -- Function
+
+Optional
+{: .label .label-grey }
+
+> ```js
+> function(error, context) {
+>   logger.error(error)
+> }
+> ```
+
+> Non-fatal ShareDB server errors will be passed to this handler. By default, ShareDB will log the error
+
 ## Properties
 
 ### `MIDDLEWARE_ACTIONS` -- Object
