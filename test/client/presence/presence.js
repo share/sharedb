@@ -487,4 +487,59 @@ describe('Presence', function() {
       }
     ], done);
   });
+
+  describe('middleware', function() {
+    describe('receivePresence', function() {
+      it('provides the presence in the middleware', function(done) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context) {
+          expect(context.presence.p).to.eql({index: 5});
+          done();
+        });
+
+        var localPresence1 = presence1.create('presence-1');
+        localPresence1.submit({index: 5}, errorHandler(done));
+      });
+
+      it('can mutate the presence in the middleware', function(done) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+          context.presence.p.index++;
+          next();
+        });
+
+        var localPresence1 = presence1.create('presence-1');
+
+        async.series([
+          presence2.subscribe.bind(presence2),
+          function(next) {
+            presence2.on('receive', function(id, value) {
+              expect(value).to.eql({index: 6});
+              next();
+            });
+            localPresence1.submit({index: 5}, errorHandler(done));
+          }
+        ], done);
+      });
+
+      it('can cancel a presence broadcast by erroring', function(done) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+          next(new Error('bad!'));
+        });
+
+        var localPresence1 = presence1.create('presence-1');
+
+        async.series([
+          presence2.subscribe.bind(presence2),
+          function(next) {
+            presence2.on('receive', function() {
+              done(new Error('should not have received presence'));
+            });
+            localPresence1.submit({index: 5}, function(error) {
+              expect(error.message).to.contain('bad!');
+              next();
+            });
+          }
+        ], done);
+      });
+    });
+  });
 });

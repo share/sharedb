@@ -99,6 +99,20 @@ This action has these additional `context` properties:
 
 > The reply about to be sent
 
+## `'receivePresence'`
+
+Presence information has just been received from a client. The presence has not yet been transformed against any ops it has missed.
+
+This action has these additional `context` properties:
+
+`collection` -- string
+
+> The collection the presence is associated with
+
+`presence` -- Object
+
+> The presence object that was received. Its shape depends on its [type]({{ site.baseurl }}{% link types/index.md %})
+
 ## `'sendPresence'`
 
 Presence information is about to be sent to a client.
