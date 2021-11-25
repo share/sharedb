@@ -1,29 +1,51 @@
 var Backend = require('../lib/backend');
 var expect = require('chai').expect;
 var sinon = require('sinon');
+var logger = require('../lib/logger');
 
 describe('Backend', function() {
   var backend;
-  var agent = {
-    custom: {
-      foo: 'bar'
-    }
-  };
-  var fetchOptions = {
-    snapshotOptions: {
-      fizz: 'buzz'
-    }
-  };
-
-  beforeEach(function() {
-    backend = new Backend();
-  });
 
   afterEach(function(done) {
     backend.close(done);
   });
 
+  describe('options', function() {
+    describe('errorHandler', function() {
+      it('logs by default', function() {
+        backend = new Backend();
+        var error = new Error('foo');
+        sinon.spy(logger, 'error');
+        backend.errorHandler(error);
+        expect(logger.error.callCount).to.equal(1);
+      });
+
+      it('overrides with another function', function() {
+        var handler = sinon.spy();
+        backend = new Backend({errorHandler: handler});
+        var error = new Error('foo');
+        backend.errorHandler(error);
+        expect(handler.callCount).to.equal(1);
+      });
+    });
+  });
+
   describe('a simple document', function() {
+    var agent = {
+      custom: {
+        foo: 'bar'
+      }
+    };
+    var fetchOptions = {
+      snapshotOptions: {
+        fizz: 'buzz'
+      }
+    };
+
+    beforeEach(function() {
+      backend = new Backend();
+    });
+
     beforeEach(function(done) {
       var doc = backend.connect().get('books', '1984');
       doc.create({title: '1984'}, function(error) {

@@ -541,5 +541,48 @@ describe('Presence', function() {
         ], done);
       });
     });
+
+    describe('sendPresence', function() {
+      // TODO: This functionality is deprecated
+      it('sends an error to a subscribed client', function(done) {
+        var localPresence1 = presence1.create('presence-1');
+
+        backend.use(backend.MIDDLEWARE_ACTIONS.sendPresence, function(context, next) {
+          next(new Error('uh-oh!'));
+        });
+
+        async.series([
+          presence2.subscribe.bind(presence2),
+          function(next) {
+            localPresence1.submit({index: 3}, errorHandler(done));
+            presence2.once('error', function(error) {
+              expect(error.message).to.equal('uh-oh!');
+              next();
+            });
+          }
+        ], done);
+      });
+
+      it('emits errors on the server instead of sending to the client', function(done) {
+        var localPresence1 = presence1.create('presence-1');
+
+        backend.doNotForwardSendPresenceErrorsToClient = true;
+        backend.use(backend.MIDDLEWARE_ACTIONS.sendPresence, function(context, next) {
+          next(new Error('uh-oh!'));
+        });
+
+        async.series([
+          presence2.subscribe.bind(presence2),
+          function(next) {
+            localPresence1.submit({index: 3}, errorHandler(done));
+            presence2.on('error', errorHandler(done));
+            backend.errorHandler = function(error) {
+              expect(error.message).to.equal('uh-oh!');
+              next();
+            };
+          }
+        ], done);
+      });
+    });
   });
 });
