@@ -979,4 +979,50 @@ describe('DocPresence', function() {
       }
     ], done);
   });
+
+  it('does not transform presence submitted in an op event when the presence was created late', function(done) {
+    var localPresence1;
+
+    doc1.on('op', function() {
+      localPresence1.submit({index: 7});
+    });
+
+    localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        doc1.submitOp({index: 5, value: 'ern'});
+        presence2.on('receive', function(id, value) {
+          expect(value).to.eql({index: 7});
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('does transform late-created presence submitted in an op event by a deep second op', function(done) {
+    var localPresence1;
+
+    var submitted = false;
+    doc1.on('op', function() {
+      if (submitted) return;
+      submitted = true;
+      localPresence1.submit({index: 7});
+      doc1.submitOp({index: 5, value: 'akg'});
+    });
+
+    localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        doc1.submitOp({index: 5, value: 'ern'});
+        presence2.on('receive', function(id, value) {
+          expect(value).to.eql({index: 10});
+          next();
+        });
+      }
+    ], done);
+  });
 });
