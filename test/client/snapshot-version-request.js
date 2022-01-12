@@ -496,4 +496,50 @@ describe('SnapshotVersionRequest', function() {
       });
     });
   });
+
+  describe('invalid json0v2 path with multiple components', function() {
+    beforeEach(function(done) {
+      var doc = backend.connect().get('series', 'his-dark-materials');
+      async.series([
+        doc.create.bind(doc, [{}]),
+        doc.submitOp.bind(doc, [
+          {p: ['0', 'title'], oi: ''},
+          {p: ['0', 'title', 0], si: 'Northern Lights'}
+        ])
+      ], done);
+    });
+
+    describe('json0v1', function() {
+      it('fetches v2 with json0v1', function(done) {
+        backend.connect().fetchSnapshot('series', 'his-dark-materials', 2, function(error, snapshot) {
+          if (error) return done(error);
+          expect(snapshot.data).to.eql([{title: 'Northern Lights'}]);
+          done();
+        });
+      });
+    });
+
+    describe('json0v2', function() {
+      var defaultType;
+
+      beforeEach(function() {
+        defaultType = types.defaultType;
+        types.defaultType = json0v2;
+        types.register(json0v2);
+      });
+
+      afterEach(function() {
+        types.defaultType = defaultType;
+        types.register(defaultType);
+      });
+
+      it('fetches v2 with json0v2', function(done) {
+        backend.connect().fetchSnapshot('series', 'his-dark-materials', 2, function(error, snapshot) {
+          if (error) return done(error);
+          expect(snapshot.data).to.eql([{title: 'Northern Lights'}]);
+          done();
+        });
+      });
+    });
+  });
 });
