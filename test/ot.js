@@ -373,118 +373,250 @@ describe('ot', function() {
   });
 
   describe('applyOps', function() {
-    it('applies an op to a snapshot', function() {
-      var snapshot = {
-        type: 'json0',
-        data: {title: 'Wee Free Men'}
-      };
+    describe('with normalization turned on', function() {
+      it('applies an op to a snapshot', function() {
+        var snapshot = {
+          type: 'http://sharejs.org/types/JSONv0',
+          data: {title: 'Wee Free Men'}
+        };
 
-      var ops = [
-        {
-          v: 1,
-          op: [{p: ['title', 0], si: 'The '}]
-        }
-      ];
+        var ops = [
+          {
+            v: 1,
+            op: [{p: ['title', 0], si: 'The '}]
+          }
+        ];
 
-      var error = ot.applyOps(snapshot, ops);
-      expect(error).to.be.undefined;
-      expect(snapshot.data).to.eql({title: 'The Wee Free Men'});
-      expect(snapshot.v).to.equal(2);
-    });
-
-    it('applies multiple ops', function() {
-      var snapshot = {
-        type: 'json0',
-        data: {title: 'Wee Free Men'}
-      };
-
-      var ops = [
-        {
-          v: 1,
-          op: [{p: ['title', 0], si: 'The '}]
-        },
-        {
-          v: 2,
-          op: [{p: ['author'], oi: 'Terry Pratchett'}]
-        }
-      ];
-
-      ot.applyOps(snapshot, ops);
-      expect(snapshot.data).to.eql({
-        author: 'Terry Pratchett',
-        title: 'The Wee Free Men'
+        var error = ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(error).to.be.undefined;
+        expect(snapshot.data).to.eql({title: 'The Wee Free Men'});
+        expect(snapshot.v).to.equal(2);
       });
-      expect(snapshot.v).to.equal(3);
-    });
 
-    it('applies a del to a snapshot', function() {
-      var snapshot = {
-        type: 'json0',
-        data: {title: 'Wee Free Men'}
-      };
+      it('applies multiple ops', function() {
+        var snapshot = {
+          type: 'http://sharejs.org/types/JSONv0',
+          data: {title: 'Wee Free Men'}
+        };
 
-      var ops = [{v: 1, del: true}];
-
-      ot.applyOps(snapshot, ops);
-      expect(snapshot.data).to.be.undefined;
-    });
-
-    it('applies a create to a snapshot', function() {
-      var snapshot = {};
-      var ops = [
-        {
-          v: 1,
-          create: {
-            type: 'json0',
-            data: {title: 'Wee Free Men'}
+        var ops = [
+          {
+            v: 1,
+            op: [{p: ['title', 0], si: 'The '}]
+          },
+          {
+            v: 2,
+            op: [{p: ['author'], oi: 'Terry Pratchett'}]
           }
-        }
-      ];
+        ];
 
-      ot.applyOps(snapshot, ops);
-      expect(snapshot.data).to.eql({title: 'Wee Free Men'});
-    });
+        ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(snapshot.data).to.eql({
+          author: 'Terry Pratchett',
+          title: 'The Wee Free Men'
+        });
+        expect(snapshot.v).to.equal(3);
+      });
 
-    it('returns an error if the snapshot has an unknown type', function() {
-      var snapshot = {type: 'unknown-type', data: {}};
-      var ops = [
-        {
-          v: 1,
-          op: [{p: ['title'], oi: 'Title'}]
-        }
-      ];
-      var error = ot.applyOps(snapshot, ops);
-      expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
-    });
+      it('applies a del to a snapshot', function() {
+        var snapshot = {
+          type: 'http://sharejs.org/types/JSONv0',
+          data: {title: 'Wee Free Men'}
+        };
 
-    it('returns an error if a create op has an unknown type', function() {
-      var snapshot = {};
-      var ops = [
-        {
-          v: 1,
-          create: {
-            type: 'unknown-type',
-            data: {}
+        var ops = [{v: 1, del: true}];
+
+        ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(snapshot.data).to.be.undefined;
+      });
+
+      it('applies a create to a snapshot', function() {
+        var snapshot = {};
+        var ops = [
+          {
+            v: 1,
+            create: {
+              type: 'http://sharejs.org/types/JSONv0',
+              data: {title: 'Wee Free Men'}
+            }
           }
-        }
-      ];
-      var error = ot.applyOps(snapshot, ops);
-      expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
+        ];
+
+        ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(snapshot.data).to.eql({title: 'Wee Free Men'});
+      });
+
+      it('returns an error if the snapshot has an unknown type', function() {
+        var snapshot = {type: 'unknown-type', data: {}};
+        var ops = [
+          {
+            v: 1,
+            op: [{p: ['title'], oi: 'Title'}]
+          }
+        ];
+        var error = ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
+      });
+
+      it('returns an error if a create op has an unknown type', function() {
+        var snapshot = {};
+        var ops = [
+          {
+            v: 1,
+            create: {
+              type: 'unknown-type',
+              data: {}
+            }
+          }
+        ];
+        var error = ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
+      });
+
+      it('catches and returns an error thrown by type.apply', function() {
+        var snapshot = {
+          type: 'http://sharejs.org/types/JSONv0',
+          data: {title: 'Wee Free Men'}
+        };
+
+        var ops = [{
+          v: 1,
+          op: [{p: ['title'], li: 'not a list'}]
+        }];
+
+        var error = ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      });
     });
 
-    it('catches and returns an error thrown by type.apply', function() {
-      var snapshot = {
-        type: 'json0',
-        data: {title: 'Wee Free Men'}
-      };
+    describe('with normalization turned off', function() {
+      it('applies an op to a snapshot', function() {
+        var snapshot = {
+          type: 'json0',
+          data: {title: 'Wee Free Men'}
+        };
 
-      var ops = [{
-        v: 1,
-        op: [{p: ['title'], li: 'not a list'}]
-      }];
+        var ops = [
+          {
+            v: 1,
+            op: [{p: ['title', 0], si: 'The '}]
+          }
+        ];
 
-      var error = ot.applyOps(snapshot, ops);
-      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+        var error = ot.applyOps(snapshot, ops);
+        expect(error).to.be.undefined;
+        expect(snapshot.data).to.eql({title: 'The Wee Free Men'});
+        expect(snapshot.v).to.equal(2);
+      });
+
+      it('applies multiple ops', function() {
+        var snapshot = {
+          type: 'json0',
+          data: {title: 'Wee Free Men'}
+        };
+
+        var ops = [
+          {
+            v: 1,
+            op: [{p: ['title', 0], si: 'The '}]
+          },
+          {
+            v: 2,
+            op: [{p: ['author'], oi: 'Terry Pratchett'}]
+          }
+        ];
+
+        ot.applyOps(snapshot, ops);
+        expect(snapshot.data).to.eql({
+          author: 'Terry Pratchett',
+          title: 'The Wee Free Men'
+        });
+        expect(snapshot.v).to.equal(3);
+      });
+
+      it('applies a del to a snapshot', function() {
+        var snapshot = {
+          type: 'json0',
+          data: {title: 'Wee Free Men'}
+        };
+
+        var ops = [{v: 1, del: true}];
+
+        ot.applyOps(snapshot, ops);
+        expect(snapshot.data).to.be.undefined;
+      });
+
+      it('applies a create to a snapshot', function() {
+        var snapshot = {};
+        var ops = [
+          {
+            v: 1,
+            create: {
+              type: 'json0',
+              data: {title: 'Wee Free Men'}
+            }
+          }
+        ];
+
+        ot.applyOps(snapshot, ops);
+        expect(snapshot.data).to.eql({title: 'Wee Free Men'});
+      });
+
+      it('returns an error if the snapshot has an unknown type', function() {
+        var snapshot = {type: 'unknown-type', data: {}};
+        var ops = [
+          {
+            v: 1,
+            op: [{p: ['title'], oi: 'Title'}]
+          }
+        ];
+        var error = ot.applyOps(snapshot, ops);
+        expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
+      });
+
+      it('returns an error if a create op has an unknown type', function() {
+        var snapshot = {};
+        var ops = [
+          {
+            v: 1,
+            create: {
+              type: 'unknown-type',
+              data: {}
+            }
+          }
+        ];
+        var error = ot.applyOps(snapshot, ops);
+        expect(error.code).to.equal(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED);
+      });
+
+      it('catches and returns an error thrown by type.apply', function() {
+        var snapshot = {
+          type: 'json0',
+          data: {title: 'Wee Free Men'}
+        };
+
+        var ops = [{
+          v: 1,
+          op: [{p: ['title'], li: 'not a list'}]
+        }];
+
+        var error = ot.applyOps(snapshot, ops);
+        expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      });
     });
   });
 });
