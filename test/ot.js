@@ -316,6 +316,21 @@ describe('ot', function() {
       expect(error.code).to.eql('ERR_OT_OP_BADLY_FORMED');
     });
 
+    it('returns a transformation error if the presence cannot be transformed', function() {
+      var presence = {
+        p: {index: 5},
+        t: presenceType.uri,
+        v: 1
+      };
+
+      var op = {
+        op: {badProp: 'foo'}
+      };
+      var error = ot.transformPresence(presence, op);
+
+      expect(error.code).to.eql('ERR_PRESENCE_TRANSFORM_FAILED');
+    });
+
     it('considers isOwnOp', function() {
       var presence = {
         p: {index: 5},

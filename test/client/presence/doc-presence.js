@@ -232,38 +232,28 @@ describe('DocPresence', function() {
     var localPresence1 = presence1.create('presence-1');
 
     async.series([
+      presence1.subscribe.bind(presence1),
       presence2.subscribe.bind(presence2),
       doc1.unsubscribe.bind(doc1),
       doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
       function(next) {
         expect(doc1.version).to.eql(1);
         expect(doc2.version).to.eql(2);
-
+        next();
+      },
+      localPresence1.submit.bind(localPresence1, {index: 12}),
+      function(next) {
         localPresence1.submit({index: 12}, errorHandler(done));
-        presence2.once('receive', function(id, presence) {
-          expect(doc2.version).to.eql(2);
-          expect(presence).to.eql({index: 15});
+
+        var handlePresence = function(id, presence) {
+          if (presence.index !== 15) return;
+          presence2.off('receive', handlePresence);
           next();
-        });
-      }
-    ], done);
-  });
+        };
 
-  it('returns errors when failing to transform old presence to the latest doc', function(done) {
-    var localPresence1 = presence1.create('presence-1');
+        presence2.on('receive', handlePresence);
 
-    async.series([
-      presence2.subscribe.bind(presence2),
-      doc1.unsubscribe.bind(doc1),
-      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
-      function(next) {
-        expect(doc1.version).to.eql(1);
-        expect(doc2.version).to.eql(2);
-
-        localPresence1.submit({badProp: 'foo'}, function(error) {
-          expect(error.code).to.equal('ERR_PRESENCE_TRANSFORM_FAILED');
-          next();
-        });
+        doc1.subscribe(errorHandler(next));
       }
     ], done);
   });
