@@ -9,8 +9,9 @@ ShareDB is a realtime database backend based on [Operational Transformation
 documents. It is the realtime backend for the [DerbyJS web application
 framework](http://derbyjs.com/).
 
-For questions, discussion and announcements, join the [ShareJS mailing
-list](https://groups.google.com/forum/?fromgroups#!forum/sharejs) or [check the FAQ](./docs/faq.md).
+For help, questions, discussion and announcements, join the [ShareJS mailing
+list](https://groups.google.com/forum/?fromgroups#!forum/sharejs) or [read the documentation](https://share.github.io/sharedb/
+).
 
 Please report any bugs you find to the [issue
 tracker](https://github.com/share/sharedb/issues).
