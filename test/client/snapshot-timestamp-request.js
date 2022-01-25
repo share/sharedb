@@ -490,6 +490,54 @@ describe('SnapshotTimestampRequest', function() {
             done();
           });
       });
+
+      describe('when timestamp is null', function() {
+        it('fetches latest snapshot', function(done) {
+          sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
+          sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
+          sinon.spy(db, 'getOps');
+
+          backendWithMilestones.connect()
+            .fetchSnapshotByTimestamp('books', 'mocking-bird', null, function(error, snapshot) {
+              if (error) return done(error);
+
+              expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.called).to.be.false;
+              expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.called).to.be.false;
+              expect(db.getOps.called).to.be.false;
+
+              expect(snapshot.v).to.equal(5);
+              expect(snapshot.data).to.eql({
+                title: 'To Kill a Mocking Bird',
+                author: 'Harper Lee',
+                year: 1960
+              });
+
+              done();
+            });
+        });
+
+        it('returns error if getSnapshot fails', function(done) {
+          sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
+          sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
+          sinon.spy(db, 'getOps');
+
+          sinon.stub(db, 'getSnapshot').callsFake(function(_collection, _id, _fields, _options, callback) {
+            callback(new Error('TEST_ERROR'));
+          });
+
+          backendWithMilestones.connect()
+            .fetchSnapshotByTimestamp('books', 'mocking-bird', null, function(error) {
+              expect(error.message).to.be.equal('TEST_ERROR');
+
+              expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.called).to.be.false;
+              expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.called).to.be.false;
+              expect(db.getOps.called).to.be.false;
+              expect(db.getSnapshot.called).to.be.true;
+
+              done();
+            });
+        });
+      });
     });
   });
 });

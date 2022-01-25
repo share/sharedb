@@ -439,6 +439,60 @@ describe('SnapshotVersionRequest', function() {
         }
       ], done);
     });
+
+    describe('with version null', function() {
+      it('fetches a latest version', function(done) {
+        var doc = backendWithMilestones.connect().get('books', 'mocking-bird');
+
+        async.waterfall([
+          doc.create.bind(doc, {title: 'To Kill a Mocking Bird'}),
+          doc.submitOp.bind(doc, {p: ['author'], oi: 'Harper Lea'}),
+          doc.submitOp.bind(doc, {p: ['author'], od: 'Harper Lea', oi: 'Harper Lee'}),
+          function(next) {
+            sinon.spy(milestoneDb, 'getMilestoneSnapshot');
+            sinon.spy(db, 'getOps');
+            backendWithMilestones.connect().fetchSnapshot('books', 'mocking-bird', null, next);
+          },
+          function(snapshot, next) {
+            expect(milestoneDb.getMilestoneSnapshot.called).to.be.false;
+            expect(db.getOps.called).to.be.false;
+            expect(snapshot.v).to.equal(3);
+            expect(snapshot.data).to.eql({
+              title: 'To Kill a Mocking Bird',
+              author: 'Harper Lee'
+            });
+            next();
+          }
+        ], done);
+      });
+
+      it('return error if getSnapshot fails', function(done) {
+        var doc = backendWithMilestones.connect().get('books', 'mocking-bird');
+
+        async.waterfall([
+          doc.create.bind(doc, {title: 'To Kill a Mocking Bird'}),
+          doc.submitOp.bind(doc, {p: ['author'], oi: 'Harper Lea'}),
+          doc.submitOp.bind(doc, {p: ['author'], od: 'Harper Lea', oi: 'Harper Lee'}),
+          function(next) {
+            sinon.spy(milestoneDb, 'getMilestoneSnapshot');
+            sinon.spy(db, 'getOps');
+            sinon.stub(db, 'getSnapshot').callsFake(function(_collection, _id, _fields, _options, callback) {
+              callback(new Error('TEST_ERROR'));
+            });
+            backendWithMilestones.connect().fetchSnapshot('books', 'mocking-bird', null, function(error) {
+              expect(error.message).to.be.equal('TEST_ERROR');
+              next(null, null);
+            });
+          },
+          function(snapshot, next) {
+            expect(milestoneDb.getMilestoneSnapshot.called).to.be.false;
+            expect(db.getOps.called).to.be.false;
+            expect(db.getSnapshot.called).to.be.true;
+            next();
+          }
+        ], done);
+      });
+    });
   });
 
   describe('invalid json0v2 path', function() {
