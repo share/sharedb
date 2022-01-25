@@ -56,7 +56,11 @@ function initialiseQuill(doc) {
   });
   var localPresence = presence.create(presenceId);
 
-  quill.on('selection-change', function(range) {
+  quill.on('selection-change', function(range, oldRange, source) {
+    // We only need to send updates if the user moves the cursor
+    // themselves. Cursor updates as a result of text changes will
+    // automatically be handled by the remote client.
+    if (source !== 'user') return;
     // Ignore blurring, so that we can see lots of users in the
     // same window. In real use, you may want to clear the cursor.
     if (!range) return;
