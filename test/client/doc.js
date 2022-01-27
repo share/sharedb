@@ -222,7 +222,7 @@ describe('Doc', function() {
         if (source) {
           return;
         }
-        doc.off('before op', beforeOpHandler)
+        doc.off('before op', beforeOpHandler);
         doc.submitOp({p: ['list', 0], li: 2}, {source: true});
       }
       function opHandler(op, source) {
