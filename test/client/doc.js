@@ -215,43 +215,43 @@ describe('Doc', function() {
     });
 
     it('remote ops are transformed by ops submitted in `before op` event handlers', function(done) {
-      var doc = this.doc
+      var doc = this.doc;
       var doc2 = this.doc2;
       var doc3 = this.doc3;
-      doc2.submitOp({p:['list'], oi:[]}, function() {
+      doc2.submitOp({p: ['list'], oi: []}, function() {
         doc.fetch(function() {
-          var opFromBeforeOpEvent = 1
+          var opFromBeforeOpEvent = 1;
           doc.on('before op', function(op, source) {
             // console.log('\nbefore op @ doc', op, source ? 'local' : 'remote')
             if (source) {
-              return
+              return;
             }
             if (opFromBeforeOpEvent <= 0) {
-              return
+              return;
             }
-            opFromBeforeOpEvent--
-            doc.submitOp({p:['list', 0], li: 2}, {source: true})
-          })
+            opFromBeforeOpEvent--;
+            doc.submitOp({p: ['list', 0], li: 2}, {source: true});
+          });
 
-          var opFromOpEvent = 1
+          var opFromOpEvent = 1;
           doc.on('op', function(op, source) {
             // console.log('\nop @ doc', op, source ? 'local' : 'remote')
             if (source) {
-              return
+              return;
             }
             if (opFromOpEvent <= 0) {
-              return
+              return;
             }
-            opFromOpEvent--
-            doc.submitOp({p:['list', 0], li: 3}, {source: true})
-          })
+            opFromOpEvent--;
+            doc.submitOp({p: ['list', 0], li: 3}, {source: true});
+          });
           doc2.submitOp([{p: ['list', 0], li: 1}, {p: ['list', 1], li: 42}], function() {
-            doc.fetch()
-            verifyConsistency(doc, doc2, doc3, [], done)
-          })
-        })
-      })
-    })
+            doc.fetch();
+            verifyConsistency(doc, doc2, doc3, [], done);
+          });
+        });
+      });
+    });
 
     it('remote multi component ops are transformed by ops submitted in `op` event handlers', function(done) {
       var doc = this.doc;
