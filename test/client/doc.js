@@ -214,6 +214,45 @@ describe('Doc', function() {
       });
     });
 
+    it('remote ops are transformed by ops submitted in `before op` event handlers', function(done) {
+      var doc = this.doc
+      var doc2 = this.doc2;
+      var doc3 = this.doc3;
+      doc2.submitOp({p:['list'], oi:[]}, () => {
+        doc.fetch(() => {
+          var opFromBeforeOpEvent = 1
+          doc.on('before op', (op, source) => {
+            // console.log('\nbefore op @ doc', op, source ? 'local' : 'remote')
+            if (source) {
+              return
+            }
+            if (opFromBeforeOpEvent <= 0) {
+              return
+            }
+            opFromBeforeOpEvent--
+            doc.submitOp({p:['list', 0], li: 2}, {source: true})
+          })
+
+          var opFromOpEvent = 1
+          doc.on('op', (op, source) => {
+            // console.log('\nop @ doc', op, source ? 'local' : 'remote')
+            if (source) {
+              return
+            }
+            if (opFromOpEvent <= 0) {
+              return
+            }
+            opFromOpEvent--
+            doc.submitOp({p:['list', 0], li: 3}, {source: true})
+          })
+          doc2.submitOp([{p: ['list', 0], li: 1}, {p: ['list', 1], li: 42}], () => {
+            doc.fetch()
+            verifyConsistency(doc, doc2, doc3, [], done)
+          })
+        })
+      })
+    })
+
     it('remote multi component ops are transformed by ops submitted in `op` event handlers', function(done) {
       var doc = this.doc;
       var doc2 = this.doc2;
