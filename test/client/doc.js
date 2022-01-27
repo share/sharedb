@@ -218,10 +218,10 @@ describe('Doc', function() {
       var doc = this.doc
       var doc2 = this.doc2;
       var doc3 = this.doc3;
-      doc2.submitOp({p:['list'], oi:[]}, () => {
-        doc.fetch(() => {
+      doc2.submitOp({p:['list'], oi:[]}, function() {
+        doc.fetch(function() {
           var opFromBeforeOpEvent = 1
-          doc.on('before op', (op, source) => {
+          doc.on('before op', function(op, source) {
             // console.log('\nbefore op @ doc', op, source ? 'local' : 'remote')
             if (source) {
               return
@@ -234,7 +234,7 @@ describe('Doc', function() {
           })
 
           var opFromOpEvent = 1
-          doc.on('op', (op, source) => {
+          doc.on('op', function(op, source) {
             // console.log('\nop @ doc', op, source ? 'local' : 'remote')
             if (source) {
               return
@@ -245,7 +245,7 @@ describe('Doc', function() {
             opFromOpEvent--
             doc.submitOp({p:['list', 0], li: 3}, {source: true})
           })
-          doc2.submitOp([{p: ['list', 0], li: 1}, {p: ['list', 1], li: 42}], () => {
+          doc2.submitOp([{p: ['list', 0], li: 1}, {p: ['list', 1], li: 42}], function() {
             doc.fetch()
             verifyConsistency(doc, doc2, doc3, [], done)
           })
