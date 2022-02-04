@@ -10,7 +10,7 @@ Since -- by default -- ShareDB stores all of the submitted operations, these ope
 
 ShareDB exposes two methods for this:
 
- - [`connection.fetchSnapshot()`]({{ site.baseurl }}{% link api/connection.md %}fetchsnapshot) -- fetches a snapshot by version number
+ - [`connection.fetchSnapshot()`]({{ site.baseurl }}{% link api/connection.md %}#fetchsnapshot) -- fetches a snapshot by version number
  - [`connection.fetchSnapshotByTimestamp()`]({{ site.baseurl }}{% link api/connection.md %}#fetchsnapshotbytimestamp) -- fetches a snapshot by UNIX timestamp
 
 {: .info }
