@@ -132,6 +132,14 @@ Optional
 
 > A callback that will be called when unsubscribed
 
+### toSnapshot()
+
+Create [snapshot]({{ site.baseurl }}{% link api/snapshot.md %}) data for the current document. This data can be serialized to JSON, deserialized, and passed into `Doc.ingestSnapshot` in order to initialize a client-side ShareDB Doc externally to the client's ShareDB connection.
+
+```js
+const snapshot = doc.toSnapshot()
+```
+
 ### ingestSnapshot()
 
 Ingest [snapshot]({{ site.baseurl }}{% link api/snapshot.md %}) data.
