@@ -68,7 +68,7 @@ Optional
 
 > Default: `{}`
 
-> `options.results` -- Object[]
+> `options.results` -- [`Doc`]({{ site.baseurl }}{% link api/doc.md %})[]
 
 > > Prior query results, if available, such as from server rendering
 
@@ -105,7 +105,7 @@ Optional
 
 > Default: `{}`
 
-> `options.results` -- Object[]
+> `options.results` -- [`Doc`]({{ site.baseurl }}{% link api/doc.md %})[]
 
 > > Prior query results, if available, such as from server rendering
 
