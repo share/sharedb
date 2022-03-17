@@ -32,7 +32,7 @@ See the [API documentation]({{ site.baseurl }}{% link api/connection.md %}#creat
 [`Query`]({{ site.baseurl }}{% link api/query.md %}) instance, which can be used instead:
 
 ```js
-const query = connection.createFetchQuery('my-connection', {userId: 1})
+const query = connection.createFetchQuery('my-collection', {userId: 1})
 query.on('ready', () => {
   // results are now available in query.results
 })
@@ -48,7 +48,7 @@ A subscribed query will automatically cause any matched `Doc` instances to recei
 Subscribe queries can be created similarly to fetch queries, but you may also be interested in [other events]({{ site.baseurl }}{% link api/query.md %}#events):
 
 ```js
-const query = connection.createSubscribeQuery('my-connection', {userId: 1})
+const query = connection.createSubscribeQuery('my-collection', {userId: 1})
 query.on('ready', () => {
   // The initial results are available in query.results
 })
@@ -73,7 +73,7 @@ If a query can potentially return a large number of results, you may want to con
 For example, a `sharedb-mongo` limit might look like this:
 
 ```js
-const query = connection.createSubscribeQuery('my-connection', {userId: 1, $skip: 10, $limit: 10})
+const query = connection.createSubscribeQuery('my-collection', {userId: 1, $skip: 10, $limit: 10})
 ```
 
 {: .info }
