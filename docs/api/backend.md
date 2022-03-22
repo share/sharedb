@@ -388,10 +388,6 @@ backend.getOpsBulk(agent, index, fromMap, toMap [, options [, callback]])
 
 > The name of the collection or [projection]({{ site.baseurl }}{% link projections.md %})
 
-`id` -- string
-
-> The document ID
-
 `fromMap` -- Object
 
 > An object whose keys are the IDs of the target documents. The values are the first versions requested of each document (inclusive)
