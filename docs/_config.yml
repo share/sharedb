@@ -31,7 +31,7 @@ gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into t
 
 # Build settings
 markdown: kramdown
-remote_theme: pmarsceill/just-the-docs
+remote_theme: just-the-docs/just-the-docs
 permalink: /:path/:name
 
 # Exclude from processing.
