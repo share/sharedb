@@ -70,7 +70,7 @@ Optional
 
 > `options.results` -- [`Doc`]({{ site.baseurl }}{% link api/doc.md %})[]
 
-> > Prior query results, if available, such as from server rendering
+> > Prior query results, if available, such as from server rendering. This should be an array of Doc instances, as obtained from  `connection.get(collection, id)`. If the docs' data is already available, invoke [`ingestSnapshot`]({{ site.baseurl }}{% link api/doc.md %}#ingestsnapshot) for each Doc instance beforehand to avoid re-transferring the data from the server.
 
 > `options.*` -- any
 
@@ -107,7 +107,7 @@ Optional
 
 > `options.results` -- [`Doc`]({{ site.baseurl }}{% link api/doc.md %})[]
 
-> > Prior query results, if available, such as from server rendering
+> > Prior query results, if available, such as from server rendering. This should be an array of Doc instances, as obtained from `connection.get(collection, id)`. If the docs' data is already available, invoke [`ingestSnapshot`]({{ site.baseurl }}{% link api/doc.md %}#ingestsnapshot) for each Doc instance beforehand to avoid re-transferring the data from the server.
 
 > `options.*` -- any
 
