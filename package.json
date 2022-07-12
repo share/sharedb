@@ -18,7 +18,7 @@
     "lolex": "^5.1.1",
     "mocha": "^8.2.1",
     "nyc": "^14.1.1",
-    "ot-json0-v2": "https://github.com/ottypes/json0",
+    "ot-json0-v2": "https://github.com/ottypes/json0#90a3ae26364c4fa3b19b6df34dad46707a704421",
     "ot-json1": "^0.3.0",
     "rich-text": "^4.1.0",
     "sharedb-legacy": "npm:sharedb@=1.1.0",
