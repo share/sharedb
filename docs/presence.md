@@ -22,6 +22,14 @@ In this case, clients just need to subscribe to a common channel using [`connect
 ```js
 const presence = connection.getPresence('my-channel')
 presence.subscribe()
+
+presence.on('receive', (presenceId, update) => {
+  if (update === null) {
+    // The remote client is no longer present in the document
+  } else {
+    // Handle the new value by updating UI, etc.
+  }
+})
 ```
 
 In order to send presence information to other clients, a [`LocalPresence`]({{ site.baseurl }}{% link api/local-presence.md %}) should be created. The presence object can take any arbitrary value
@@ -51,6 +59,14 @@ Clients subscribe to a particular [`Doc`]({{ site.baseurl }}{% link api/doc.md %
 ```js
 const presence = connection.getDocPresence(collection, id)
 presence.subscribe()
+
+presence.on('receive', (presenceId, update) => {
+  if (update === null) {
+    // The remote client is no longer present in the document
+  } else {
+    // Handle the new value by updating UI, etc.
+  }
+})
 ```
 
 The shape of the presence value will be defined by the [type]({{ site.baseurl }}{% link types/index.md %}):

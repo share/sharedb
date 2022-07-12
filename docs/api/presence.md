@@ -143,6 +143,9 @@ presence.on('receive', function(id, value) { ... });
 
 > The presence value. The structure of this object will depend on the [type]({{ site.baseurl }}{% link types/index.md %})
 
+{: .info }
+> A `null` value means the remote client is no longer present in the document (e.g. they disconnected)
+
 ### `'error'`
 
 An error has occurred.
