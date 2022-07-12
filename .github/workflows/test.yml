@@ -23,7 +23,7 @@ jobs:
         image: mongo:4.4
         ports:
         - 27017:27017
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-node@v3
