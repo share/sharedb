@@ -30,7 +30,7 @@ jobs:
       with:
         node-version: ${{ matrix.node }}
     - name: Install
-      run: npm install
+      run: npm install --verbose
     - name: Lint
       run: npm run lint
     - name: Test
