@@ -124,6 +124,45 @@ describe('client connection', function() {
     });
   });
 
+  describe('ping/pong', function() {
+    it('pings the backend', function(done) {
+      var connection = this.backend.connect();
+
+      connection.on('pong', function() {
+        done();
+      });
+
+      connection.on('connected', function() {
+        connection.ping();
+      });
+    });
+
+    it('handles errors', function(done) {
+      this.backend.use('receive', function(request, next) {
+        var error = request.data.a === 'pp' && new Error('bad');
+        next(error);
+      });
+
+      var connection = this.backend.connect();
+
+      connection.on('error', function(error) {
+        expect(error.message).to.equal('bad');
+        done();
+      });
+
+      connection.on('connected', function() {
+        connection.ping();
+      });
+    });
+
+    it('throws if pinging offline', function() {
+      var connection = this.backend.connect();
+      expect(function() {
+        connection.ping();
+      }).to.throw('Socket must be CONNECTED to ping');
+    });
+  });
+
   describe('backend.agentsCount', function() {
     it('updates after connect and connection.close()', function(done) {
       var backend = this.backend;
