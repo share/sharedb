@@ -98,6 +98,118 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('gets presence during a destroy', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var presence2a;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.destroy(errorHandler(done));
+        next();
+      },
+      function(next) {
+        presence2a = connection2.getPresence('test-channel');
+        presence2a.subscribe(function(error) {
+          next(error);
+        });
+      },
+      function(next) {
+        localPresence1.submit({index: 5}, errorHandler(done));
+        presence2a.once('receive', function() {
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('destroys old local presence but keeps new local presence when getting during destroy', function(done) {
+    presence2.create('presence-2');
+    var presence2a;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.destroy(function() {
+          expect(presence2).to.equal(presence2a);
+          expect(Object.keys(presence2.localPresences)).to.eql(['presence-2a']);
+          done();
+        });
+        next();
+      },
+      function(next) {
+        presence2a = connection2.getPresence('test-channel');
+        presence2a.create('presence-2a');
+        presence2a.subscribe(function(error) {
+          next(error);
+        });
+      }
+    ], errorHandler(done));
+  });
+
+  it('destroys old local presence but keeps new local presence when getting during destroy', function(done) {
+    presence2.create('presence-2');
+    var presence2a;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.destroy(function() {
+          expect(presence2).to.equal(presence2a);
+          expect(Object.keys(presence2.localPresences)).to.eql(['presence-2a']);
+          done();
+        });
+        next();
+      },
+      function(next) {
+        presence2a = connection2.getPresence('test-channel');
+        presence2a.create('presence-2a');
+        presence2a.subscribe(function(error) {
+          next(error);
+        });
+      }
+    ], errorHandler(done));
+  });
+
+  it('throws if trying to create local presence when wanting destroy', function(done) {
+    presence2.destroy(errorHandler(done));
+    expect(function() {
+      presence2.create('presence-2');
+    }).to.throw('Presence is being destroyed');
+    done();
+  });
+
+  it('gets presence after destroy unsubscribe', function(done) {
+    var localPresence2 = presence2.create('presence-2');
+    var presence2a;
+
+    var flushLocalPresence2Destroy;
+    sinon.stub(localPresence2, 'destroy').callsFake(function(callback) {
+      flushLocalPresence2Destroy = callback;
+    });
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.destroy(function() {
+          expect(connection2.getPresence('test-channel')).to.equal(presence2a);
+          done();
+        });
+        next();
+      },
+      // Wait for the destroy unsubscribe callback to start, where we check
+      // _wantsDestroy for the first time
+      presence2.unsubscribe.bind(presence2),
+      function(next) {
+        presence2a = connection2.getPresence('test-channel');
+        presence2a.subscribe(function(error) {
+          next(error);
+        });
+        flushLocalPresence2Destroy();
+      }
+    ], errorHandler(done));
+  });
+
   it('requests existing presence from other subscribed clients when subscribing', function(done) {
     var localPresence1 = presence1.create('presence-1');
     async.series([
