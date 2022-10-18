@@ -43,8 +43,28 @@ describe('Doc', function() {
       if (err) return done(err);
       var doc2 = connection.get('dogs', 'fido');
       expect(doc).not.equal(doc2);
-      expect(doc).eql(doc2);
       done();
+    });
+  });
+
+  it('destroying then getting synchronously does not destroy the new doc', function(done) {
+    var connection = this.connection;
+    var doc = connection.get('dogs', 'fido');
+    var doc2;
+
+    doc.create({name: 'fido'}, function(error) {
+      if (error) return done(error);
+
+      doc.destroy(function(error) {
+        if (error) return done(error);
+        var doc3 = connection.get('dogs', 'fido');
+        async.parallel([
+          doc2.submitOp.bind(doc2, [{p: ['snacks'], oi: true}]),
+          doc3.submitOp.bind(doc3, [{p: ['color'], oi: 'gray'}])
+        ], done);
+      });
+
+      doc2 = connection.get('dogs', 'fido');
     });
   });
 
