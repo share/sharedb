@@ -3,6 +3,11 @@ var expect = require('chai').expect;
 var util = require('./util');
 var types = require('../lib/types');
 var errorHandler = util.errorHandler;
+var ShareDBError = require('../lib/error');
+var sinon = require('sinon');
+var ACTIONS = require('../lib/message-actions').ACTIONS;
+
+var ERROR_CODE = ShareDBError.CODES;
 
 describe('middleware', function() {
   beforeEach(function() {
@@ -415,6 +420,357 @@ describe('middleware', function() {
       doc.submitOp([{p: ['tricks'], oi: []}], {source: 'a'}, errorHandler(done));
       doc.submitOp([{p: ['tricks', 0], li: 'fetch'}], {source: 'b'}, errorHandler(done));
       doc.submitOp([{p: ['tricks', 1], li: 'stay'}], {source: 'c'}, errorHandler(done));
+    });
+  });
+
+  describe('$fixup', function() {
+    var connection;
+    var backend;
+    var doc;
+
+    beforeEach(function(done) {
+      backend = this.backend;
+      connection = backend.connect();
+      doc = connection.get('dogs', 'fido');
+
+      doc.create({name: 'fido'}, done);
+    });
+
+    it('applies a fixup op to the client that submitted it', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['tricks', 1], li: 'stay'}]);
+        next();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], function(error) {
+        if (error) return done(error);
+        expect(doc.data.tricks).to.eql(['fetch', 'stay']);
+        expect(doc.version).to.equal(2);
+        done();
+      });
+    });
+
+    it('emits an op event for the fixup', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['tricks', 1], li: 'stay'}]);
+        next();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], errorHandler(done));
+
+      doc.on('op', function() {
+        expect(doc.data.tricks).to.eql(['fetch', 'stay']);
+        done();
+      });
+    });
+
+    it('passes the fixed up op to future middleware', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['tricks', 1], li: 'stay'}]);
+        next();
+      });
+
+      backend.use('apply', function(request, next) {
+        expect(request.op.op).to.eql([
+          {p: ['tricks'], oi: ['fetch']},
+          {p: ['tricks', 1], li: 'stay'}
+        ]);
+        next();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], done);
+    });
+
+    it('applies the composed op to a remote client', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['tricks', 1], li: 'stay'}]);
+        next();
+      });
+
+      var remoteConnection = backend.connect();
+      var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+      remoteDoc.subscribe(function(error) {
+        if (error) return done(error);
+
+        expect(remoteDoc.data).to.eql({name: 'fido'});
+
+        remoteDoc.on('op batch', function() {
+          expect(remoteDoc.data.tricks).to.eql(['fetch', 'stay']);
+          expect(doc.version).to.equal(remoteDoc.version);
+          done();
+        });
+
+        doc.submitOp([{p: ['tricks'], oi: ['fetch']}], errorHandler(done));
+      });
+    });
+
+    it('transforms pending ops by the fixup for remote clients', function(done) {
+      var applied = false;
+      backend.use('apply', function(request, next) {
+        if (applied) return next();
+        applied = true;
+        request.$fixup([{p: ['tricks', 0], li: 'stay'}]);
+        next();
+      });
+
+      var remoteConnection = backend.connect();
+      var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+      remoteDoc.subscribe(function(error) {
+        if (error) return done(error);
+
+        expect(remoteDoc.data).to.eql({name: 'fido'});
+
+        remoteDoc.on('op batch', function() {
+          if (remoteDoc.version !== 3) return;
+          expect(remoteDoc.data.tricks).to.eql(['stay', 'fetch', 'sit']);
+          expect(remoteDoc.data).to.eql(doc.data);
+          done();
+        });
+
+        doc.preventCompose = true;
+        doc.submitOp([{p: ['tricks'], oi: ['fetch']}], errorHandler(done));
+        doc.submitOp([{p: ['tricks', 1], li: 'sit'}], errorHandler(done));
+      });
+    });
+
+    it('transforms pending ops by the fixup for the local doc', function(done) {
+      var applied = false;
+      backend.use('apply', function(request, next) {
+        if (applied) return next();
+        applied = true;
+        request.$fixup([{p: ['tricks', 0, 0], si: 'go '}]);
+        next();
+      });
+
+      var remoteConnection = backend.connect();
+      var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+      remoteDoc.subscribe(function(error) {
+        if (error) return done(error);
+
+        expect(remoteDoc.data).to.eql({name: 'fido'});
+
+        remoteDoc.on('op batch', function() {
+          if (remoteDoc.version !== 3) return;
+          expect(remoteDoc.data.tricks).to.eql(['stay', 'go fetch']);
+          expect(remoteDoc.data).to.eql(doc.data);
+          done();
+        });
+
+        doc.preventCompose = true;
+        doc.submitOp([{p: ['tricks'], oi: ['fetch', 'stay']}], errorHandler(done));
+        doc.submitOp([{p: ['tricks', 0], lm: 1}], errorHandler(done));
+      });
+    });
+
+    it('applies a fixup to a creation op', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['goodBoy'], oi: true}]);
+        next();
+      });
+
+      doc = connection.get('dogs', 'rover');
+      doc.create({name: 'rover'}, function(error) {
+        if (error) return done(error);
+        expect(doc.data.goodBoy).to.be.true;
+        done();
+      });
+    });
+
+    it('throws an error if trying to fixup a deletion', function(done) {
+      backend.use('apply', function(request, next) {
+        var error;
+        try {
+          request.$fixup([{p: ['tricks', 0], oi: ['stay']}]);
+        } catch (e) {
+          error = e;
+        }
+        next(error);
+      });
+
+      doc.del(function(error) {
+        expect(error.code).to.equal(ERROR_CODE.ERR_CANNOT_FIXUP_DELETION);
+        done();
+      });
+    });
+
+    it('throws an error if trying to fixup in commit middleware', function(done) {
+      backend.use('commit', function(request, next) {
+        var error;
+        try {
+          request.$fixup([{p: ['tricks', 0], oi: ['stay']}]);
+        } catch (e) {
+          error = e;
+        }
+        next(error);
+      });
+
+      doc.submitOp([{p: ['goodBoy'], oi: true}], function(error) {
+        expect(error.code).to.equal(ERROR_CODE.ERR_FIXUP_IS_ONLY_VALID_ON_APPLY);
+        done();
+      });
+    });
+
+    it('retry fixup', function(done) {
+      var flush;
+      backend.use('apply', function(request, next) {
+        expect(request.op.m.fixup).to.be.undefined;
+        if (flush) return next();
+        flush = function() {
+          request.$fixup([{p: ['name', 0], si: 'fixup'}]);
+          next();
+        };
+      });
+
+      doc.subscribe(function(error) {
+        if (error) return done(error);
+
+        var remoteConnection = backend.connect();
+        var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+        doc.submitOp([{p: ['name', 0], si: 'foo'}], function(error) {
+          if (error) return done(error);
+          expect(doc.data).to.eql({});
+          done();
+        });
+
+        remoteDoc.subscribe(function(error) {
+          if (error) return done(error);
+          remoteDoc.submitOp([{p: ['name'], od: 'fido'}], errorHandler(done));
+        });
+
+        doc.once('op', function(op, source) {
+          if (source) return;
+          expect(doc.data).to.eql({});
+          flush();
+        });
+      });
+    });
+
+    it('fixup that ignores no-op', function(done) {
+      var flush;
+      backend.use('apply', function(request, next) {
+        if (request.op.src !== connection.id) return next();
+        if (flush) {
+          request.$fixup([{p: ['name'], oi: 'fixup'}]);
+          return next();
+        }
+        flush = function() {
+          request.$fixup([{p: ['name', 0], si: 'fixup'}]);
+          next();
+        };
+      });
+
+      doc.subscribe(function(error) {
+        if (error) return done(error);
+
+        var remoteConnection = backend.connect();
+        var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+        var count = 0;
+        var callback = function() {
+          count++;
+          if (count !== 2) return;
+          expect(doc.data).to.eql({name: 'fixup'});
+          expect(remoteDoc.data).to.eql(doc.data);
+          expect(doc.version).to.equal(remoteDoc.version);
+          done();
+        };
+
+        doc.submitOp([{p: ['name', 0], si: 'foo'}], function(error) {
+          if (error) return done(error);
+          callback();
+        });
+
+        remoteDoc.on('op', function(op, source) {
+          if (source) return;
+          callback();
+        });
+
+        remoteDoc.subscribe(function(error) {
+          if (error) return done(error);
+          remoteDoc.submitOp([{p: ['name'], od: 'fido'}], errorHandler(done));
+        });
+
+        doc.once('op', function(op, source) {
+          if (source) return;
+          expect(doc.data).to.eql({});
+          flush();
+        });
+      });
+    });
+
+    it('applies two fixups', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['tricks', 0], li: 'sit'}]);
+        next();
+      });
+
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['tricks', 0], li: 'stay'}]);
+        next();
+      });
+
+      doc.submitOp([{p: ['tricks'], oi: ['fetch']}], function(error) {
+        if (error) return done(error);
+        expect(doc.data.tricks).to.eql(['stay', 'sit', 'fetch']);
+        done();
+      });
+    });
+
+    it('rolls the doc back if the fixup cannot be applied', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['stay'], oi: true}]);
+        next();
+      });
+
+      backend.use('reply', function(request, next) {
+        if (request.reply[ACTIONS.fixup]) {
+          // Deliberately overwrite our fixup op to trigger a client rollback
+          request.reply[ACTIONS.fixup][0].op = [{p: ['fetch'], ld: 'bad'}];
+        }
+        next();
+      });
+
+      sinon.spy(doc, 'fetch');
+
+      doc.submitOp([{p: ['fetch'], oi: true}], function(error) {
+        expect(error).to.be.ok;
+        expect(doc.fetch.calledOnce).to.be.true;
+        done();
+      });
+    });
+
+    describe('no compose', function() {
+      var originalCompose;
+
+      beforeEach(function() {
+        originalCompose = types.defaultType.compose;
+        delete types.defaultType.compose;
+      });
+
+      afterEach(function() {
+        types.defaultType.compose = originalCompose.bind(types.defaultType);
+      });
+
+      it('throws an error if trying to compose on a type that does not support it', function(done) {
+        backend.use('apply', function(request, next) {
+          var error;
+          try {
+            request.$fixup([{p: ['tricks', 0], oi: ['stay']}]);
+          } catch (e) {
+            error = e;
+          }
+          next(error);
+        });
+
+        doc.submitOp([{p: ['goodBoy'], oi: true}], function(error) {
+          expect(error.code).to.equal(ERROR_CODE.ERR_TYPE_DOES_NOT_SUPPORT_COMPOSE);
+          done();
+        });
+      });
     });
   });
 });
