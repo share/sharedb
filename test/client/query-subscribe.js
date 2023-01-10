@@ -202,7 +202,12 @@ module.exports = function(options) {
       });
     });
 
-    it('subscribed query gets simultaneous insert and remove after reconnecting', function(done) {
+    it('subscribed query gets simultaneous insert and remove after reconnecting', function(originalDone) {
+      var done = function(err) {
+        console.warn('-------- DEBUG - done called with', err);
+        console.trace();
+        originalDone(err);
+      };
       var backend = this.backend;
       var connection = backend.connect();
       var connection2 = backend.connect();
