@@ -7,6 +7,8 @@ var numberType = require('./number-type');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
 types.register(numberType.type);
+var util = require('../util');
+var errorHandler = util.errorHandler;
 
 module.exports = function() {
   describe('client submit', function() {
@@ -1208,6 +1210,189 @@ module.exports = function() {
           expect(doc.data.next).equal(null);
           done();
         });
+      });
+    });
+
+    describe('metadata projection', function() {
+      it('passed metadata to connect', function(done) {
+        var metadata = {username: 'user'};
+
+        this.backend.use('connect', function(request, next) {
+          Object.assign(request.agent.custom, request.req);
+          next();
+        });
+
+        var connection = this.backend.connect(undefined, metadata);
+        connection.on('connected', function() {
+          expect(connection.agent.custom).eql(metadata);
+          done();
+        });
+      });
+
+      it('passed metadata to submit', function(done) {
+        var metadata = {username: 'user'};
+
+        this.backend.use('connect', function(request, next) {
+          Object.assign(request.agent.custom, request.req);
+          next();
+        });
+
+        this.backend.use('submit', function(request) {
+          expect(request.agent.custom).eql(metadata);
+          done();
+        });
+
+        var connection = this.backend.connect(undefined, metadata);
+        var doc = null;
+        connection.on('connected', function() {
+          expect(connection.agent.custom).eql(metadata);
+          doc = connection.get('dogs', 'fido');
+          doc.create({name: 'fido'}, function() {
+            doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {source: 'trainer'}, errorHandler(done));
+          });
+        });
+      });
+
+      it('received local op without metadata', function(done) {
+        var metadata = {username: 'user'};
+
+        this.backend.use('connect', function(request, next) {
+          Object.assign(request.agent.custom, request.req);
+          next();
+        });
+
+        this.backend.use('submit', function(request, next) {
+          expect(request.agent.custom).eql(metadata);
+          Object.assign(request.op.m, request.agent.custom);
+          request.opMetadataProjection = {username: true};
+          next();
+        });
+
+        var connection = this.backend.connect(undefined, metadata);
+        var doc = null;
+        connection.on('connected', function() {
+          expect(connection.agent.custom).eql(metadata);
+          doc = connection.get('dogs', 'fido');
+          doc.create({name: 'fido'}, function() {
+            doc.on('op', function(op, source, src, context) {
+              if (src) {
+                return;
+              }
+              expect(context.op.m).equal(undefined);
+              done();
+            });
+            doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {source: 'trainer'}, errorHandler(function() {}));
+          });
+        });
+      });
+
+      it('concurrent changes', function(done) {
+        this.backend.use('connect', function(request, next) {
+          expect(request.req).to.have.property('username');
+          Object.assign(request.agent.custom, request.req);
+          next();
+        });
+
+        this.backend.use('submit', function(request, next) {
+          expect(request.agent.custom).to.have.property('username');
+          Object.assign(request.op.m, request.agent.custom);
+          request.opMetadataProjection = {username: true};
+          next();
+        });
+
+        this.backend.use('apply', function(request, next) {
+          expect(request.op.m).to.have.property('username');
+          next();
+        });
+
+        this.backend.use('commit', function(request, next) {
+          expect(request.op.m).to.have.property('username');
+          next();
+        });
+
+        this.backend.use('afterWrite', function(request, next) {
+          expect(request.op.m).to.have.property('username');
+          next();
+        });
+
+        var subscriberCount = 10;
+        var subscriberOpCount = 10;
+
+        var metadatas = [];
+        for (var i = 0; i < subscriberCount; i++) {
+          metadatas[i] = {username: 'user-'+i};
+        }
+
+        var ops = [];
+        for (var i = 0; i < subscriberCount; i++) {
+          ops[i] = [];
+          for (var j = 0; j < subscriberOpCount; j++) {
+            ops[i].push({p: ['tricks '+i+' '+j], oi: 1});
+          }
+        }
+
+        var docs = [];
+
+        function submitOps() {
+          for (var j = 0; j < subscriberOpCount; j++) {
+            for (var i = 0; i < subscriberCount; i++) {
+              var doc = docs[i];
+              doc.submitOp([ops[i][j]], {source: 'src-'+i}, errorHandler(doneAfter));
+            }
+          }
+        }
+
+        function validateAndDone() {
+          var firstDoc = docs[0];
+          // validate that all documents across connections are in sync
+          for (var i = 1; i < subscriberCount; i++) {
+            var doc = docs[i];
+            expect(doc.data).eql(firstDoc.data);
+          }
+          done();
+        };
+
+        var submitOpsAfter = util.callAfter(subscriberCount - 1, submitOps);
+        var doneAfter = util.callAfter((subscriberCount * subscriberCount * subscriberOpCount) - 1, validateAndDone);
+
+        function getDoc(callback) {
+          var thisDoc = this;
+          thisDoc.fetch(function() {
+            if (!thisDoc.data) {
+              return thisDoc.create({}, function() {
+                thisDoc.subscribe(callback);
+              });
+            }
+            thisDoc.subscribe(callback);
+          });
+        }
+
+        for (var i = 0; i < subscriberCount; i++) {
+          var metadata = metadatas[i];
+
+          var connection = this.backend.connect(undefined, Object.assign({}, metadata));
+          connection.__test_metadata = Object.assign({}, metadata);
+          connection.__test_id = i;
+
+          connection.on('connected', function() {
+            var thisConnection = this;
+
+            expect(thisConnection.agent.custom).eql(thisConnection.__test_metadata);
+
+            thisConnection.doc = docs[thisConnection.__test_id] = thisConnection.get('dogs', 'fido');
+
+            thisConnection.doc.on('op', function(op, source, src, context) {
+              if (!src) { // If I am the source there is no metadata to check
+                return doneAfter();
+              }
+              var id = op[0].p[0].split(' ')[1];
+              expect(context.op.m).eql(metadatas[id]);
+              doneAfter();
+            });
+
+            getDoc.bind(thisConnection.doc)(submitOpsAfter);
+          });
+        }
       });
     });
   });
