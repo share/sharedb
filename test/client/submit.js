@@ -1382,7 +1382,7 @@ module.exports = function() {
             thisConnection.doc = docs[thisConnection.__test_id] = thisConnection.get('dogs', 'fido');
 
             thisConnection.doc.on('op', function(op, source, src, context) {
-              if (!src) { // If I am the source there is no metadata to check
+              if (!src || !context) { // If I am the source there is no metadata to check
                 return doneAfter();
               }
               var id = op[0].p[0].split(' ')[1];
