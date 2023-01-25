@@ -1301,6 +1301,7 @@ module.exports = function() {
         });
 
         this.backend.use('apply', function(request, next) {
+          Object.assign(request.snapshot.m, request.op.m);
           expect(request.op.m).to.have.property('username');
           next();
         });
