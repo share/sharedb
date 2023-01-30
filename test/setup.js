@@ -1,4 +1,5 @@
 var logger = require('../lib/logger');
+var sinon = require('sinon');
 
 if (process.env.LOGGING !== 'true') {
   // Silence the logger for tests by setting all its methods to no-ops
@@ -8,3 +9,7 @@ if (process.env.LOGGING !== 'true') {
     error: function() {}
   });
 }
+
+afterEach(function() {
+  sinon.restore();
+});

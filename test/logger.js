@@ -8,10 +8,6 @@ describe('Logger', function() {
       sinon.stub(console, 'warn');
     });
 
-    afterEach(function() {
-      sinon.restore();
-    });
-
     it('logs to console by default', function() {
       var logger = new Logger();
       logger.warn('warning');
