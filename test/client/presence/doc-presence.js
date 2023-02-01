@@ -1025,4 +1025,14 @@ describe('DocPresence', function() {
       }
     ], done);
   });
+
+  it('does not trigger EventEmitter memory leak warnings', function() {
+    for (var i = 0; i < 100; i++) {
+      presence1.create();
+    }
+
+    expect(doc1._events.op.warned).not.to.be.ok;
+    var emitter = connection1._docPresenceEmitter._emitters[doc1.collection][doc1.id];
+    expect(emitter._events.op.warned).not.to.be.ok;
+  });
 });
