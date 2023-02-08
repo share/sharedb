@@ -39,10 +39,7 @@ backend.use('submit', (context, next) => {
   }
 
   // add custom metadata to the op
-  Object.assign(context.op.m, context.agent.custom);
-  // Explicitly specify which metadata fields to be included when storing the op
-  context.opMetadataProjection = { userId: true };
-
+  Object.assign(context.op.m, context.agent.custom.metadata);
   next()
 })
 ```
@@ -67,10 +64,6 @@ backend.use('apply', (context, next) => {
   if (userId !== ownerId) {
     return next(new Error('Unauthorized'))
   }
-
-  // Add op metadata to snapshot before snapshot is stored
-  Object.assign(context.snapshot.m, context.op.m);
-
   next()
 })
 ```
