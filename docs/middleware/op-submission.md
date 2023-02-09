@@ -37,9 +37,6 @@ backend.use('submit', (context, next) => {
   if (!userCanChangeDoc(userId, id)) {
     return next(new Error('Unauthorized'))
   }
-
-  // add custom metadata to the op
-  Object.assign(context.op.m, context.agent.custom.metadata);
   next()
 })
 ```
