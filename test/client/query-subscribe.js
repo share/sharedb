@@ -210,7 +210,9 @@ module.exports = function(options) {
       };
       var backend = this.backend;
       var connection = backend.connect();
+      connection.debug = true;
       var connection2 = backend.connect();
+      connection2.debug = true;
       var matchAllDbQuery = this.matchAllDbQuery;
       async.parallel([
         function(cb) {
