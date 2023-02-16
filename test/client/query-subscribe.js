@@ -187,18 +187,25 @@ module.exports = function(options) {
         }
       ], function(err) {
         if (err) return done(err);
+
+        var wait = 2;
+        function finish() {
+          if (--wait) return;
+          expect(util.pluck(query.results, 'id')).to.eql(['fido', 'spot', 'taco']);
+          done();
+        }
+
         var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err) {
           if (err) return done(err);
           connection.close();
           connection2.get('dogs', 'taco').on('error', done).create({age: 2});
           process.nextTick(function() {
             backend.connect(connection);
+            query.on('ready', finish);
           });
         });
         query.on('error', done);
-        query.on('insert', function() {
-          done();
-        });
+        query.on('insert', finish);
       });
     });
 
@@ -234,11 +241,14 @@ module.exports = function(options) {
             ], function(error) {
               if (error) return done(error);
               backend.connect(connection);
+              query.once('ready', function() {
+                finish();
+              });
             });
           });
         });
 
-        var wait = 2;
+        var wait = 3;
         function finish() {
           if (--wait) return;
           var results = util.sortById(query.results);
