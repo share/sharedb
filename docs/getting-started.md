@@ -38,6 +38,7 @@ The ShareDB backend expects an instance of a [`Stream`](https://nodejs.org/api/s
 ```js
 var express = require('express')
 var WebSocket = require('ws')
+var http = require('http')
 var ShareDB = require('sharedb')
 var WebSocketJSONStream = require('@teamwork/websocket-json-stream')
 
