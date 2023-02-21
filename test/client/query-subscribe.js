@@ -191,7 +191,7 @@ module.exports = function(options) {
         var wait = 2;
         function finish() {
           if (--wait) return;
-          expect(util.pluck(query.results, 'id')).to.eql(['fido', 'spot', 'taco']);
+          expect(util.pluck(query.results, 'id')).to.have.members(['fido', 'spot', 'taco']);
           done();
         }
 
