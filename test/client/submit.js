@@ -1210,5 +1210,81 @@ module.exports = function() {
         });
       });
     });
+
+    describe('op metadata', function() {
+
+      it('metadata disabled', async function() {
+        let resolveTest = null;
+        let rejectTest = null;
+        const testPromise = new Promise((resolve, reject) => { resolveTest = resolve; rejectTest = reject; });
+
+        this.backend.use('afterWrite', function(request, next) {
+          expect(request.op.m).to.be.undefined;
+          next();
+          doneAfter();
+        });
+
+        const docs = [];
+        for(let i = 0; i < 2; i++) {
+          const doc = this.backend.connect().get('dogs', 'fido').on('error', rejectTest);
+          docs.push(doc);
+        }
+
+        let left = docs.size;
+        const doneAfter = () => { if(!left--) { resolveTest(); } };
+
+        await new Promise((resolve, reject) => docs[0].create({ age: 1 }, err => err?reject(err):resolve())).catch(err => rejectTest(err));
+
+        for(let i = 0; i < docs.length; i++) {
+            const doc = docs[i];
+            await new Promise((resolve, reject) => doc.subscribe(err => err?reject(err):resolve())).catch(err => rejectTest(err));
+        }
+
+        const doc = docs[0];
+        doc.submitOp({ p: ['age'], na: 1, m: { clientMeta: 'client0' } });
+
+        return testPromise;
+      });
+
+      it('metadata enabled', async function() {
+        let resolveTest = null;
+        let rejectTest = null;
+        const testPromise = new Promise((resolve, reject) => { resolveTest = resolve; rejectTest = reject; });
+
+        this.backend.use('connect', function(request, next) {
+          expect(request.req.metadata).to.be.ok;
+          Object.assign(request.agent.custom, request.req);
+          next();
+        });
+
+        this.backend.use('afterWrite', function(request, next) {
+          expect(request.op.m).to.be.ok;
+          next();
+          doneAfter();
+        });
+
+        const docs = [];
+        for(let i = 0; i < 2; i++) {    
+          const connOptions = { metadata: { agentMeta: 'agent'+i } };
+          const doc = this.backend.connect(undefined, connOptions).get('dogs', 'fido').on('error', rejectTest);
+          docs.push(doc);
+        }
+
+        let left = docs.size;
+        const doneAfter = () => { if(!left--) { resolveTest(); } };
+
+        await new Promise((resolve, reject) => docs[0].create({ age: 1 }, err => err?reject(err):resolve())).catch(err => rejectTest(err));
+
+        for(let i = 0; i < docs.length; i++) {
+            const doc = docs[i];
+            await new Promise((resolve, reject) => doc.subscribe(err => err?reject(err):resolve())).catch(err => rejectTest(err));
+        }
+
+        const doc = docs[0];
+        doc.submitOp({ p: ['age'], na: 1, m: { clientMeta: 'client0' } });
+
+        return testPromise;
+      });
+    });
   });
 };
