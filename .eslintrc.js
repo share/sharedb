@@ -34,13 +34,18 @@ var SHAREDB_RULES = {
   // as-needed quote props are easier to write
   'quote-props': ['error', 'as-needed'],
   'require-jsdoc': 'off',
-  'valid-jsdoc': 'off'
+  'valid-jsdoc': 'off',
+
+  // Required after upgrade to ecmaVersion: 6
+  'no-invalid-this': 'off'
 };
 
 module.exports = {
   extends: 'google',
   parserOptions: {
-    ecmaVersion: 3
+    // Support ES6 imports and exports
+    ecmaVersion: 6,
+    sourceType: 'module'
   },
   rules: Object.assign(
     {},

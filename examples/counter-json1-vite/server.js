@@ -1,7 +1,7 @@
 import http from 'http';
 import express from 'express';
 import ShareDB from 'sharedb';
-import { WebSocketServer } from 'ws';
+import {WebSocketServer} from 'ws';
 import WebSocketJSONStream from '@teamwork/websocket-json-stream';
 import json1 from 'ot-json1';
 
