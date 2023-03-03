@@ -160,7 +160,7 @@ backend.use('commit', (context, next) => {
 
 backend.use('query', (context, next) => {
   // Set our query to only listen for changes on our user-specific channel
-  context.channel = userChannel(context)
+  context.channels = [userChannel(context)]
   next()
 })
 
