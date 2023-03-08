@@ -1,6 +1,6 @@
 import ReconnectingWebSocket from 'reconnecting-websocket';
-import sharedb from 'sharedb/lib/client';
 import json1 from 'ot-json1';
+import sharedb from 'sharedb-client-browser/dist/sharedb-client-umd.cjs';
 
 // Open WebSocket connection to ShareDB server
 var socket = new ReconnectingWebSocket('ws://' + window.location.host);
@@ -29,5 +29,5 @@ function increment() {
   doc.submitOp(['numClicks', {ena: 1}]);
 }
 
-// Expose to index.html
-global.increment = increment;
+var button = document.querySelector('button.increment');
+button.addEventListener('click', increment);
