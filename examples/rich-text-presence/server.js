@@ -6,7 +6,10 @@ var WebSocket = require('ws');
 var WebSocketJSONStream = require('@teamwork/websocket-json-stream');
 
 ShareDB.types.register(richText.type);
-var backend = new ShareDB({presence: true});
+var backend = new ShareDB({
+  presence: true,
+  doNotForwardSendPresenceErrorsToClient: true
+});
 createDoc(startServer);
 
 // Create initial document then fire callback

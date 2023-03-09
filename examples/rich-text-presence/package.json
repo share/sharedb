@@ -22,7 +22,7 @@
     "quill-cursors": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",
     "rich-text": "^4.1.0",
-    "sharedb": "^3.2.4",
+    "sharedb": "^3.3.0",
     "tinycolor2": "^1.6.0",
     "ws": "^8.12.1"
   },
