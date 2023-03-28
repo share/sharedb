@@ -1,5 +1,7 @@
 var Body = require('./Body.jsx');
 var React = require('react');
-var ReactDOM = require('react-dom');
+var ReactDOM = require('react-dom/client');
 
-ReactDOM.render(<Body />, document.querySelector('#main'));
+var container = document.getElementById('main');
+var root = ReactDOM.createRoot(container);
+root.render(<Body />);
