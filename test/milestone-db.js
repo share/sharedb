@@ -576,8 +576,10 @@ module.exports = function(options) {
       });
 
       it('only stores even-numbered versions', function(done) {
-        db.on('save', function(collection, snapshot) {
-          if (snapshot.v !== 4) return;
+        var snapshotCount = 0;
+        db.on('save', function() {
+          snapshotCount++;
+          if (snapshotCount < 2) return;
 
           async.waterfall([
             db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),
@@ -619,8 +621,10 @@ module.exports = function(options) {
           callback();
         });
 
-        db.on('save', function(collection, snapshot) {
-          if (snapshot.v !== 4) return;
+        var snapshotCount = 0;
+        db.on('save', function() {
+          snapshotCount++;
+          if (snapshotCount < 2) return;
 
           async.waterfall([
             db.getMilestoneSnapshot.bind(db, 'books', 'catcher-in-the-rye', 1),

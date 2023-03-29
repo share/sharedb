@@ -149,9 +149,13 @@ This action has these additional `context` properties:
 
 > The query's projection [fields]({{ site.baseurl }}{% link api/backend.md %}#addprojection)
 
-`channel` -- string
+`channel` -- string (deprecated)
 
-> The [Pub/Sub]({{ site.baseurl }}{% link adapters/pub-sub.md %}) channel the query will subscribe to. Defaults to its collection channel.
+> This property is deprecated use `channels` instead. The [Pub/Sub]({{ site.baseurl }}{% link adapters/pub-sub.md %}) channels the query will subscribe to. Defaults to its collection channel.
+
+`channels` -- string[]
+
+> The [Pub/Sub]({{ site.baseurl }}{% link adapters/pub-sub.md %}) channels the query will subscribe to. Defaults to its collection channel.
 
 `query` -- Object
 

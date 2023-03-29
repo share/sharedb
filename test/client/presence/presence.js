@@ -38,7 +38,6 @@ describe('Presence', function() {
   });
 
   afterEach(function(done) {
-    sinon.restore();
     connection1.close();
     connection2.close();
     backend.close(done);
@@ -121,30 +120,6 @@ describe('Presence', function() {
         });
       }
     ], done);
-  });
-
-  it('destroys old local presence but keeps new local presence when getting during destroy', function(done) {
-    presence2.create('presence-2');
-    var presence2a;
-
-    async.series([
-      presence2.subscribe.bind(presence2),
-      function(next) {
-        presence2.destroy(function() {
-          expect(presence2).to.equal(presence2a);
-          expect(Object.keys(presence2.localPresences)).to.eql(['presence-2a']);
-          done();
-        });
-        next();
-      },
-      function(next) {
-        presence2a = connection2.getPresence('test-channel');
-        presence2a.create('presence-2a');
-        presence2a.subscribe(function(error) {
-          next(error);
-        });
-      }
-    ], errorHandler(done));
   });
 
   it('destroys old local presence but keeps new local presence when getting during destroy', function(done) {
