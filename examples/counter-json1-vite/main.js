@@ -1,9 +1,9 @@
 import ReconnectingWebSocket from 'reconnecting-websocket';
-import json1 from 'ot-json1';
+import { json1 } from 'sharedb-client-browser/dist/ot-json1-umd.cjs';
 import sharedb from 'sharedb-client-browser/dist/sharedb-client-umd.cjs';
 
 // Open WebSocket connection to ShareDB server
-var socket = new ReconnectingWebSocket('ws://' + window.location.host);
+var socket = new ReconnectingWebSocket('ws://' + window.location.host + '/ws');
 sharedb.types.register(json1.type);
 var connection = new sharedb.Connection(socket);
 
