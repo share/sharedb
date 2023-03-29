@@ -34,18 +34,13 @@ var SHAREDB_RULES = {
   // as-needed quote props are easier to write
   'quote-props': ['error', 'as-needed'],
   'require-jsdoc': 'off',
-  'valid-jsdoc': 'off',
-
-  // Required after upgrade to ecmaVersion: 6
-  'no-invalid-this': 'off'
+  'valid-jsdoc': 'off'
 };
 
 module.exports = {
   extends: 'google',
   parserOptions: {
-    // Support ES6 imports and exports
-    ecmaVersion: 6,
-    sourceType: 'module'
+    ecmaVersion: 3
   },
   rules: Object.assign(
     {},
@@ -54,5 +49,17 @@ module.exports = {
   ),
   ignorePatterns: [
     '/docs/'
+  ],
+  overrides: [
+    {
+      files: ['examples/counter-json1-vite/*.js'],
+      parserOptions: {
+        ecmaVersion: 6,
+        sourceType: 'module'
+      },
+      rules: {
+        quotes: ['error', 'single']
+      }
+    }
   ]
 };
