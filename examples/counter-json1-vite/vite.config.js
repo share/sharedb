@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import {defineConfig} from 'vite';
 
 export default defineConfig({
   server: {
@@ -6,8 +6,8 @@ export default defineConfig({
       // Proxy websockets to ws://localhost:8080 for `npm run dev`
       '/ws': {
         target: 'ws://localhost:8080',
-        ws: true,
-      },
-    },
-  },
-})
+        ws: true
+      }
+    }
+  }
+});

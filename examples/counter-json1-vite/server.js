@@ -30,7 +30,7 @@ function startServer() {
   var server = http.createServer(app);
 
   // Connect any incoming WebSocket connection to ShareDB
-  var wss = new WebSocketServer({server: server, path:'/ws'});
+  var wss = new WebSocketServer({server: server, path: '/ws'});
   wss.on('connection', function(ws) {
     var stream = new WebSocketJSONStream(ws);
     backend.listen(stream);
