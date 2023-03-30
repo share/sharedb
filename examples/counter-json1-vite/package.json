@@ -1,0 +1,24 @@
+{
+  "name": "counter-json1-vite",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@teamwork/websocket-json-stream": "^2.0.0",
+    "express": "^4.18.2",
+    "ot-json1": "^1.0.2",
+    "reconnecting-websocket": "^4.4.0",
+    "sharedb": "^3.3.1",
+    "sharedb-client-browser": "^4.2.1",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "vite": "^4.2.1"
+  }
+}

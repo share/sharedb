@@ -49,5 +49,17 @@ module.exports = {
   ),
   ignorePatterns: [
     '/docs/'
+  ],
+  overrides: [
+    {
+      files: ['examples/counter-json1-vite/*.js'],
+      parserOptions: {
+        ecmaVersion: 6,
+        sourceType: 'module'
+      },
+      rules: {
+        quotes: ['error', 'single']
+      }
+    }
   ]
 };
