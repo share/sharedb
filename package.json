@@ -22,7 +22,8 @@
     "ot-json1": "^0.3.0",
     "rich-text": "^4.1.0",
     "sharedb-legacy": "npm:sharedb@=1.1.0",
-    "sinon": "^9.2.4"
+    "sinon": "^9.2.4",
+    "sinon-chai": "^3.7.0"
   },
   "files": [
     "lib/",
