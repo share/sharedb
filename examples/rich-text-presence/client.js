@@ -22,7 +22,11 @@ var collection = 'examples';
 var id = 'richtext';
 var presenceId = new ObjectID().toString();
 
-var socket = new ReconnectingWebSocket('ws://' + window.location.host);
+var socket = new ReconnectingWebSocket('ws://' + window.location.host, [], {
+  // ShareDB handles dropped messages, and buffering them while the socket
+  // is closed has undefined behavior
+  maxEnqueuedMessages: 0
+});
 var connection = new sharedb.Connection(socket);
 var doc = connection.get(collection, id);
 

@@ -5,7 +5,11 @@ var Quill = require('quill');
 sharedb.types.register(richText.type);
 
 // Open WebSocket connection to ShareDB server
-var socket = new ReconnectingWebSocket('ws://' + window.location.host);
+var socket = new ReconnectingWebSocket('ws://' + window.location.host, [], {
+  // ShareDB handles dropped messages, and buffering them while the socket
+  // is closed has undefined behavior
+  maxEnqueuedMessages: 0
+});
 var connection = new sharedb.Connection(socket);
 
 // For testing reconnection
@@ -13,7 +17,11 @@ window.disconnect = function() {
   connection.close();
 };
 window.connect = function() {
-  var socket = new ReconnectingWebSocket('ws://' + window.location.host);
+  var socket = new ReconnectingWebSocket('ws://' + window.location.host, [], {
+    // ShareDB handles dropped messages, and buffering them while the socket
+    // is closed has undefined behavior
+    maxEnqueuedMessages: 0
+  });
   connection.bindToSocket(socket);
 };
 

@@ -3,7 +3,11 @@ var sharedb = require('sharedb/lib/client');
 var json1 = require('ot-json1');
 
 // Open WebSocket connection to ShareDB server
-var socket = new ReconnectingWebSocket('ws://' + window.location.host);
+var socket = new ReconnectingWebSocket('ws://' + window.location.host, [], {
+  // ShareDB handles dropped messages, and buffering them while the socket
+  // is closed has undefined behavior
+  maxEnqueuedMessages: 0
+});
 sharedb.types.register(json1.type);
 var connection = new sharedb.Connection(socket);
 

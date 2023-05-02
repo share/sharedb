@@ -3,7 +3,11 @@ import {json1} from 'sharedb-client-browser/dist/ot-json1-umd.cjs';
 import sharedb from 'sharedb-client-browser/dist/sharedb-client-umd.cjs';
 
 // Open WebSocket connection to ShareDB server
-var socket = new ReconnectingWebSocket('ws://' + window.location.host + '/ws');
+var socket = new ReconnectingWebSocket('ws://' + window.location.host + '/ws', [], {
+  // ShareDB handles dropped messages, and buffering them while the socket
+  // is closed has undefined behavior
+  maxEnqueuedMessages: 0
+});
 sharedb.types.register(json1.type);
 var connection = new sharedb.Connection(socket);
 
