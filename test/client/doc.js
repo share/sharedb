@@ -591,4 +591,47 @@ describe('Doc', function() {
       });
     });
   });
+
+  describe('doc fetch', function () {
+    var doc, oriHandleMessage, lastMessage;
+
+    beforeEach(function(done) {
+      doc = this.connection.get('dogs', 'sams');
+      oriHandleMessage = this.connection.handleMessage;
+
+      this.connection.handleMessage = function() {
+        lastMessage = arguments[0];
+        oriHandleMessage.apply(this, arguments);
+      };
+
+      doc.create({name: 'Sams'}, done);
+    });
+
+    afterEach(function() {
+      this.connection.handleMessage = oriHandleMessage;
+    });
+
+    it ('doc fetch should be enqueue', function() {
+      // create op
+      expect(doc.pendingOps.length).to.eql(0);
+      expect(doc.inflightOp).to.eql(null);
+
+      // construct remote message
+      const resMsg1 = {...lastMessage};
+      resMsg1.v += 10;
+      resMsg1.seq += 10;
+
+      const resMsg2 = {...lastMessage};
+      resMsg2.v += 11;
+      resMsg2.seq += 11;
+
+      expect(doc.inflightFetch.length).to.eql(0);
+      this.connection.handleMessage(resMsg1);
+      expect(doc.inflightFetch.length).to.eql(1);
+
+      this.connection.handleMessage(resMsg2);
+      // we expect do not send multiple fetch, when first fetch uncompleted.
+      expect(doc.inflightFetch.length).to.eql(1);
+    });
+  });
 });
