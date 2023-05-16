@@ -5,6 +5,7 @@ var json0 = require('ot-json0').type;
 var richText = require('rich-text').type;
 var ShareDBError = require('../../lib/error');
 var errorHandler = require('../util').errorHandler;
+var sinon = require('sinon');
 
 describe('Doc', function() {
   beforeEach(function() {
@@ -81,6 +82,23 @@ describe('Doc', function() {
     doc.once('error', function(error) {
       expect(error.code).to.equal('ERR_CONNECTION_SEQ_INTEGER_OVERFLOW');
       done();
+    });
+  });
+
+  describe('fetch', function() {
+    it('only fetches once when calling in quick succession', function(done) {
+      var connection = this.connection;
+      var doc = connection.get('dogs', 'fido');
+      sinon.spy(connection, 'sendFetch');
+      var count = 0;
+      var finish = function() {
+        count++;
+        expect(connection.sendFetch).to.have.been.calledOnce;
+        if (count === 3) done();
+      };
+      doc.fetch(finish);
+      doc.fetch(finish);
+      doc.fetch(finish);
     });
   });
 

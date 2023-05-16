@@ -734,11 +734,11 @@ describe('middleware', function() {
         next();
       });
 
-      sinon.spy(doc, 'fetch');
+      sinon.spy(doc, '_fetch');
 
       doc.submitOp([{p: ['fetch'], oi: true}], function(error) {
         expect(error).to.be.ok;
-        expect(doc.fetch.calledOnce).to.be.true;
+        expect(doc._fetch.calledOnce).to.be.true;
         done();
       });
     });
