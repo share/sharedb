@@ -4,25 +4,25 @@
   "description": "JSON OT database backend",
   "main": "lib/index.js",
   "dependencies": {
-    "arraydiff": "^0.1.1",
-    "async": "^2.6.3",
-    "fast-deep-equal": "^2.0.1",
+    "arraydiff": "^0.1.3",
+    "async": "^3.2.4",
+    "fast-deep-equal": "^3.1.3",
     "hat": "0.0.3",
-    "ot-json0": "^1.0.1"
+    "ot-json0": "^1.1.0"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "coveralls": "^3.0.7",
-    "eslint": "^7.32.0",
+    "chai": "^4.3.7",
+    "coveralls": "^3.1.1",
+    "eslint": "^8.47.0",
     "eslint-config-google": "^0.14.0",
-    "lolex": "^5.1.1",
-    "mocha": "^8.2.1",
-    "nyc": "^14.1.1",
+    "lolex": "^5.1.2",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
     "ot-json0-v2": "https://github.com/ottypes/json0#90a3ae26364c4fa3b19b6df34dad46707a704421",
-    "ot-json1": "^0.3.0",
+    "ot-json1": "^1.0.2",
     "rich-text": "^4.1.0",
     "sharedb-legacy": "npm:sharedb@=1.1.0",
-    "sinon": "^7.5.0"
+    "sinon": "^15.2.0"
   },
   "files": [
     "lib/",
