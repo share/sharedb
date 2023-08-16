@@ -1,6 +1,5 @@
 var Backend = require('../../lib/backend');
 var expect = require('chai').expect;
-var lolex = require('lolex');
 var MemoryDb = require('../../lib/db/memory');
 var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
 var sinon = require('sinon');
@@ -18,7 +17,7 @@ describe('SnapshotTimestampRequest', function() {
   var ONE_DAY = 1000 * 60 * 60 * 24;
 
   beforeEach(function() {
-    clock = lolex.install({now: day1});
+    clock = sinon.useFakeTimers(day1);
     backend = new Backend();
   });
 
