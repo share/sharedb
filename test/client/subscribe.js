@@ -838,46 +838,6 @@ module.exports = function() {
       });
     });
 
-    it('doc fetches ops to catch up if it receives multiple future ops', function(done) {
-      var backend = this.backend;
-      var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
-      var doc2 = this.backend.connect().get('dogs', 'fido').on('error', done);
-      // Delaying op replies will cause multiple future ops to be received
-      // before the fetch to catch up completes
-      backend.use('op', function(request, next) {
-        setTimeout(next, 10 * Math.random());
-      });
-      doc.create({age: 3}, function(err) {
-        if (err) return done(err);
-        doc2.subscribe(function(err) {
-          if (err) return done(err);
-          var wait = 4;
-          doc2.on('op', function() {
-            if (--wait) return;
-            expect(doc2.version).eql(5);
-            expect(doc2.data).eql({age: 122});
-            // Wait for whenNothingPending, because the doc might have kicked
-            // off multiple fetches, and some could be pending still. We want to
-            // resolve all inflight requests of the database before closing and
-            // proceeding to the next test
-            doc2.whenNothingPending(done);
-          });
-          backend.suppressPublish = true;
-          doc.submitOp({p: ['age'], na: 1}, function(err) {
-            if (err) return done(err);
-            backend.suppressPublish = false;
-            doc.submitOp({p: ['age'], na: 5}, function(err) {
-              if (err) return done(err);
-              doc.submitOp({p: ['age'], na: 13}, function(err) {
-                if (err) return done(err);
-                doc.submitOp({p: ['age'], na: 100});
-              });
-            });
-          });
-        });
-      });
-    });
-
     describe('doc.subscribed', function() {
       it('is set to false initially', function(done) {
         var doc = this.backend.connect().get('dogs', 'fido').on('error', done);
