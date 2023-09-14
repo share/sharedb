@@ -124,7 +124,7 @@ module.exports = function(options) {
         var fido = connection2.get('dogs_summary', 'fido');
         fido.subscribe(function(err) {
           if (err) return done(err);
-          fido.on('op', function() {
+          fido.on('opComponent', function() {
             expect(fido.data).eql(expected);
             expect(fido.version).eql(2);
             done();
@@ -164,7 +164,7 @@ module.exports = function(options) {
           var fido = connection2.get('dogs_summary', 'fido');
           connection2.createSubscribeQuery('dogs_summary', matchAllQuery, null, function(err) {
             if (err) return done(err);
-            fido.on('op', function() {
+            fido.on('opComponent', function() {
               expect(fido.data).eql(expected);
               expect(fido.version).eql(2);
               done();

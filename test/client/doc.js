@@ -150,7 +150,7 @@ describe('Doc', function() {
           expect(doc.data).eql({color: 'black'});
         }
       ];
-      doc.on('op', function(op, source) {
+      doc.on('opComponent', function(op, source) {
         var handler = handlers.shift();
         handler(op, source);
       });
@@ -199,7 +199,7 @@ describe('Doc', function() {
           expect(doc.data).eql({color: 'black', weight: 40, age: 5, owner: 'sue'});
         }
       ];
-      doc.on('op', function(op, source) {
+      doc.on('opComponent', function(op, source) {
         var handler = handlers.shift();
         handler(op, source);
       });
@@ -250,7 +250,7 @@ describe('Doc', function() {
           expect(doc.data).eql({tricks: ['shake', 'tug stick']});
         }
       ];
-      doc.on('op', function(op, source) {
+      doc.on('opComponent', function(op, source) {
         var handler = handlers.shift();
         handler(op, source);
       });
@@ -277,13 +277,13 @@ describe('Doc', function() {
         {p: ['tricks', 0], li: 'stand'}
       ];
 
-      doc.on('before op batch', function(op, source) {
+      doc.on('beforeOp', function(op, source) {
         expect(op).to.eql(submittedOp);
         expect(source).to.be.true;
         beforeOpBatchCount++;
       });
 
-      doc.on('op batch', function(op, source) {
+      doc.on('op', function(op, source) {
         expect(op).to.eql(submittedOp);
         expect(source).to.be.true;
         expect(beforeOpBatchCount).to.equal(1);
@@ -304,13 +304,13 @@ describe('Doc', function() {
         {p: ['tricks', 0], li: 'stand'}
       ];
 
-      doc.on('before op batch', function(op, source) {
+      doc.on('beforeOp', function(op, source) {
         expect(op).to.eql(submittedOp);
         expect(source).to.be.false;
         beforeOpBatchCount++;
       });
 
-      doc.on('op batch', function(op, source) {
+      doc.on('op', function(op, source) {
         expect(op).to.eql(submittedOp);
         expect(source).to.be.false;
         expect(beforeOpBatchCount).to.equal(1);
