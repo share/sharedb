@@ -20,7 +20,7 @@
     "ot-json0-v2": "https://github.com/ottypes/json0#90a3ae26364c4fa3b19b6df34dad46707a704421",
     "ot-json1": "^1.0.2",
     "rich-text": "^4.1.0",
-    "sharedb-legacy": "npm:sharedb@=1.1.0",
+    "sharedb-legacy": "npm:sharedb@1.1.0",
     "sinon": "^15.2.0",
     "sinon-chai": "^3.7.0"
   },
