@@ -21,7 +21,7 @@
     "ot-json0-v2": "ottypes/json0",
     "ot-json1": "^0.3.0",
     "rich-text": "^4.1.0",
-    "sharedb-legacy": "npm:sharedb@=1.1.0",
+    "sharedb-legacy": "npm:sharedb@1.1.0",
     "sinon": "^7.5.0"
   },
   "files": [
