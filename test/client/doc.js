@@ -514,6 +514,42 @@ describe('Doc', function() {
       ], done);
     });
 
+    it('throws an error when hard rollback fetch failed', function(done) {
+      var backend = this.backend;
+
+      async.series([
+        function(next) {
+          // Register the rich text type, which can't be inverted
+          json0.registerSubtype(richText);
+
+          var validOp = {p: ['richName'], oi: {ops: [{insert: 'Scooby\n'}]}};
+          doc.submitOp(validOp, function(error) {
+            expect(error).to.not.exist;
+            next();
+          });
+        },
+        function(next) {
+          backend.use('reply', function(replyContext, next) {
+            if (replyContext.request.a !== 'f') return next();
+            next({code: 'TEST_ERROR'});
+          });
+          backend.use('submit', function(_context, backendNext) {
+            backendNext(new ShareDBError(ShareDBError.CODES.ERR_UNKNOWN_ERROR, 'Custom unknown error'));
+          });
+          var nonInvertibleOp = {p: ['richName'], t: 'rich-text', o: [{insert: 'e'}]};
+
+          doc.on('error', function(error) {
+            expect(error.code).to.be.equal('TEST_ERROR');
+            done();
+          });
+
+          // The server error should get all the way back to our handler
+          doc.submitOp(nonInvertibleOp, function() {
+            next();
+          });
+        }
+      ]);
+    });
 
     it('rescues an irreversible op collision', function(done) {
       // This test case attempts to reconstruct the following corner case, with

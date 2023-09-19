@@ -919,22 +919,25 @@ module.exports = function() {
       ], done);
     });
 
-    it('request.rejectedError() soft rejects a create', function(done) {
+    it('request.rejectedError() rejects a create', function(done) {
       this.backend.use('submit', function(request, next) {
         next(request.rejectedError());
       });
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
-        if (err) return done(err);
+        if (!err) {
+          return done('Should emit error');
+        }
         expect(doc.version).equal(0);
         expect(doc.data).equal(undefined);
+        expect(err.code).to.be.equal('ERR_OP_SUBMIT_REJECTED');
         done();
       });
       expect(doc.version).equal(null);
       expect(doc.data).eql({age: 3});
     });
 
-    it('request.rejectedError() soft rejects a create without callback', function(done) {
+    it('request.rejectedError() rejects a create without callback', function(done) {
       this.backend.use('submit', function(request, next) {
         next(request.rejectedError());
       });
@@ -942,9 +945,8 @@ module.exports = function() {
       doc.create({age: 3});
       expect(doc.version).equal(null);
       expect(doc.data).eql({age: 3});
-      doc.whenNothingPending(function() {
-        expect(doc.version).equal(0);
-        expect(doc.data).equal(undefined);
+      doc.on('error', function(err) {
+        expect(err.code).to.be.equal('ERR_OP_SUBMIT_REJECTED');
         done();
       });
     });
@@ -1024,7 +1026,7 @@ module.exports = function() {
       });
     });
 
-    it('request.rejectedError() soft rejects an op', function(done) {
+    it('request.rejectedError() rejects an op', function(done) {
       this.backend.use('submit', function(request, next) {
         if ('op' in request.op) return next(request.rejectedError());
         next();
@@ -1033,9 +1035,11 @@ module.exports = function() {
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
         doc.submitOp({p: ['age'], na: 1}, function(err) {
-          if (err) return done(err);
-          expect(doc.version).equal(1);
-          expect(doc.data).eql({age: 3});
+          if (!err) {
+            return done('Should throw an error');
+          }
+
+          expect(err.code).to.be.equal('ERR_OP_SUBMIT_REJECTED');
           done();
         });
         expect(doc.version).equal(1);
@@ -1043,7 +1047,7 @@ module.exports = function() {
       });
     });
 
-    it('request.rejectedError() soft rejects an op without callback', function(done) {
+    it('request.rejectedError() rejects an op without callback', function(done) {
       this.backend.use('submit', function(request, next) {
         if ('op' in request.op) return next(request.rejectedError());
         next();
@@ -1051,14 +1055,13 @@ module.exports = function() {
       var doc = this.backend.connect().get('dogs', 'fido');
       doc.create({age: 3}, function(err) {
         if (err) return done(err);
-        doc.submitOp({p: ['age'], na: 1});
-        expect(doc.version).equal(1);
-        expect(doc.data).eql({age: 4});
-        doc.whenNothingPending(function() {
-          expect(doc.version).equal(1);
-          expect(doc.data).eql({age: 3});
+        doc.on('error', function(err) {
+          if (!err) return done('Should throw an error');
+
+          expect(err.code).to.be.equal('ERR_OP_SUBMIT_REJECTED');
           done();
         });
+        doc.submitOp({p: ['age'], na: 1});
       });
     });
 
