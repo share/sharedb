@@ -705,7 +705,13 @@ describe('DocPresence', function() {
           });
         });
 
-        doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
+        doc1.submitOp({index: 5, value: 'ern'}, errorHandler(function(error) {
+          if (!error) {
+            return done('should throw an error');
+          }
+
+          expect(error.code).to.be.equal('ERR_OP_SUBMIT_REJECTED');
+        }));
       }
     ], done);
   });
@@ -741,7 +747,13 @@ describe('DocPresence', function() {
           });
         });
 
-        doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
+        doc1.submitOp({index: 5, value: 'ern'}, errorHandler(function(error) {
+          if (!error) {
+            return done('should throw an error');
+          }
+
+          expect(error.code).to.be.equal('ERR_OP_SUBMIT_REJECTED');
+        }));
       }
     ], done);
   });
