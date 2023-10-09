@@ -401,6 +401,46 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('does not send another subscribe request if already subscribed', function(done) {
+    var sendPresenceAction = sinon.spy(connection1, '_sendPresenceAction');
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        expect(sendPresenceAction).to.have.been.calledOnce;
+        next();
+      }
+    ], done);
+  });
+
+  it('only subscribes once when calling multiple in parallel', function(done) {
+    var sendPresenceAction = sinon.spy(connection1, '_sendPresenceAction');
+    async.series([
+      function(next) {
+        async.parallel([
+          presence1.subscribe.bind(presence1),
+          presence1.subscribe.bind(presence1)
+        ], next);
+      },
+      function(next) {
+        expect(sendPresenceAction).to.have.been.calledOnce;
+        next();
+      }
+    ], done);
+  });
+
+  it('subscribes once when calling again after no callback', function(done) {
+    var sendPresenceAction = sinon.spy(connection1, '_sendPresenceAction');
+    presence1.subscribe(); // no callback
+    async.series([
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        expect(sendPresenceAction).to.have.been.calledOnce;
+        next();
+      }
+    ], done);
+  });
+
   it('throws an error when trying to create a presence with a non-string ID', function() {
     expect(function() {
       presence1.create(123);
