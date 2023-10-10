@@ -5,9 +5,11 @@ var types = require('../../lib/types');
 var deserializedType = require('./deserialized-type');
 var numberType = require('./number-type');
 var errorHandler = require('../util').errorHandler;
+var richText = require('rich-text');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
 types.register(numberType.type);
+types.register(richText.type);
 
 module.exports = function() {
   describe('client submit', function() {
@@ -919,6 +921,27 @@ module.exports = function() {
       ], done);
     });
 
+
+    it('request.rejectedError() soft rejects main op and throws for pending ops on hard rollback', function(done) {
+      this.backend.use('submit', function(request, next) {
+        if (request.op.create) {
+          next(request.rejectedError());
+        }
+      });
+
+      var connection = this.backend.connect();
+      var doc = connection.get('dogs', 'fido');
+      doc.preventCompose = true;
+
+      doc.create({age: 3}, function(error) {
+        if (error) done(error);
+      });
+      doc.submitOp({p: ['age'], na: 1}, function(err) {
+        expect(err.code).to.be.equal('ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED');
+        done();
+      });
+    });
+
     it('request.rejectedError() soft rejects a create', function(done) {
       this.backend.use('submit', function(request, next) {
         next(request.rejectedError());
@@ -948,6 +971,29 @@ module.exports = function() {
         done();
       });
     });
+
+    it(
+      'request.rejectedError() soft rejects main op and throws for pending ops on hard rollback without callback',
+      function(done) {
+        this.backend.use('submit', function(request, next) {
+          if (request.op.create) {
+            next(request.rejectedError());
+          }
+        });
+
+        var connection = this.backend.connect();
+        var doc = connection.get('dogs', 'fido');
+        doc.preventCompose = true;
+
+        doc.create({age: 3});
+        doc.submitOp({p: ['age'], na: 1});
+
+        doc.on('error', function(err) {
+          expect(err.code).to.be.equal('ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED');
+          done();
+        });
+      }
+    );
 
     it('passing an error in submit middleware rejects an op and calls back with the erorr', function(done) {
       this.backend.use('submit', function(request, next) {
@@ -1042,6 +1088,65 @@ module.exports = function() {
         expect(doc.data).eql({age: 4});
       });
     });
+
+    it('request.rejectedError() soft rejects main op and pending ops for invertible type', function(done) {
+      var rejectedOnce = false;
+      this.backend.use('submit', function(request, next) {
+        if ('op' in request.op && !rejectedOnce) {
+          rejectedOnce = true;
+          return next(request.rejectedError());
+        }
+        next();
+      });
+      var doc = this.backend.connect().get('dogs', 'fido');
+      doc.preventCompose = true;
+
+      doc.create({age: 3}, function(err) {
+        if (err) return done(err);
+        doc.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+        });
+        doc.submitOp({p: ['age'], na: 3}, function(err) {
+          if (err) return done(err);
+          expect(doc.version).equal(2);
+          expect(doc.data).eql({age: 6});
+          done();
+        });
+        expect(doc.version).equal(1);
+        expect(doc.data).eql({age: 7});
+      });
+    });
+
+    it(
+      'request.rejectedError() soft rejects main op and throws for pending ops for non invertible type',
+      function(done) {
+        var rejectedOnce = false;
+        this.backend.use('submit', function(request, next) {
+          if ('op' in request.op && !rejectedOnce) {
+            rejectedOnce = true;
+            return next(request.rejectedError());
+          }
+          next();
+        });
+        var doc = this.backend.connect().get('dogs', 'fido');
+        doc.preventCompose = true;
+
+        doc.create({ops: [{insert: 'Scrappy'}]}, 'rich-text', function(err) {
+          if (err) return done(err);
+
+          var nonInvertibleOp = [{insert: 'a'}];
+          doc.submitOp(nonInvertibleOp, function(err) {
+            if (err) return done(err);
+          });
+          doc.submitOp([{insert: 'b'}], function(err) {
+            expect(err.code).to.be.equal('ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED');
+            done();
+          });
+          expect(doc.version).equal(1);
+          expect(doc.data.ops).eql([{insert: 'baScrappy'}]);
+        });
+      }
+    );
 
     it('request.rejectedError() soft rejects an op without callback', function(done) {
       this.backend.use('submit', function(request, next) {

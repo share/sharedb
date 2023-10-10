@@ -6,6 +6,7 @@ var richText = require('rich-text').type;
 var ShareDBError = require('../../lib/error');
 var errorHandler = require('../util').errorHandler;
 var sinon = require('sinon');
+var types = require('../../lib/types');
 
 describe('Doc', function() {
   beforeEach(function() {
@@ -514,6 +515,38 @@ describe('Doc', function() {
       ], done);
     });
 
+    it('throws an error when hard rollback fetch failed', function(done) {
+      var backend = this.backend;
+      doc = this.connection.get('dogs', 'scrappy');
+      types.register(richText);
+
+      async.series([
+        doc.create.bind(doc, {ops: [{insert: 'Scrappy'}]}, 'rich-text'),
+        function(next) {
+          backend.use('reply', function(replyContext, cb) {
+            if (replyContext.request.a !== 'f') return cb();
+            cb({code: 'FETCH_ERROR'});
+          });
+          backend.use('submit', function(_context, cb) {
+            cb(new ShareDBError('SUBMIT_ERROR'));
+          });
+          var nonInvertibleOp = [{insert: 'e'}];
+
+          var count = 0;
+          function expectError(code) {
+            count++;
+            return function(error) {
+              expect(error.code).to.equal(code);
+              count--;
+              if (!count) next();
+            };
+          }
+
+          doc.on('error', expectError('ERR_HARD_ROLLBACK_FETCH_FAILED'));
+          doc.submitOp(nonInvertibleOp, expectError('SUBMIT_ERROR'));
+        }
+      ], done);
+    });
 
     it('rescues an irreversible op collision', function(done) {
       // This test case attempts to reconstruct the following corner case, with
