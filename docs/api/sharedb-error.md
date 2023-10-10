@@ -35,7 +35,7 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 
 > This error might be used as part of standard control flow. For example, consumers may define a middleware that validates document structure, and rejects operations that do not conform to this schema using this error code to reset the client to a valid state.
 
-### `ERR_OP_PENDING_OP_SUBMIT_REJECTED`
+### `ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED`
 
 > This may happen if server rejected op with ERR_OP_SUBMIT_REJECTED and the type is not invertible or there are some pending ops after the create op was rejected with ERR_OP_SUBMIT_REJECTED
 
