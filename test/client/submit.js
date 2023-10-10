@@ -933,9 +933,11 @@ module.exports = function() {
       var doc = connection.get('dogs', 'fido');
       doc.preventCompose = true;
 
-      doc.create({age: 3});
+      doc.create({age: 3}, function(error) {
+        if (error) done(error);
+      });
       doc.submitOp({p: ['age'], na: 1}, function(err) {
-        expect(err.code).to.be.equal('ERR_OP_PENDING_OP_SUBMIT_REJECTED');
+        expect(err.code).to.be.equal('ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED');
         done();
       });
     });
@@ -987,7 +989,7 @@ module.exports = function() {
         doc.submitOp({p: ['age'], na: 1});
 
         doc.on('error', function(err) {
-          expect(err.code).to.be.equal('ERR_OP_PENDING_OP_SUBMIT_REJECTED');
+          expect(err.code).to.be.equal('ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED');
           done();
         });
       }
@@ -1137,7 +1139,7 @@ module.exports = function() {
             if (err) return done(err);
           });
           doc.submitOp([{insert: 'b'}], function(err) {
-            expect(err.code).to.be.equal('ERR_OP_PENDING_OP_SUBMIT_REJECTED');
+            expect(err.code).to.be.equal('ERR_PENDING_OP_REMOVED_BY_OP_SUBMIT_REJECTED');
             done();
           });
           expect(doc.version).equal(1);
