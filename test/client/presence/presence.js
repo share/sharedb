@@ -441,6 +441,22 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('does not leak Streams when subscribing the same presence multiple times', function(done) {
+    var streamsCount;
+    async.series([
+      presence1.subscribe.bind(presence1, {force: true}),
+      function(next) {
+        streamsCount = backend.pubsub.streamsCount;
+        next();
+      },
+      presence1.subscribe.bind(presence1, {force: true}),
+      function(next) {
+        expect(backend.pubsub.streamsCount).to.equal(streamsCount);
+        next();
+      }
+    ], done);
+  });
+
   it('throws an error when trying to create a presence with a non-string ID', function() {
     expect(function() {
       presence1.create(123);
