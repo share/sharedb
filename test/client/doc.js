@@ -542,7 +542,7 @@ describe('Doc', function() {
             };
           }
 
-          doc.on('error', expectError('FETCH_ERROR'));
+          doc.on('error', expectError('ERR_HARD_ROLLBACK_FETCH_FAILED'));
           doc.submitOp(nonInvertibleOp, expectError('SUBMIT_ERROR'));
         }
       ], done);
