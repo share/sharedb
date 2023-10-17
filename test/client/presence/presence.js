@@ -344,9 +344,11 @@ describe('Presence', function() {
       presence1.subscribe.bind(presence1),
       presence2.subscribe.bind(presence2),
       function(next) {
-        connection2._setState('disconnected');
+        connection2.once('closed', function() {
+          next();
+        });
+        connection2.close();
         expect(connection2.canSend).to.be.false;
-        next();
       },
       localPresence1.submit.bind(localPresence1, {index: 1}),
       function(next) {
@@ -355,8 +357,7 @@ describe('Presence', function() {
           expect(presence).to.eql({index: 1});
           next();
         });
-        connection2._setState('connecting');
-        connection2._setState('connected');
+        backend.connect(connection2);
       }
     ], done);
   });
@@ -444,12 +445,14 @@ describe('Presence', function() {
   it('does not leak Streams when subscribing the same presence multiple times', function(done) {
     var streamsCount;
     async.series([
-      presence1.subscribe.bind(presence1, {force: true}),
+      presence1.subscribe.bind(presence1),
       function(next) {
         streamsCount = backend.pubsub.streamsCount;
+        // Trick it into sending a duplicate request
+        presence1.wantSubscribe = false;
         next();
       },
-      presence1.subscribe.bind(presence1, {force: true}),
+      presence1.subscribe.bind(presence1),
       function(next) {
         expect(backend.pubsub.streamsCount).to.equal(streamsCount);
         next();
