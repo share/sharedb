@@ -669,6 +669,7 @@ describe('Presence', function() {
           function(next) {
             presence2.on('receive', function(id, value) {
               expect(value).to.eql({index: 6});
+              expect(connection1.agent.presenceRequests['test-channel']['presence-1'].p).to.eql({index: 6});
               next();
             });
             localPresence1.submit({index: 5}, errorHandler(done));
@@ -691,6 +692,7 @@ describe('Presence', function() {
             });
             localPresence1.submit({index: 5}, function(error) {
               expect(error.message).to.contain('bad!');
+              expect(connection1.agent.presenceRequests['test-channel']).not.to.be.ok;
               next();
             });
           }
