@@ -617,6 +617,106 @@ describe('Doc', function() {
     });
   });
 
+  describe('errors on ops that could cause prototype corruption', function() {
+    function expectReceiveError(
+      connection,
+      collectionName,
+      docId,
+      expectedError,
+      done
+    ) {
+      connection.on('receive', function(request) {
+        var message = request.data;
+        if (message.c === collectionName && message.d === docId) {
+          if ('error' in message) {
+            request.data = null; // Stop further processing of the message
+            if (message.error.message === expectedError) {
+              return done();
+            } else {
+              return done('Unexpected ShareDB error: ' + message.error.message);
+            }
+          } else {
+            return done('Expected error on ' + collectionName + '.' + docId + ' but got no error');
+          }
+        }
+      });
+    }
+
+    ['__proto__', 'constructor'].forEach(function(badProp) {
+      it('Rejects ops with collection ' + badProp, function(done) {
+        var collectionName = badProp;
+        var docId = 'test-doc';
+        expectReceiveError(this.connection, collectionName, docId, 'Invalid collection', done);
+        this.connection.send({
+          a: 'op',
+          c: collectionName,
+          d: docId,
+          v: 0,
+          seq: this.connection.seq++,
+          x: {},
+          create: {type: 'http://sharejs.org/types/JSONv0', data: {name: 'Test doc'}}
+        });
+      });
+
+      it('Rejects ops with doc id ' + badProp, function(done) {
+        var collectionName = 'test-collection';
+        var docId = badProp;
+        expectReceiveError(this.connection, collectionName, docId, 'Invalid id', done);
+        this.connection.send({
+          a: 'op',
+          c: collectionName,
+          d: docId,
+          v: 0,
+          seq: this.connection.seq++,
+          x: {},
+          create: {type: 'http://sharejs.org/types/JSONv0', data: {name: 'Some doc'}}
+        });
+      });
+
+      it('Rejects ops with ' + badProp + ' as first path segment', function(done) {
+        var connection = this.connection;
+        var collectionName = 'test-collection';
+        var docId = 'test-doc';
+        connection.get(collectionName, docId).create({id: docId}, function(err) {
+          if (err) {
+            return done(err);
+          }
+          expectReceiveError(connection, collectionName, docId, 'Invalid path segment', done);
+          connection.send({
+            a: 'op',
+            c: collectionName,
+            d: docId,
+            v: 1,
+            seq: connection.seq++,
+            x: {},
+            op: [{p: [badProp, 'toString'], oi: 'oops'}]
+          });
+        });
+      });
+
+      it('Rejects ops with ' + badProp + ' as later path segment', function(done) {
+        var connection = this.connection;
+        var collectionName = 'test-collection';
+        var docId = 'test-doc';
+        connection.get(collectionName, docId).create({id: docId}, function(err) {
+          if (err) {
+            return done(err);
+          }
+          expectReceiveError(connection, collectionName, docId, 'Invalid path segment', done);
+          connection.send({
+            a: 'op',
+            c: collectionName,
+            d: docId,
+            v: 1,
+            seq: connection.seq++,
+            x: {},
+            op: [{p: ['foo', badProp], oi: 'oops'}]
+          });
+        });
+      });
+    });
+  });
+
   describe('toSnapshot', function() {
     var doc;
     beforeEach(function(done) {
