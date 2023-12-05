@@ -466,6 +466,16 @@ describe('Presence', function() {
     }).to.throw();
   });
 
+  ['__proto__', 'constructor'].forEach(function(badProp) {
+    it('Rejects presence with channel ' + badProp, function(done) {
+      var presence = connection1.getPresence(badProp);
+      presence.subscribe(function(err) {
+        expect(err).to.be.an('error').to.haveOwnProperty('message', 'Invalid presence channel');
+        done();
+      });
+    });
+  });
+
   it('assigns an ID if one is not provided', function() {
     var localPresence = presence1.create();
     expect(localPresence.presenceId).to.be.ok;
