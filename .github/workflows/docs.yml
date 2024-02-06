@@ -23,6 +23,6 @@ jobs:
       with:
         ruby-version: '2.7'
     - name: Install
-      run: cd docs && gem install bundler && bundle install
+      run: cd docs && gem install bundler -v 2.4.22 && bundle install
     - name: Build
       run: cd docs && bundle exec jekyll build
