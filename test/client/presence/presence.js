@@ -146,6 +146,32 @@ describe('Presence', function() {
     ], errorHandler(done));
   });
 
+  it('does not throw if LocalPresence destroys before Presence', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        // Middleware that ensures the presence update replies before the
+        // unsubscribe, so the local presence is destroyed first
+        var replies = [];
+        backend.use('reply', function(message, cb) {
+          if (!replies) return cb();
+          if (message.reply.a !== 'p') return replies.push(cb);
+          var _replies = replies;
+          replies = null;
+          cb();
+          _replies.forEach(function(reply) {
+            reply();
+          });
+        });
+
+        presence1.destroy(next);
+        localPresence1.destroy(errorHandler(done));
+      }
+    ], done);
+  });
+
   it('throws if trying to create local presence when wanting destroy', function(done) {
     presence2.destroy(errorHandler(done));
     expect(function() {
