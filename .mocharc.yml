@@ -2,3 +2,5 @@ reporter: spec
 check-leaks: true
 recursive: true
 file: test/setup.js
+globals:
+- MessageChannel # Set/unset to test nextTick()
