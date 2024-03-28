@@ -1,6 +1,6 @@
 {
   "name": "sharedb",
-  "version": "4.1.2",
+  "version": "4.1.3",
   "description": "JSON OT database backend",
   "main": "lib/index.js",
   "dependencies": {
