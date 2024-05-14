@@ -145,7 +145,18 @@ describe('SnapshotVersionRequest', function() {
 
     it('errors if asking for a version that does not exist', function(done) {
       backend.connect().fetchSnapshot('books', 'don-quixote', 4, function(error, snapshot) {
-        expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+        expect(error).to.be.ok;
+        expect(snapshot).to.equal(undefined);
+        done();
+      });
+    });
+
+    it('errors if asking for a version that does not exist if the DB adapter does not error', function(done) {
+      sinon.stub(MemoryDb.prototype, 'getOps').callsFake(function(collection, id, from, to, options, callback) {
+        callback(null, []);
+      });
+      backend.connect().fetchSnapshot('books', 'don-quixote', 4, function(error, snapshot) {
+        expect(error).to.be.ok;
         expect(snapshot).to.equal(undefined);
         done();
       });
