@@ -6,6 +6,7 @@ var sinon = require('sinon');
 var async = require('async');
 var json0v2 = require('ot-json0-v2').type;
 var types = require('../../lib/types');
+var clone = require('../../lib/util').clone;
 
 describe('SnapshotVersionRequest', function() {
   var backend;
@@ -435,6 +436,39 @@ describe('SnapshotVersionRequest', function() {
           expect(db.getOps.calledWith('books', 'mocking-bird', 2, 3)).to.equal(true);
           expect(snapshot.v).to.equal(3);
           expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lee'});
+          next();
+        }
+      ], done);
+    });
+
+    it('does not mutate the milestone snapshot', function(done) {
+      var connection = backendWithMilestones.connect();
+      var doc = connection.get('books', 'mocking-bird');
+      var milestoneDb = backendWithMilestones.milestoneDb;
+      var milestone;
+
+      async.waterfall([
+        doc.create.bind(doc, {title: 'To Kill a Mocking Bird'}),
+        doc.submitOp.bind(doc, {p: ['author'], oi: 'Harper Lea'}),
+        doc.submitOp.bind(doc, {p: ['author'], od: 'Harper Lea', oi: 'Harper Lee'}),
+        milestoneDb.getMilestoneSnapshot.bind(milestoneDb, 'books', 'mocking-bird', 3),
+        function(snapshot, next) {
+          milestone = clone(snapshot);
+          next();
+        },
+        function(next) {
+          // Internally, this calls ot.applyOps(), which mutates the snapshot it's passed.
+          // This call shouldn't cause the in-memory milestone snapshot to be mutated.
+          connection.fetchSnapshot('books', 'mocking-bird', 3, next);
+        },
+        function(snapshot, next) {
+          expect(snapshot.v).to.equal(3);
+          expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lee'});
+          next();
+        },
+        milestoneDb.getMilestoneSnapshot.bind(milestoneDb, 'books', 'mocking-bird', 3),
+        function(snapshot, next) {
+          expect(snapshot).to.eql(milestone);
           next();
         }
       ], done);
