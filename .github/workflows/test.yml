@@ -15,9 +15,9 @@ jobs:
     strategy:
       matrix:
         node:
-        - 16
         - 18
         - 20
+        - 22
     services:
       mongodb:
         image: mongo:4.4
