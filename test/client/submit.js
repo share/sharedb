@@ -246,6 +246,29 @@ module.exports = function() {
       });
     });
 
+    it('does not fail when resubmitting a create op', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      var submitted = false;
+      backend.use('submit', function(request, next) {
+        if (!submitted) {
+          submitted = true;
+          connection.close();
+          backend.connect(connection);
+        }
+        next();
+      });
+      var count = 0;
+      backend.use('reply', function(message, next) {
+        if (!message.request.create) return next();
+        count++;
+        next();
+        if (count === 2) done();
+      });
+      var doc = connection.get('dogs', 'fido');
+      doc.create({age: 3}, errorHandler(done));
+    });
+
     it('server fetches and transforms by already committed op', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       var doc2 = this.backend.connect().get('dogs', 'fido');
