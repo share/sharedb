@@ -6,6 +6,7 @@ var deserializedType = require('./deserialized-type');
 var numberType = require('./number-type');
 var errorHandler = require('../util').errorHandler;
 var richText = require('rich-text');
+var MemoryDB = require('../../lib/db/memory');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
 types.register(numberType.type);
@@ -206,93 +207,124 @@ module.exports = function() {
       });
     });
 
-    it('can create a new doc then fetch', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      doc.create({age: 3}, function(err) {
-        if (err) return done(err);
-        doc.fetch(function(err) {
-          if (err) return done(err);
-          expect(doc.data).eql({age: 3});
-          expect(doc.version).eql(1);
-          done();
+
+    describe('create', function() {
+      describe('metadata enabled', function() {
+        runCreateTests();
+      });
+
+      describe('no snapshot metadata available', function() {
+        beforeEach(function() {
+          var getSnapshot = MemoryDB.prototype.getSnapshot;
+          sinon.stub(MemoryDB.prototype, 'getSnapshot')
+            .callsFake(function() {
+              var args = Array.from(arguments);
+              var callback = args.pop();
+              args.push(function(error, snapshot) {
+                if (snapshot) delete snapshot.m;
+                callback(error, snapshot);
+              });
+              getSnapshot.apply(this, args);
+            });
         });
-      });
-    });
 
-    it('calling create on the same doc twice fails', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      doc.create({age: 3}, function(err) {
-        if (err) return done(err);
-        doc.create({age: 4}, function(err) {
-          expect(err).instanceOf(Error);
-          expect(doc.version).equal(1);
-          expect(doc.data).eql({age: 3});
-          done();
+        afterEach(function() {
+          sinon.restore();
         });
-      });
-    });
 
-    it('trying to create an already created doc without fetching fails and fetches', function(done) {
-      var doc = this.backend.connect().get('dogs', 'fido');
-      var doc2 = this.backend.connect().get('dogs', 'fido');
-      doc.create({age: 3}, function(err) {
-        if (err) return done(err);
-        doc2.create({age: 4}, function(err) {
-          expect(err).instanceOf(Error);
-          expect(doc2.version).equal(1);
-          expect(doc2.data).eql({age: 3});
-          done();
+        runCreateTests();
+      });
+
+      function runCreateTests() {
+        it('can create a new doc then fetch', function(done) {
+          var doc = this.backend.connect().get('dogs', 'fido');
+          doc.create({age: 3}, function(err) {
+            if (err) return done(err);
+            doc.fetch(function(err) {
+              if (err) return done(err);
+              expect(doc.data).eql({age: 3});
+              expect(doc.version).eql(1);
+              done();
+            });
+          });
         });
-      });
-    });
 
-    it('does not fail when resubmitting a create op', function(done) {
-      var backend = this.backend;
-      var connection = backend.connect();
-      var submitted = false;
-      backend.use('submit', function(request, next) {
-        if (!submitted) {
-          submitted = true;
-          connection.close();
-          backend.connect(connection);
-        }
-        next();
-      });
+        it('calling create on the same doc twice fails', function(done) {
+          var doc = this.backend.connect().get('dogs', 'fido');
+          doc.create({age: 3}, function(err) {
+            if (err) return done(err);
+            doc.create({age: 4}, function(err) {
+              expect(err).instanceOf(Error);
+              expect(doc.version).equal(1);
+              expect(doc.data).eql({age: 3});
+              done();
+            });
+          });
+        });
 
-      var doc = connection.get('dogs', 'fido');
-      doc.create({age: 3}, function(error) {
-        expect(doc.version).to.equal(1);
-        done(error);
-      });
-    });
+        it('trying to create an already created doc without fetching fails and fetches', function(done) {
+          var doc = this.backend.connect().get('dogs', 'fido');
+          var doc2 = this.backend.connect().get('dogs', 'fido');
+          doc.create({age: 3}, function(err) {
+            if (err) return done(err);
+            doc2.create({age: 4}, function(err) {
+              expect(err).instanceOf(Error);
+              expect(doc2.version).equal(1);
+              expect(doc2.data).eql({age: 3});
+              done();
+            });
+          });
+        });
 
-    it('does not fail when resubmitting a create op on a doc that was deleted', function(done) {
-      var backend = this.backend;
-      var connection1 = backend.connect();
-      var connection2 = backend.connect();
-      var doc1 = connection1.get('dogs', 'fido');
-      var doc2 = connection2.get('dogs', 'fido');
-
-      async.series([
-        doc1.create.bind(doc1, {age: 3}),
-        doc1.del.bind(doc1),
-        function(next) {
+        it('does not fail when resubmitting a create op', function(done) {
+          var backend = this.backend;
+          var connection = backend.connect();
           var submitted = false;
           backend.use('submit', function(request, next) {
             if (!submitted) {
               submitted = true;
-              connection2.close();
-              backend.connect(connection2);
+              connection.close();
+              backend.connect(connection);
             }
             next();
           });
 
-          doc2.create({name: 'Fido'}, function(error) {
-            expect(doc2.version).to.equal(3);
-            next(error);
+          var doc = connection.get('dogs', 'fido');
+          doc.create({age: 3}, function(error) {
+            expect(doc.version).to.equal(1);
+            done(error);
           });
-        }
-      ], done);
+        });
+
+        it('does not fail when resubmitting a create op on a doc that was deleted', function(done) {
+          var backend = this.backend;
+          var connection1 = backend.connect();
+          var connection2 = backend.connect();
+          var doc1 = connection1.get('dogs', 'fido');
+          var doc2 = connection2.get('dogs', 'fido');
+
+          async.series([
+            doc1.create.bind(doc1, {age: 3}),
+            doc1.del.bind(doc1),
+            function(next) {
+              var submitted = false;
+              backend.use('submit', function(request, next) {
+                if (!submitted) {
+                  submitted = true;
+                  connection2.close();
+                  backend.connect(connection2);
+                }
+                next();
+              });
+
+              doc2.create({name: 'Fido'}, function(error) {
+                expect(doc2.version).to.equal(3);
+                next(error);
+              });
+            }
+          ], done);
+        });
+      }
     });
 
     it('server fetches and transforms by already committed op', function(done) {
