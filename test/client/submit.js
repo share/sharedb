@@ -246,6 +246,55 @@ module.exports = function() {
       });
     });
 
+    it('does not fail when resubmitting a create op', function(done) {
+      var backend = this.backend;
+      var connection = backend.connect();
+      var submitted = false;
+      backend.use('submit', function(request, next) {
+        if (!submitted) {
+          submitted = true;
+          connection.close();
+          backend.connect(connection);
+        }
+        next();
+      });
+
+      var doc = connection.get('dogs', 'fido');
+      doc.create({age: 3}, function(error) {
+        expect(doc.version).to.equal(1);
+        done(error);
+      });
+    });
+
+    it('does not fail when resubmitting a create op on a doc that was deleted', function(done) {
+      var backend = this.backend;
+      var connection1 = backend.connect();
+      var connection2 = backend.connect();
+      var doc1 = connection1.get('dogs', 'fido');
+      var doc2 = connection2.get('dogs', 'fido');
+
+      async.series([
+        doc1.create.bind(doc1, {age: 3}),
+        doc1.del.bind(doc1),
+        function(next) {
+          var submitted = false;
+          backend.use('submit', function(request, next) {
+            if (!submitted) {
+              submitted = true;
+              connection2.close();
+              backend.connect(connection2);
+            }
+            next();
+          });
+
+          doc2.create({name: 'Fido'}, function(error) {
+            expect(doc2.version).to.equal(3);
+            next(error);
+          });
+        }
+      ], done);
+    });
+
     it('server fetches and transforms by already committed op', function(done) {
       var doc = this.backend.connect().get('dogs', 'fido');
       var doc2 = this.backend.connect().get('dogs', 'fido');
