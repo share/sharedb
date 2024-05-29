@@ -6,11 +6,11 @@ var deserializedType = require('./deserialized-type');
 var numberType = require('./number-type');
 var errorHandler = require('../util').errorHandler;
 var richText = require('rich-text');
-var MemoryDB = require('../../lib/db/memory');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
 types.register(numberType.type);
 types.register(richText.type);
+var akg = require('../akg-debug');
 
 module.exports = function() {
   describe('client submit', function() {
@@ -210,13 +210,17 @@ module.exports = function() {
 
     describe('create', function() {
       describe('metadata enabled', function() {
+        afterEach(function() {
+          akg.enabled = false;
+        });
+
         runCreateTests();
       });
 
       describe('no snapshot metadata available', function() {
         beforeEach(function() {
-          var getSnapshot = MemoryDB.prototype.getSnapshot;
-          sinon.stub(MemoryDB.prototype, 'getSnapshot')
+          var getSnapshot = this.backend.db.getSnapshot;
+          sinon.stub(this.backend.db, 'getSnapshot')
             .callsFake(function() {
               var args = Array.from(arguments);
               var callback = args.pop();
@@ -229,6 +233,7 @@ module.exports = function() {
         });
 
         afterEach(function() {
+          akg.enabled = false;
           sinon.restore();
         });
 
@@ -238,11 +243,11 @@ module.exports = function() {
       function runCreateTests() {
         it('can create a new doc then fetch', function(done) {
           var doc = this.backend.connect().get('dogs', 'fido');
-          doc.create({age: 3}, function(err) {
+          doc.create({age: 1}, function(err) {
             if (err) return done(err);
             doc.fetch(function(err) {
               if (err) return done(err);
-              expect(doc.data).eql({age: 3});
+              expect(doc.data).eql({age: 1});
               expect(doc.version).eql(1);
               done();
             });
@@ -251,12 +256,12 @@ module.exports = function() {
 
         it('calling create on the same doc twice fails', function(done) {
           var doc = this.backend.connect().get('dogs', 'fido');
-          doc.create({age: 3}, function(err) {
+          doc.create({age: 7}, function(err) {
             if (err) return done(err);
-            doc.create({age: 4}, function(err) {
+            doc.create({age: 8}, function(err) {
               expect(err).instanceOf(Error);
               expect(doc.version).equal(1);
-              expect(doc.data).eql({age: 3});
+              expect(doc.data).eql({age: 7});
               done();
             });
           });
@@ -265,18 +270,20 @@ module.exports = function() {
         it('trying to create an already created doc without fetching fails and fetches', function(done) {
           var doc = this.backend.connect().get('dogs', 'fido');
           var doc2 = this.backend.connect().get('dogs', 'fido');
-          doc.create({age: 3}, function(err) {
+          doc.create({age: 10}, function(err) {
             if (err) return done(err);
-            doc2.create({age: 4}, function(err) {
+            doc2.create({age: 11}, function(err) {
               expect(err).instanceOf(Error);
               expect(doc2.version).equal(1);
-              expect(doc2.data).eql({age: 3});
+              expect(doc2.data).eql({age: 10});
               done();
             });
           });
         });
 
         it('does not fail when resubmitting a create op', function(done) {
+          akg.enabled = true;
+          console.log('> START PRIOR TEST');
           var backend = this.backend;
           var connection = backend.connect();
           var submitted = false;
@@ -289,14 +296,20 @@ module.exports = function() {
             next();
           });
 
-          var doc = connection.get('dogs', 'fido');
-          doc.create({age: 3}, function(error) {
-            expect(doc.version).to.equal(1);
-            done(error);
+          var count = 0;
+          backend.use('reply', function(message, next) {
+            next();
+            if (message.reply.a === 'op') count++;
+            if (count === 2) done();
           });
+
+          var doc = connection.get('dogs', 'fido');
+          doc.create({age: 4}, errorHandler(done));
         });
 
         it('does not fail when resubmitting a create op on a doc that was deleted', function(done) {
+          akg.enabled = true;
+          console.log('> START TEST');
           var backend = this.backend;
           var connection1 = backend.connect();
           var connection2 = backend.connect();
@@ -304,20 +317,36 @@ module.exports = function() {
           var doc2 = connection2.get('dogs', 'fido');
 
           async.series([
-            doc1.create.bind(doc1, {age: 3}),
-            doc1.del.bind(doc1),
+            function(next) {
+              console.log('doc1 create...');
+              doc1.create({age: 123}, function(error) {
+                console.log('doc1 created', error);
+                next(error);
+              });
+            },
+            function(next) {
+              console.log('doc1 del...');
+              doc1.del(function(error) {
+                console.log('doc1 deleted', error);
+                next(error);
+              });
+            },
             function(next) {
               var submitted = false;
               backend.use('submit', function(request, next) {
                 if (!submitted) {
                   submitted = true;
+                  console.log('reconnecting connection2');
                   connection2.close();
                   backend.connect(connection2);
                 }
                 next();
               });
 
+              console.log('doc2 create...');
               doc2.create({name: 'Fido'}, function(error) {
+                console.log('doc2 created', error);
+                console.log('doc2 version', doc2.version);
                 expect(doc2.version).to.equal(3);
                 next(error);
               });
