@@ -289,11 +289,15 @@ module.exports = function() {
             next();
           });
 
-          var doc = connection.get('dogs', 'fido');
-          doc.create({age: 3}, function(error) {
-            expect(doc.version).to.equal(1);
-            done(error);
+          var count = 0;
+          backend.use('reply', function(message, next) {
+            next();
+            if (message.reply.a === 'op') count++;
+            if (count === 2) done();
           });
+
+          var doc = connection.get('dogs', 'fido');
+          doc.create({age: 10}, errorHandler(done));
         });
 
         it('does not fail when resubmitting a create op on a doc that was deleted', function(done) {
