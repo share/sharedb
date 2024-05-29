@@ -6,7 +6,6 @@ var deserializedType = require('./deserialized-type');
 var numberType = require('./number-type');
 var errorHandler = require('../util').errorHandler;
 var richText = require('rich-text');
-var MemoryDB = require('../../lib/db/memory');
 types.register(deserializedType.type);
 types.register(deserializedType.type2);
 types.register(numberType.type);
@@ -215,8 +214,8 @@ module.exports = function() {
 
       describe('no snapshot metadata available', function() {
         beforeEach(function() {
-          var getSnapshot = MemoryDB.prototype.getSnapshot;
-          sinon.stub(MemoryDB.prototype, 'getSnapshot')
+          var getSnapshot = this.backend.db.getSnapshot;
+          sinon.stub(this.backend.db, 'getSnapshot')
             .callsFake(function() {
               var args = Array.from(arguments);
               var callback = args.pop();
@@ -233,6 +232,27 @@ module.exports = function() {
         });
 
         runCreateTests();
+
+        it('returns errors if the database cannot get committed op version', function(done) {
+          sinon.stub(this.backend.db, 'getCommittedOpVersion')
+            .callsFake(function() {
+              var args = Array.from(arguments);
+              var callback = args.pop();
+              callback(new Error('uh-oh'));
+            });
+
+          var doc1 = this.backend.connect().get('dogs', 'fido');
+          var doc2 = this.backend.connect().get('dogs', 'fido');
+          async.series([
+            doc1.create.bind(doc1, {age: 3}),
+            function(next) {
+              doc2.create({name: 'Fido'}, function(error) {
+                expect(error.message).to.equal('uh-oh');
+                next();
+              });
+            }
+          ], done);
+        });
       });
 
       function runCreateTests() {
