@@ -172,5 +172,43 @@ module.exports = function(options) {
         });
       });
     });
+
+    it('snapshot fetch from query does not advance version of doc with pending ops', function(done) {
+      var backend = this.backend;
+      backend.connect(null, null, function(connection1) {
+        backend.connect(null, null, function(connection2) {
+          var doc = connection1.get('dogs', 'fido');
+          var doc2 = connection2.get('dogs', 'fido');
+          doc.create({name: 'kido'}, function(err) {
+            if (err) return done(err);
+            doc2.fetch(function(err) {
+              if (err) return done(err);
+              doc2.submitOp({p: ['name', 0], si: 'f'}, function(err) {
+                if (err) return done(err);
+                expect(doc2.data).eql({name: 'fkido'});
+                doc.connection.createFetchQuery('dogs', {}, null, function(err) {
+                  if (err) return done(err);
+                  doc.resume();
+                });
+              });
+            });
+          });
+          process.nextTick(function() {
+            doc.pause();
+            doc.submitOp({p: ['name', 0], sd: 'k'}, function(err) {
+              if (err) return done(err);
+              doc.pause();
+              doc2.fetch(function(err) {
+                if (err) return done(err);
+                expect(doc2.version).equal(3);
+                expect(doc2.data).eql({name: 'fido'});
+                done();
+              });
+            });
+            doc.del();
+          });
+        });
+      });
+    });
   });
 };
