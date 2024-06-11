@@ -61,9 +61,9 @@ module.exports = function(options) {
     if (options.getQuery) {
       require('./client/query-subscribe')({getQuery: options.getQuery});
       require('./client/query')({getQuery: options.getQuery});
+      require('./client/projections')({getQuery: options.getQuery});
     }
 
-    require('./client/projections')({getQuery: options.getQuery});
     require('./client/submit')();
     require('./client/submit-json1')();
     require('./client/subscribe')();
@@ -650,111 +650,111 @@ module.exports = function(options) {
       });
     });
 
-    describe('query', function() {
-      it('query returns data in the collection', function(done) {
-        var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}, m: null};
-        var db = this.db;
-        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, null, null, function(err, results) {
-            if (err) return done(err);
-            delete results[0].id;
-            expect(results).eql([snapshot]);
-            done();
-          });
-        });
-      });
-
-      it('query returns nothing when there is no data', function(done) {
-        this.db.query('testcollection', {x: 5}, null, null, function(err, results) {
-          if (err) return done(err);
-          expect(results).eql([]);
-          done();
-        });
-      });
-
-      it('query does not return committed metadata by default', function(done) {
-        var db = this.db;
-        commitSnapshotWithMetadata(db, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, null, null, function(err, results) {
-            if (err) return done(err);
-            expect(results[0].m).equal(null);
-            done();
-          });
-        });
-      });
-
-      it('query returns metadata when option is true', function(done) {
-        var db = this.db;
-        commitSnapshotWithMetadata(db, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, null, {metadata: true}, function(err, results) {
-            if (err) return done(err);
-            expect(results[0].m).eql({test: 3});
-            done();
-          });
-        });
-      });
-    });
-
-    describe('projections', function() {
-      it('query returns only projected fields', function(done) {
-        if (!this.db.projectsSnapshot) return done();
-
-        var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
-        var db = this.db;
-        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, {y: true}, null, function(err, results) {
-            if (err) return done(err);
-            expect(results).eql([{type: 'json0', v: 1, data: {y: 6}, id: 'test'}]);
-            done();
-          });
-        });
-      });
-
-      it('query returns no data for matching documents if fields is empty', function(done) {
-        if (!this.db.projectsSnapshot) return done();
-
-        var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
-        var db = this.db;
-        db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, {}, null, function(err, results) {
-            if (err) return done(err);
-            expect(results).eql([{type: 'json0', v: 1, data: {}, id: 'test'}]);
-            done();
-          });
-        });
-      });
-
-      it('query does not return committed metadata by default with projection', function(done) {
-        var db = this.db;
-        commitSnapshotWithMetadata(db, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, {x: true}, null, function(err, results) {
-            if (err) return done(err);
-            expect(results[0].m).equal(null);
-            done();
-          });
-        });
-      });
-
-      it('query returns metadata when option is true with projection', function(done) {
-        var db = this.db;
-        commitSnapshotWithMetadata(db, function(err) {
-          if (err) return done(err);
-          db.query('testcollection', {x: 5}, {x: true}, {metadata: true}, function(err, results) {
-            if (err) return done(err);
-            expect(results[0].m).eql({test: 3});
-            done();
-          });
-        });
-      });
-    });
-
     if (options.getQuery) {
+      describe('query', function() {
+        it('query returns data in the collection', function(done) {
+          var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}, m: null};
+          var db = this.db;
+          db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, null, null, function(err, results) {
+              if (err) return done(err);
+              delete results[0].id;
+              expect(results).eql([snapshot]);
+              done();
+            });
+          });
+        });
+
+        it('query returns nothing when there is no data', function(done) {
+          this.db.query('testcollection', {x: 5}, null, null, function(err, results) {
+            if (err) return done(err);
+            expect(results).eql([]);
+            done();
+          });
+        });
+
+        it('query does not return committed metadata by default', function(done) {
+          var db = this.db;
+          commitSnapshotWithMetadata(db, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, null, null, function(err, results) {
+              if (err) return done(err);
+              expect(results[0].m).equal(null);
+              done();
+            });
+          });
+        });
+
+        it('query returns metadata when option is true', function(done) {
+          var db = this.db;
+          commitSnapshotWithMetadata(db, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, null, {metadata: true}, function(err, results) {
+              if (err) return done(err);
+              expect(results[0].m).eql({test: 3});
+              done();
+            });
+          });
+        });
+      });
+
+      describe('projections', function() {
+        it('query returns only projected fields', function(done) {
+          if (!this.db.projectsSnapshot) return done();
+
+          var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
+          var db = this.db;
+          db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, {y: true}, null, function(err, results) {
+              if (err) return done(err);
+              expect(results).eql([{type: 'json0', v: 1, data: {y: 6}, id: 'test'}]);
+              done();
+            });
+          });
+        });
+
+        it('query returns no data for matching documents if fields is empty', function(done) {
+          if (!this.db.projectsSnapshot) return done();
+
+          var snapshot = {type: 'json0', v: 1, data: {x: 5, y: 6}};
+          var db = this.db;
+          db.commit('testcollection', 'test', {v: 0, create: {}}, snapshot, null, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, {}, null, function(err, results) {
+              if (err) return done(err);
+              expect(results).eql([{type: 'json0', v: 1, data: {}, id: 'test'}]);
+              done();
+            });
+          });
+        });
+
+        it('query does not return committed metadata by default with projection', function(done) {
+          var db = this.db;
+          commitSnapshotWithMetadata(db, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, {x: true}, null, function(err, results) {
+              if (err) return done(err);
+              expect(results[0].m).equal(null);
+              done();
+            });
+          });
+        });
+
+        it('query returns metadata when option is true with projection', function(done) {
+          var db = this.db;
+          commitSnapshotWithMetadata(db, function(err) {
+            if (err) return done(err);
+            db.query('testcollection', {x: 5}, {x: true}, {metadata: true}, function(err, results) {
+              if (err) return done(err);
+              expect(results[0].m).eql({test: 3});
+              done();
+            });
+          });
+        });
+      });
+
       describe('queryPoll', function() {
         it('returns data in the collection', function(done) {
           var snapshot = {v: 1, type: 'json0', data: {x: 5, y: 6}};
