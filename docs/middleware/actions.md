@@ -3,40 +3,6 @@ title: Actions
 nav_order: 2
 layout: default
 parent: Middleware
-
-copy:
-  submit_request_props: |-
-    `collection` -- string
-    > The collection of the op
-
-    `id` -- string
-    > The document ID
-
-    `op` -- Object
-    > The submitted op
-
-    `snapshot` -- [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
-    > The snapshot
-
-    `extra` -- Object
-    > `extra.source` -- Object
-    >> The submitted source when [`doc.submitSource`]({{ site.baseurl }}{% link api/doc.md %}http://localhost:4000/api/doc#submitsource--boolean) is set to `true`
-
-    `saveMilestoneSnapshot` -- boolean
-    > Flag to control [saving a milestone snapshot]({{ site.baseurl }}{% link adapters/milestone.md#requesting-snapshots %})
-
-    `suppressPublish` -- boolean
-    > Flag to prevent broadcasting over [pub/sub]({{ site.baseurl }}{% link pub-sub.md %})
-
-    `retries` -- number
-    > The number of times the op has attempted to submit
-
-    `maxRetries` -- number
-    > The maximum number of times to retry submitting the op
-
-    `channels` -- string[]
-    > The [pub/sub]({{ site.baseurl }}{% link pub-sub.md %}) channels the op will publish to
-
 ---
 
 # Middleware actions
@@ -214,28 +180,51 @@ An operation has been submitted to the server.
 
 This action has these additional `context` properties:
 
-{{ page.copy.submit_request_props }}
+`collection` -- string
+> The collection of the op
+
+`id` -- string
+> The document ID
+
+`op` -- Object
+> The submitted op
+
+`snapshot` -- [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
+> The snapshot
+
+`extra` -- Object
+> `extra.source` -- Object
+>> The submitted source when [`doc.submitSource`]({{ site.baseurl }}{% link api/doc.md %}#submitsource--boolean) is set to `true`
+
+`saveMilestoneSnapshot` -- boolean
+> Flag to control [saving a milestone snapshot]({{ site.baseurl }}{% link adapters/milestone.md%}#requesting-snapshots)
+
+`suppressPublish` -- boolean
+> Flag to prevent broadcasting over [pub/sub]({{ site.baseurl }}{% link pub-sub.md %})
+
+`retries` -- number
+> The number of times the op has attempted to submit
+
+`maxRetries` -- number
+> The maximum number of times to retry submitting the op
+
+`channels` -- string[]
+> The [pub/sub]({{ site.baseurl }}{% link pub-sub.md %}) channels the op will publish to
 
 ## `'apply'`
 
 An operation is about to be applied to a snapshot, before committing.
 
-This action has these additional `context` properties:
-
-{{ page.copy.submit_request_props }}
+This action has the same additional `context` properties as [`'submit'`](#submit).
 
 ## `'commit'`
 
 An operation was applied to a snapshot, and is about to be committed to the database.
 
-This action has these additional `context` properties:
-
-{{ page.copy.submit_request_props }}
+This action has the same additional `context` properties as [`'submit'`](#submit).
 
 ## `'afterWrite'`
 
 An operation and its updated snapshot were successfully written to the database.
 
-This action has these additional `context` properties:
-
-{{ page.copy.submit_request_props }}
+This action has the same additional `context` properties as [`'submit'`](#submit).
