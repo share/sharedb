@@ -18,6 +18,13 @@ copy:
     `snapshot` -- [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
     > The snapshot
 
+    `preservePreapplySnapshot` -- boolean
+    > This flag can be set to true in any middleware action before `commit`. This will inform shareDb
+      to clone snapshot data and store it in the request object, so it is available in commit middleware as `preapplySnapshot`
+
+    `preapplySnapshot` -- [`Snapshot`]({{ site.baseurl }}{% link api/snapshot.md %})
+    > The snapshot captures the state prior to the application of operations. It is accessible exclusively during the `commit` action, and only when the `preservePreapplySnapshot` flag is set to `true`.
+
     `extra` -- Object
     > `extra.source` -- Object
     >> The submitted source when [`doc.submitSource`]({{ site.baseurl }}{% link api/doc.md %}http://localhost:4000/api/doc#submitsource--boolean) is set to `true`
