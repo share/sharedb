@@ -773,4 +773,169 @@ describe('middleware', function() {
       });
     });
   });
+
+  describe('preservePreapplySnapshot', function() {
+    var connection;
+    var backend;
+    var doc;
+
+    beforeEach(function() {
+      backend = this.backend;
+      connection = backend.connect();
+      doc = connection.get('dogs', 'fido');
+    });
+
+    describe('preservePreapplySnapshot = true', function() {
+      beforeEach(function() {
+        backend.use('apply', function(request, next) {
+          request.preservePreapplySnapshot = true;
+          next();
+        });
+      });
+
+      describe('create', function() {
+        it('has version equal to 0 and data undefined', function(done) {
+          backend.use('commit', function(request, next) {
+            expect(request.preapplySnapshot).to.not.equal(request.snapshot);
+
+            expect(request.preapplySnapshot.v).to.equal(0);
+            expect(request.preapplySnapshot.type).to.be.null;
+            expect(request.preapplySnapshot.data).to.be.undefined;
+
+            expect(request.snapshot.v).to.equal(1);
+            expect(request.snapshot.type).to.be.ok;
+            expect(request.snapshot.data).to.be.deep.equal({name: 'fido'});
+
+            next();
+          });
+
+          doc.create({name: 'fido'}, done);
+        });
+      });
+
+      describe('op', function() {
+        it('has version and data before the apply', function(done) {
+          backend.use('commit', function(request, next) {
+            if (request.op.create) return next();
+            expect(request.preapplySnapshot).to.not.equal(request.snapshot);
+
+            expect(request.preapplySnapshot.v).to.equal(1);
+            expect(request.preapplySnapshot.type).to.be.ok;
+            expect(request.preapplySnapshot.data).to.be.deep.equal({name: 'fido'});
+
+            expect(request.snapshot.v).to.equal(2);
+            expect(request.preapplySnapshot.type).to.be.ok;
+            expect(request.snapshot.data).to.be.deep.equal({name: 'bfooar'});
+
+            next();
+          });
+
+          doc.create({name: 'fido'}, function(error) {
+            if (error) return done(error);
+
+            doc.submitOp([
+              {
+                p: ['name'],
+                oi: 'bar'
+              },
+              {
+                p: ['name', 1],
+                si: 'foo'
+              }
+            ], done);
+          });
+        });
+
+        it('has version and data before the apply with $fixOps set', function(done) {
+          backend.use('apply', function(request, next) {
+            if (request.op.create) return next();
+            request.$fixup([{p: ['tricks', 1], li: 'stay'}]);
+            next();
+          });
+
+          backend.use('commit', function(request, next) {
+            if (request.op.create) return next();
+
+            expect(request.preapplySnapshot).to.not.equal(request.snapshot);
+
+            expect(request.preapplySnapshot.v).to.equal(1);
+            expect(request.preapplySnapshot.type).to.be.ok;
+            expect(request.preapplySnapshot.data).to.be.deep.equal({name: 'fido'});
+
+            expect(request.snapshot.v).to.equal(2);
+            expect(request.preapplySnapshot.type).to.be.ok;
+            expect(request.snapshot.data).to.be.deep.equal({
+              name: 'fido',
+              tricks: ['fetch', 'stay']
+            });
+
+            next();
+          });
+
+          doc.create({name: 'fido'}, function(error) {
+            if (error) return done(error);
+
+            doc.submitOp([{p: ['tricks'], oi: ['fetch']}], done);
+          });
+        });
+      });
+
+      describe('del', function() {
+        it('has version and data before the apply', function(done) {
+          backend.use('commit', function(request, next) {
+            if (request.op.create) return next();
+            expect(request.preapplySnapshot).to.not.equal(request.snapshot);
+
+            expect(request.preapplySnapshot.v).to.equal(1);
+            expect(request.preapplySnapshot.type).to.be.ok;
+            expect(request.preapplySnapshot.data).to.be.deep.equal({name: 'fido'});
+
+            expect(request.snapshot.v).to.equal(2);
+            expect(request.snapshot.type).to.be.null;
+            expect(request.snapshot.data).to.be.undefined;
+
+            next();
+          });
+
+          doc.create({name: 'fido'}, function(error) {
+            if (error) return done(error);
+
+            doc.del(done);
+          });
+        });
+      });
+    });
+
+    describe('preservePreapplySnapshot = false (default)', function() {
+      it('does\'t store the preapplySnapshot', function(done) {
+        backend.use('commit', function(request, next) {
+          expect(request.preapplySnapshot).to.be.null;
+          next();
+        });
+
+        doc.create({name: 'fido'}, function(error) {
+          if (error) return done(error);
+
+          process.nextTick(function() {
+            doc.submitOp([
+              {
+                p: ['name'],
+                oi: 'bar'
+              },
+              {
+                p: ['name', 1],
+                si: 'foo'
+              }
+            ], function(error) {
+              if (error) return done(error);
+
+              process.nextTick(function() {
+                doc.del(done);
+              });
+            });
+          });
+        });
+      });
+    });
+  });
 });
