@@ -157,3 +157,26 @@ backend.use('apply', (request, next) => {
 
 {: .warn :}
 The `request.$fixup()` method may throw an error, which should be handled appropriately, usually by passing directly to the `next()` callback.
+
+## Comparing old snapshot version with new version
+
+Frequently, it becomes necessary to verify the changes made. This can be accomplished by leveraging two hooks, `apply` and `commit`, and creating a snapshot clone within the `apply` hook.
+
+```js
+// Alternatively use your favourite deep-clone library
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+backend.use('apply', (request, next) => {
+  request.snapshotBeforeApply = deepClone(request.snapshot);
+  next(error);
+});
+
+backend.use('commit', (request, next) => {
+  // Snapshot without ops and $fixupOps applied is now available as request.snapshotBeforeApply
+  // Snapshot with ops and $fixupOps applied is still available as request.snapshot
+  console.log(request.snapshotBeforeApply)
+  next(error);
+});
+```
