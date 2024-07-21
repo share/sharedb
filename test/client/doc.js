@@ -105,14 +105,20 @@ describe('Doc', function() {
       var connection = this.connection;
       var doc = connection.get('dogs', 'fido');
       doc.create({name: 'fido'});
-      var order = ""
-      doc.fetch(function() { order += "A" });
+      var order = '';
+      doc.fetch(function() {
+        order += 'A';
+      });
       doc.submitOp([{p: ['snacks'], oi: true}]);
-      doc.fetch(function() { order += "B" });
+      doc.fetch(function() {
+        order += 'B';
+      });
       doc.submitOp([{p: ['color'], oi: 'gray'}]);
-      doc.fetch(function() { order += "C" });
+      doc.fetch(function() {
+        order += 'C';
+      });
       doc.whenNothingPending(function() {
-        expect(order).to.eql("ABC");        
+        expect(order).to.eql('ABC');
         done();
       });
     });
