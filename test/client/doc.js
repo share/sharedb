@@ -101,6 +101,27 @@ describe('Doc', function() {
       doc.fetch(finish);
       doc.fetch(finish);
     });
+    it('callbacks called in correct order when fetching and applying ops in quick succession', function(done) {
+      var connection = this.connection;
+      var doc = connection.get('dogs', 'fido');
+      doc.create({name: 'fido'});
+      var order = '';
+      doc.fetch(function() {
+        order += 'A';
+      });
+      doc.submitOp([{p: ['snacks'], oi: true}]);
+      doc.fetch(function() {
+        order += 'B';
+      });
+      doc.submitOp([{p: ['color'], oi: 'gray'}]);
+      doc.fetch(function() {
+        order += 'C';
+      });
+      doc.whenNothingPending(function() {
+        expect(order).to.eql('ABC');
+        done();
+      });
+    });
   });
 
   describe('when connection closed', function() {
