@@ -44,7 +44,7 @@ var WebSocketJSONStream = require('@teamwork/websocket-json-stream')
 
 var app = express()
 var server = http.createServer(app)
-var webSocketServer = WebSocket.Server({server: server})
+var webSocketServer = new WebSocket.Server({server: server})
 
 var backend = new ShareDB()
 webSocketServer.on('connection', (webSocket) => {
