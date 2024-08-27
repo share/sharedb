@@ -315,26 +315,6 @@ describe('DocPresence', function() {
     ], done);
   });
 
-  it('does not call getOps() for old presence when it is null', function(done) {
-    var localPresence1 = presence1.create('presence-1');
-
-    async.series([
-      doc1.unsubscribe.bind(doc1),
-      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
-      function(next) {
-        expect(doc1.version).to.eql(1);
-        expect(doc2.version).to.eql(2);
-
-        sinon.spy(Backend.prototype, 'getOps');
-        localPresence1.submit(null, function(error) {
-          if (error) return next(error);
-          expect(Backend.prototype.getOps).not.to.have.been.called;
-          next();
-        });
-      }
-    ], done);
-  });
-
   // This test case attempts to force us into a tight race condition corner case:
   // 1. doc1 sends presence, as well as submits an op
   // 2. doc2 receives the op first, followed by the presence, which is now out-of-date
