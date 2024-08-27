@@ -5,6 +5,7 @@ var types = require('../../../lib/types');
 var presenceTestType = require('./presence-test-type');
 var errorHandler = require('../../util').errorHandler;
 var PresencePauser = require('./presence-pauser');
+var sinon = require('sinon');
 types.register(presenceTestType.type);
 
 describe('DocPresence', function() {
@@ -291,6 +292,43 @@ describe('DocPresence', function() {
         presence2.once('receive', function(id, presence) {
           expect(doc2.version).to.eql(2);
           expect(presence).to.eql({index: 15});
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('does not call getOps() when presence is already up-to-date', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      doc1.fetch.bind(doc1), // Ensure up-to-date
+      function(next) {
+        sinon.spy(Backend.prototype, 'getOps');
+        next();
+      },
+      localPresence1.submit.bind(localPresence1, {index: 1}),
+      function(next) {
+        expect(Backend.prototype.getOps).not.to.have.been.called;
+        next();
+      }
+    ], done);
+  });
+
+  it('does not call getOps() for old presence when it is null', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        expect(doc1.version).to.eql(1);
+        expect(doc2.version).to.eql(2);
+
+        sinon.spy(Backend.prototype, 'getOps');
+        localPresence1.submit(null, function(error) {
+          if (error) return next(error);
+          expect(Backend.prototype.getOps).not.to.have.been.called;
           next();
         });
       }
