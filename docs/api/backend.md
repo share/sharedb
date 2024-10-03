@@ -113,6 +113,19 @@ Optional
 
 {: .d-inline-block }
 
+`doNotCommitNoOps` -- boolean
+
+Optional
+{: .label .label-grey }
+
+> Default: `false`
+
+> If set to `true`, will avoid committing no-ops to the database. Clients that submit no-ops
+> (or ops that are transformed to no-ops) will have their ops acknowledged as if they were
+> committed, but the doc version will not increment.
+
+{: .d-inline-block }
+
 `errorHandler` -- Function
 
 Optional
