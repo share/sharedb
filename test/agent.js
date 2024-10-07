@@ -5,6 +5,7 @@ var StreamSocket = require('../lib/stream-socket');
 var expect = require('chai').expect;
 var ACTIONS = require('../lib/message-actions').ACTIONS;
 var Connection = require('../lib/client/connection');
+var protocol = require('../lib/protocol');
 var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
 
 describe('Agent', function() {
@@ -67,6 +68,17 @@ describe('Agent', function() {
       connection.get('dogs', 'fido').fetch(function(error) {
         if (error) return done(error);
         expect(logger.warn).not.to.have.been.called;
+        done();
+      });
+    });
+
+    it('records the client protocol on the agent', function(done) {
+      var connection = backend.connect();
+      connection.once('connected', function() {
+        expect(connection.agent.protocol).to.eql({
+          major: protocol.major,
+          minor: protocol.minor
+        });
         done();
       });
     });
