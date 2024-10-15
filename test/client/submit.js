@@ -1290,6 +1290,119 @@ module.exports = function() {
       });
     });
 
+    it('commits both of two identical ops submitted from different clients by default', function(done) {
+      var backend = this.backend;
+      backend.doNotCommitNoOps = false;
+      var doc1 = backend.connect().get('dogs', id);
+      var doc2 = backend.connect().get('dogs', id);
+      var op = [{p: ['tricks', 0], ld: 'fetch'}];
+
+      async.series([
+        doc1.create.bind(doc1, {tricks: ['fetch', 'sit']}),
+        doc2.fetch.bind(doc2),
+        async.parallel.bind(async.parallel, [
+          doc1.submitOp.bind(doc1, op),
+          doc2.submitOp.bind(doc2, op)
+        ]),
+        function(next) {
+          expect(doc1.data).to.eql({tricks: ['sit']});
+          expect(doc2.data).to.eql({tricks: ['sit']});
+          next();
+        },
+        function(next) {
+          backend.db.getOps('dogs', id, 0, null, {}, function(error, ops) {
+            if (error) return next(error);
+            // Expect:
+            // v0: create
+            // v1: update
+            // v2: duplicate update
+            expect(ops).to.have.length(3);
+            next();
+          });
+        }
+      ], done);
+    });
+
+    it('only commits one of two identical ops submitted from different clients', function(done) {
+      var backend = this.backend;
+      backend.doNotCommitNoOps = true;
+      var doc1 = backend.connect().get('dogs', id);
+      var doc2 = backend.connect().get('dogs', id);
+      var op = [{p: ['tricks', 0], ld: 'fetch'}];
+
+      async.series([
+        doc1.create.bind(doc1, {tricks: ['fetch', 'sit']}),
+        doc2.fetch.bind(doc2),
+        async.parallel.bind(async.parallel, [
+          doc1.submitOp.bind(doc1, op),
+          doc2.submitOp.bind(doc2, op)
+        ]),
+        function(next) {
+          expect(doc1.data).to.eql({tricks: ['sit']});
+          expect(doc2.data).to.eql({tricks: ['sit']});
+          next();
+        },
+        function(next) {
+          backend.db.getOps('dogs', id, 0, null, {}, function(error, ops) {
+            if (error) return next(error);
+            // Expect:
+            // v0: create
+            // v1: update
+            // no duplicate update
+            expect(ops).to.have.length(2);
+            next();
+          });
+        }
+      ], done);
+    });
+
+    it('can submit a new op after getting a no-op', function(done) {
+      var backend = this.backend;
+      backend.doNotCommitNoOps = true;
+      var doc1 = backend.connect().get('dogs', id);
+      var doc2 = backend.connect().get('dogs', id);
+      var op = [{p: ['tricks', 0], ld: 'fetch'}];
+
+      async.series([
+        doc1.create.bind(doc1, {tricks: ['fetch', 'sit']}),
+        doc2.fetch.bind(doc2),
+        async.parallel.bind(async.parallel, [
+          doc1.submitOp.bind(doc1, op),
+          doc2.submitOp.bind(doc2, op)
+        ]),
+        function(next) {
+          expect(doc1.data).to.eql({tricks: ['sit']});
+          expect(doc2.data).to.eql({tricks: ['sit']});
+          next();
+        },
+        doc1.submitOp.bind(doc1, [{p: ['tricks', 0], li: 'play dead'}]),
+        function(next) {
+          expect(doc1.data.tricks).to.eql(['play dead', 'sit']);
+          next();
+        }
+      ], done);
+    });
+
+    it('fixes up even if an op is fixed up to become a no-op', function(done) {
+      var backend = this.backend;
+      backend.doNotCommitNoOps = true;
+      var doc = backend.connect().get('dogs', id);
+
+      backend.use('apply', function(req, next) {
+        req.$fixup([{p: ['fixme'], od: true}]);
+        next();
+      });
+
+      async.series([
+        doc.create.bind(doc, {}),
+        doc.submitOp.bind(doc, [{p: ['fixme'], oi: true}]),
+        function(next) {
+          expect(doc.data).to.eql({});
+          next();
+        }
+      ], done);
+    });
+
     describe('type.deserialize', function() {
       it('can create a new doc', function(done) {
         var doc = this.backend.connect().get('dogs', id);
