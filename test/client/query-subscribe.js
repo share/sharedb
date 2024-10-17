@@ -729,6 +729,29 @@ function commonTests(options) {
     connection.get('dogs', 'fido').on('error', done).create({age: 3});
   });
 
+  it('does not reply if the agent is closed before the query returns', function(done) {
+    var backend = this.backend;
+    var connection = backend.connect();
+    var agent = connection.agent;
+
+    backend.use('query', function(request, next) {
+      backend.use('reply', function() {
+        done(new Error('unexpected reply'));
+      });
+
+      expect(agent.closed).to.be.false;
+      agent.stream.on('close', function() {
+        expect(agent.closed).to.be.true;
+        next();
+        done();
+      });
+
+      agent.close();
+    });
+
+    connection.createSubscribeQuery('dogs', {});
+  });
+
   describe('passing agent.custom to the DB adapter', function() {
     var connection;
     var expectedArg = {
