@@ -15,19 +15,14 @@
   "license": "MIT",
   "dependencies": {
     "@teamwork/websocket-json-stream": "^2.0.0",
-    "bson-objectid": "^2.0.4",
     "express": "^4.18.2",
     "quill": "^2.0.2",
-    "quill-cursors": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",
     "rich-text": "^4.1.0",
     "sharedb": "^3.3.0",
     "ws": "^8.12.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.7",
-    "@babel/preset-env": "^7.25.7",
-    "babel-loader": "^9.2.1",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4"
   }
