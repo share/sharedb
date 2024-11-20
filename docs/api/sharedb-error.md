@@ -100,3 +100,9 @@ Representation of an error, with a machine-parsable [code](#error-codes).
 ### `ERR_TYPE_CANNOT_BE_PROJECTED`
 
 > The document's type cannot be projected. [`json0`]({{ site.baseurl }}{% link types/json0.md %}) is currently the only type that supports projections.
+
+### `ERR_NO_OP`
+
+> The submitted op resulted in a no-op, possibly after transformation by a remote op.
+
+> This is normal behavior and the client should swallow this error without bumping doc version.
