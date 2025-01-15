@@ -28,6 +28,7 @@ module.exports = function() {
             age: 3,
             tricks: ['fetch']
           });
+          expect(doc.data).to.eql(remoteDoc.data);
           next();
         }
       ], done);
@@ -36,6 +37,12 @@ module.exports = function() {
     it('does not commit the first op if the second op fails', function(done) {
       var doc = connection.get('dogs', 'gaspode');
       var remoteDoc = backend.connect().get('dogs', 'gaspode');
+
+      var errorHandlerCalled = false;
+      doc.on('error', (error) => {
+        errorHandlerCalled = true;
+        expect(error.code).to.equal('ERR_TRANSACTION_ABORTED');
+      });
 
       backend.use('commit', function(request, next) {
         if (!request.snapshot.data.tricks) return next();
@@ -59,11 +66,12 @@ module.exports = function() {
             next();
           });
         },
-        // TODO: Assert hard rollback
-        doc.destroy.bind(doc),
+        doc.once.bind(doc, 'load'),
         remoteDoc.fetch.bind(remoteDoc),
         function(next) {
+          expect(errorHandlerCalled).to.be.true;
           expect(remoteDoc.data).to.eql({name: 'Gaspode'});
+          expect(doc.data).to.eql(remoteDoc.data);
           next();
         }
       ], done);
