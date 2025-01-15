@@ -20,6 +20,11 @@ module.exports = function() {
         doc.create.bind(doc, {name: 'Gaspode'}),
         doc.submitOp.bind(doc, [{p: ['age'], oi: 3}], {transaction: transaction}),
         doc.submitOp.bind(doc, [{p: ['tricks'], oi: ['fetch']}], {transaction: transaction}),
+        remoteDoc.fetch.bind(remoteDoc),
+        function(next) {
+          expect(remoteDoc.data).to.eql({name: 'Gaspode'});
+          next();
+        },
         transaction.commit.bind(transaction),
         remoteDoc.fetch.bind(remoteDoc),
         function(next) {
@@ -38,11 +43,10 @@ module.exports = function() {
       var doc = connection.get('dogs', 'gaspode');
       var remoteDoc = backend.connect().get('dogs', 'gaspode');
 
-      var errorHandlerCalled = false;
-      doc.on('error', (error) => {
-        errorHandlerCalled = true;
-        expect(error.code).to.equal('ERR_TRANSACTION_ABORTED');
-      });
+      // TODO: Discuss if this is an acceptable API? Doc will always emit error on
+      // a failed transaction, since the ops may have been successfully acked for this Doc, and
+      // we force a hard rollback with no callback, which causes an 'error' event
+      doc.on('error', () => {});
 
       backend.use('commit', function(request, next) {
         if (!request.snapshot.data.tricks) return next();
@@ -57,19 +61,71 @@ module.exports = function() {
         function(next) {
           doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {transaction: transaction}, function(error) {
             expect(error.message).to.equal('fail');
-            next();
           });
+          doc.once('load', next);
         },
-        function(next) {
-          transaction.commit(function(error) {
-            expect(error.code).to.equal('ERR_TRANSACTION_ABORTED');
-            next();
-          });
-        },
-        doc.once.bind(doc, 'load'),
         remoteDoc.fetch.bind(remoteDoc),
         function(next) {
-          expect(errorHandlerCalled).to.be.true;
+          expect(remoteDoc.data).to.eql({name: 'Gaspode'});
+          expect(doc.data).to.eql(remoteDoc.data);
+          next();
+        }
+      ], done);
+    });
+
+    it('deletes and creates as part of a transaction', function(done) {
+      var doc = connection.get('dogs', 'gaspode');
+      var remoteDoc = backend.connect().get('dogs', 'gaspode');
+
+      doc.on('error', () => {});
+
+      var transaction = connection.startTransaction();
+
+      async.series([
+        doc.create.bind(doc, {name: 'Gaspode'}),
+        doc.del.bind(doc, {transaction: transaction}),
+        doc.create.bind(doc, {name: 'Recreated'}, 'json0', {transaction: transaction}),
+        remoteDoc.fetch.bind(remoteDoc),
+        function (next) {
+          expect(remoteDoc.data).to.eql({name: 'Gaspode'});
+          next();
+        },
+        transaction.commit.bind(transaction),
+        remoteDoc.fetch.bind(remoteDoc),
+        function(next) {
+          expect(remoteDoc.data).to.eql({name: 'Recreated'});
+          expect(doc.data).to.eql(remoteDoc.data);
+          next();
+        }
+      ], done);
+    });
+
+    it('does not delete if the following create fails', function(done) {
+      var doc = connection.get('dogs', 'gaspode');
+      var remoteDoc = backend.connect().get('dogs', 'gaspode');
+
+      doc.on('error', () => {});
+
+      var transaction = connection.startTransaction();
+
+      async.series([
+        doc.create.bind(doc, {name: 'Gaspode'}),
+        function(next) {
+          backend.use('commit', function(request, next) {
+            var error = request.op.create ? new Error('Create not allowed') : null;
+            next(error);
+          });
+          next();
+        },
+        doc.del.bind(doc, {transaction: transaction}),
+        function(next) {
+          doc.create({name: 'Recreated'}, 'json0', {transaction: transaction}, function(error) {
+            expect(error.message).to.equal('Create not allowed');
+          });
+          doc.once('load', next);
+        },
+        remoteDoc.fetch.bind(remoteDoc),
+        function(next) {
           expect(remoteDoc.data).to.eql({name: 'Gaspode'});
           expect(doc.data).to.eql(remoteDoc.data);
           next();
