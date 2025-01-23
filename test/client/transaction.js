@@ -81,7 +81,7 @@ module.exports = function() {
         ], done);
       });
 
-      it.only('does not commit the first op if the second op fails', function(done) {
+      it('does not commit the first op if the second op fails', function(done) {
         backend.use('commit', function(request, next) {
           if (!request.snapshot.data.tricks) return next();
           next(new Error('fail'));
@@ -114,8 +114,11 @@ module.exports = function() {
       it('deletes and creates as part of a transaction', function(done) {
         async.series([
           doc.create.bind(doc, {name: 'Gaspode'}),
-          doc.del.bind(doc, {transaction: transaction}),
-          doc.create.bind(doc, {name: 'Recreated'}, 'json0', {transaction: transaction}),
+          function(next) {
+            doc.del({transaction: transaction}, errorHandler(next));
+            doc.create({name: 'Recreated'}, 'json0', {transaction: transaction}, errorHandler(next));
+            next();
+          },
           remoteDoc.fetch.bind(remoteDoc),
           function (next) {
             expect(remoteDoc.data).to.eql({name: 'Gaspode'});
@@ -141,11 +144,16 @@ module.exports = function() {
             });
             next();
           },
-          doc.del.bind(doc, {transaction: transaction}),
           function(next) {
-            doc.create({name: 'Recreated'}, 'json0', {transaction: transaction}, function(error) {
+            function handler(error) {
               expect(error.message).to.equal('Create not allowed');
-            });
+            }
+
+            doc.del({transaction: transaction}, handler);
+            doc.create({name: 'Recreated'}, 'json0', {transaction: transaction}, handler);
+            transaction.commit(handler);
+
+            // Should trigger hard rollback
             doc.once('load', next);
           },
           remoteDoc.fetch.bind(remoteDoc),
