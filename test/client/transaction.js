@@ -32,7 +32,7 @@ module.exports = function() {
         doc.on('error', function() {});
       });
 
-      it.only('commits two ops as a transaction', function(done) {
+      it('commits two ops as a transaction', function(done) {
         doc.preventCompose = true;
 
         async.series([
@@ -66,7 +66,7 @@ module.exports = function() {
         ], done);
       });
 
-      it.only('fires the submitOp callback after a transaction commits', function(done) {
+      it('fires the submitOp callback after a transaction commits', function(done) {
         async.series([
           doc.create.bind(doc, {name: 'Gaspode'}),
           function(next) {
@@ -81,7 +81,7 @@ module.exports = function() {
         ], done);
       });
 
-      it('does not commit the first op if the second op fails', function(done) {
+      it.only('does not commit the first op if the second op fails', function(done) {
         backend.use('commit', function(request, next) {
           if (!request.snapshot.data.tricks) return next();
           next(new Error('fail'));
@@ -89,17 +89,23 @@ module.exports = function() {
 
         async.series([
           doc.create.bind(doc, {name: 'Gaspode'}),
-          doc.submitOp.bind(doc, [{p: ['age'], oi: 3}], {transaction: transaction}),
           function(next) {
-            doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {transaction: transaction}, function(error) {
+            var count = 0;
+            function handler(error) {
+              count++;
               expect(error.message).to.equal('fail');
-            });
-            doc.once('load', next);
+              if (count === 3) next();
+            };
+
+            doc.submitOp([{p: ['age'], oi: 3}], {transaction: transaction}, handler);
+            doc.submitOp([{p: ['tricks'], oi: ['fetch']}], {transaction: transaction}, handler);
+            transaction.commit(handler);
           },
           remoteDoc.fetch.bind(remoteDoc),
           function(next) {
             expect(remoteDoc.data).to.eql({name: 'Gaspode'});
             expect(doc.data).to.eql(remoteDoc.data);
+            expect(remoteDoc.version).to.equal(doc.version);
             next();
           }
         ], done);
