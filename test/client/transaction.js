@@ -33,6 +33,8 @@ module.exports = function() {
       });
 
       it.only('commits two ops as a transaction', function(done) {
+        doc.preventCompose = true;
+
         async.series([
           doc.create.bind(doc, {name: 'Gaspode'}),
           function (next) {
@@ -59,6 +61,21 @@ module.exports = function() {
               tricks: ['fetch']
             });
             expect(doc.data).to.eql(remoteDoc.data);
+            next();
+          }
+        ], done);
+      });
+
+      it.only('fires the submitOp callback after a transaction commits', function(done) {
+        async.series([
+          doc.create.bind(doc, {name: 'Gaspode'}),
+          function(next) {
+            doc.submitOp([{p: ['age'], oi: 3}], {transaction: transaction}, next);
+            transaction.commit(errorHandler(next));
+          },
+          remoteDoc.fetch.bind(remoteDoc),
+          function(next) {
+            expect(remoteDoc.data).to.eql(doc.data);
             next();
           }
         ], done);
