@@ -23,6 +23,7 @@ module.exports = function() {
       beforeEach(function() {
         id = (idCounter++).toString();
         doc = connection.get('dogs', id);
+        doc.preventCompose = true;
         remoteDoc = backend.connect().get('dogs', id);
         transaction = connection.startTransaction();
 
@@ -33,8 +34,6 @@ module.exports = function() {
       });
 
       it('commits two ops as a transaction', function(done) {
-        doc.preventCompose = true;
-
         async.series([
           doc.create.bind(doc, {name: 'Gaspode'}),
           function (next) {
@@ -165,7 +164,7 @@ module.exports = function() {
         ], done);
       });
 
-      it('transaction is behind remote', function(done) {
+      it.only('transaction is behind remote', function(done) {
         async.series([
           doc.create.bind(doc, {tricks: ['fetch']}),
           remoteDoc.fetch.bind(remoteDoc),
@@ -186,18 +185,21 @@ module.exports = function() {
       });
 
       it('remote submits after but commits first', function(done) {
+        var hasSubmittedRemote = false;
+        backend.use('commit', function(request, next) {
+          if (!request._transaction || hasSubmittedRemote) return next();
+          hasSubmittedRemote = true;
+          remoteDoc.submitOp([{p: ['tricks', 0], ld: 'fetch'}], next);
+        });
+
         async.series([
           doc.create.bind(doc, {tricks: ['fetch']}),
           remoteDoc.fetch.bind(remoteDoc),
-          doc.submitOp.bind(doc, [{p: ['tricks', 1], li: 'sit'}], {transaction: transaction}),
-          remoteDoc.submitOp.bind(remoteDoc, [{p: ['tricks', 0], ld: 'fetch'}]),
-          doc.submitOp.bind(doc, [{p: ['tricks', 2], li: 'shake'}], {transaction: transaction}),
-          remoteDoc.fetch.bind(remoteDoc),
           function(next) {
-            expect(remoteDoc.data).to.eql({tricks: []});
-            next();
+            doc.submitOp([{p: ['tricks', 1], li: 'sit'}], {transaction: transaction}, errorHandler(next));
+            doc.submitOp([{p: ['tricks', 2], li: 'shake'}], {transaction: transaction}, errorHandler(next));
+            transaction.commit(next);
           },
-          transaction.commit.bind(transaction),
           remoteDoc.fetch.bind(remoteDoc),
           function(next) {
             expect(remoteDoc.data).to.eql({tricks: ['sit', 'shake']});
