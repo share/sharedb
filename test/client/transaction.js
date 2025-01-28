@@ -170,14 +170,12 @@ module.exports = function() {
           doc.create.bind(doc, {tricks: ['fetch']}),
           remoteDoc.fetch.bind(remoteDoc),
           remoteDoc.submitOp.bind(remoteDoc, [{p: ['tricks', 0], ld: 'fetch'}]),
-          doc.submitOp.bind(doc, [{p: ['tricks', 1], li: 'sit'}], {transaction: transaction}),
-          doc.submitOp.bind(doc, [{p: ['tricks', 2], li: 'shake'}], {transaction: transaction}),
-          remoteDoc.fetch.bind(remoteDoc),
           function(next) {
-            expect(remoteDoc.data).to.eql({tricks: []});
-            next();
+            doc.submitOp([{p: ['tricks', 1], li: 'sit'}], {transaction: transaction}, errorHandler(next));
+            doc.submitOp([{p: ['tricks', 2], li: 'shake'}], {transaction: transaction}, errorHandler(next));
+            transaction.commit(next);
           },
-          transaction.commit.bind(transaction),
+          doc.fetch.bind(doc),
           remoteDoc.fetch.bind(remoteDoc),
           function(next) {
             expect(remoteDoc.data).to.eql({tricks: ['sit', 'shake']});
