@@ -236,12 +236,19 @@ module.exports = function() {
             });
             next();
           },
-          doc1.submitOp.bind(doc1, [{p: ['age'], oi: 3}], {transaction: transaction}),
           function(next) {
-            doc2.submitOp([{p: ['age'], oi: 4}], {transaction: transaction}, function(error) {
+            var count = 0;
+            var handler = function(error) {
               expect(error.message).to.equal('fail');
-            });
-            doc2.once('load', next);
+              count++;
+              if (count === 3) next();
+            };
+
+            doc1.submitOp([{p: ['age'], oi: 3}], {transaction: transaction}, handler);
+            doc2.submitOp([{p: ['age'], oi: 4}], {transaction: transaction}, handler);
+            expect(doc1.data).to.eql({name: 'Gaspode', age: 3});
+            expect(doc2.data).to.eql({name: 'Snoopy', age: 4});
+            transaction.commit(handler);
           },
           remoteDoc1.fetch.bind(remoteDoc1),
           remoteDoc2.fetch.bind(remoteDoc2),
