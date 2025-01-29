@@ -164,7 +164,7 @@ module.exports = function() {
         ], done);
       });
 
-      it.only('transaction is behind remote', function(done) {
+      it('transaction is behind remote', function(done) {
         async.series([
           doc.create.bind(doc, {tricks: ['fetch']}),
           remoteDoc.fetch.bind(remoteDoc),
