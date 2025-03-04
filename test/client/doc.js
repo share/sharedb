@@ -636,6 +636,25 @@ describe('Doc', function() {
         }
       ], done);
     });
+
+    it('rejects ops with ERR_DOC_IN_HARD_ROLLBACK error when in hard rollback', function(done) {
+      var backend = this.backend;
+      var doc = backend.connect().get('dogs', 'snoopy');
+
+      async.series([
+        doc.create.bind(doc, {color: 'red'}),
+        function(next) {
+          doc.on('error', function(error) {
+            expect(error.code).to.be.equal('TEST_ERROR');
+          });
+          doc._hardRollback(new ShareDBError('TEST_ERROR'));
+          doc.submitOp({p: ['color'], oi: 'blue', od: 'red'}, function(error) {
+            expect(error.code).to.be.equal('ERR_DOC_IN_HARD_ROLLBACK');
+            next();
+          });
+        }
+      ], done);
+    });
   });
 
   describe('errors on ops that could cause prototype corruption', function() {
