@@ -829,6 +829,20 @@ describe('DocPresence', function() {
     ], done);
   });
 
+
+  it('errors local presence when doc is in hard rollback', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    doc1.on('error', function(error) {
+      expect(error).to.be.equal('some error');
+    });
+    doc1._hardRollback('some error');
+    localPresence1.submit({index: 1}, function(error) {
+      expect(error.code).to.be.equal('ERR_DOC_IN_HARD_ROLLBACK');
+      done();
+    });
+  });
+
   it('returns errors sent from the middleware', function(done) {
     backend.use(backend.MIDDLEWARE_ACTIONS.sendPresence, function(request, callback) {
       callback('some error');
