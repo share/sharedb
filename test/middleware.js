@@ -6,6 +6,7 @@ var errorHandler = util.errorHandler;
 var ShareDBError = require('../lib/error');
 var sinon = require('sinon');
 var ACTIONS = require('../lib/message-actions').ACTIONS;
+var async = require('async');
 
 var ERROR_CODE = ShareDBError.CODES;
 
@@ -34,6 +35,124 @@ describe('middleware', function() {
     it('accepts an array of action names', function() {
       var response = this.backend.use(['submit', 'connect'], function() {});
       expect(response).equal(this.backend);
+    });
+
+    describe('sorting', function() {
+      var calls;
+
+      beforeEach(function() {
+        calls = [];
+      });
+
+      it('defaults to insertion order', function(done) {
+        var a = makeMiddleware();
+        var b = makeMiddleware();
+        var c = makeMiddleware();
+
+        this.backend.use('readSnapshots', a);
+        this.backend.use('readSnapshots', b);
+        this.backend.use('readSnapshots', c);
+
+        var connection = this.backend.connect();
+        var doc = connection.get('dogs', 'fido');
+
+        async.series([
+          doc.fetch.bind(doc),
+          function(next) {
+            expect(calls).to.eql([a, b, c]);
+            next();
+          }
+        ], done);
+      });
+
+      it('sorts middleware by order', function(done) {
+        var a = makeMiddleware();
+        var b = makeMiddleware();
+        var c = makeMiddleware();
+
+        this.backend.use('readSnapshots', a, 2);
+        this.backend.use('readSnapshots', b, 1);
+        this.backend.use('readSnapshots', c, 3);
+
+        var connection = this.backend.connect();
+        var doc = connection.get('dogs', 'fido');
+
+        async.series([
+          doc.fetch.bind(doc),
+          function(next) {
+            expect(calls).to.eql([b, a, c]);
+            next();
+          }
+        ], done);
+      });
+
+      it('defaults order to 0', function(done) {
+        var a = makeMiddleware();
+        var b = makeMiddleware();
+        var c = makeMiddleware();
+
+        this.backend.use('readSnapshots', a);
+        this.backend.use('readSnapshots', b, 1);
+        this.backend.use('readSnapshots', c, -1);
+
+        var connection = this.backend.connect();
+        var doc = connection.get('dogs', 'fido');
+
+        async.series([
+          doc.fetch.bind(doc),
+          function(next) {
+            expect(calls).to.eql([c, a, b]);
+            next();
+          }
+        ], done);
+      });
+
+      it('can sort using MAX_SAFE_INTEGER and MIN_SAFE_INTEGER', function(done) {
+        var a = makeMiddleware();
+        var b = makeMiddleware();
+
+        this.backend.use('readSnapshots', a, Number.MAX_SAFE_INTEGER);
+        this.backend.use('readSnapshots', b, Number.MIN_SAFE_INTEGER);
+
+        var connection = this.backend.connect();
+        var doc = connection.get('dogs', 'fido');
+
+        async.series([
+          doc.fetch.bind(doc),
+          function(next) {
+            expect(calls).to.eql([b, a]);
+            next();
+          }
+        ], done);
+      });
+
+
+      it('can sort using MAX_VALUE', function(done) {
+        var a = makeMiddleware();
+        var b = makeMiddleware();
+
+        this.backend.use('readSnapshots', a, Number.MAX_VALUE);
+        this.backend.use('readSnapshots', b, -Number.MAX_VALUE);
+
+        var connection = this.backend.connect();
+        var doc = connection.get('dogs', 'fido');
+
+        async.series([
+          doc.fetch.bind(doc),
+          function(next) {
+            expect(calls).to.eql([b, a]);
+            next();
+          }
+        ], done);
+      });
+
+      function makeMiddleware() {
+        var fn = function(context, next) {
+          calls.push(fn);
+          next();
+        };
+        return fn;
+      }
     });
   });
 
