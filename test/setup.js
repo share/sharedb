@@ -3,7 +3,7 @@ var sinon = require('sinon');
 var sinonChai = require('sinon-chai');
 var chai = require('chai');
 
-chai.use(sinonChai);
+chai.use(sinonChai.default);
 
 if (process.env.LOGGING !== 'true') {
   // Silence the logger for tests by setting all its methods to no-ops
@@ -15,5 +15,8 @@ if (process.env.LOGGING !== 'true') {
 }
 
 afterEach(function() {
+  if (sinon.clock) {
+    sinon.clock.uninstall();
+  }
   sinon.restore();
 });
