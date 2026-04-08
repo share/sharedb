@@ -4,6 +4,8 @@ var util = require('../util');
 
 var ERROR_CODE = ShareDBError.CODES;
 
+module.exports = MemoryMilestoneDB;
+
 /**
  * In-memory ShareDB milestone database
  *
@@ -15,7 +17,6 @@ var ERROR_CODE = ShareDBError.CODES;
  * The main purpose of this class is to provide a simple example of implementation,
  * and for use in tests.
  */
-module.exports = MemoryMilestoneDB;
 function MemoryMilestoneDB(options) {
   MilestoneDB.call(this, options);
 
