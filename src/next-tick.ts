@@ -10,7 +10,7 @@ exports.messageChannel = function() {
 
 exports.setTimeout = function() {
   var triggerCallback = createNextTickTrigger(arguments);
-  setTimeout(triggerCallback);
+  global.setTimeout(triggerCallback);
 };
 
 function createNextTickTrigger(args) {
