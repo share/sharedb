@@ -9,6 +9,8 @@ var ACTIONS = require('../message-actions').ACTIONS;
 
 var ERROR_CODE = ShareDBError.CODES;
 
+module.exports = Doc;
+
 /**
  * A Doc is a client's view on a sharejs document.
  *
@@ -50,8 +52,6 @@ var ERROR_CODE = ShareDBError.CODES;
  *   argument
  * - `load ()` Fired when a new snapshot is ingested from a fetch, subscribe, or query
  */
-
-module.exports = Doc;
 function Doc(connection, collection, id) {
   emitter.EventEmitter.call(this);
 
