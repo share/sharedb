@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.0",
     "chai": "^6.2.2",
     "eslint": "^10.1.0",
     "eslint-config-google": "^0.14.0",
@@ -22,7 +23,9 @@
     "rich-text": "^4.1.0",
     "sharedb-legacy": "npm:sharedb@1.1.0",
     "sinon": "^21.0.3",
-    "sinon-chai": "^4.0.1"
+    "sinon-chai": "^4.0.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.0"
   },
   "files": [
     "lib/",
