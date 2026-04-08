@@ -1,9 +1,10 @@
-const js = require("@eslint/js");
+const jsEslint = require("@eslint/js");
 const {
     defineConfig,
     globalIgnores,
 } = require("eslint/config");
 const eslintConfigGoogle = require('eslint-config-google');
+const tsEslint = require('typescript-eslint');
 
 // The ESLint ecmaVersion argument is inconsistently used. Some rules will ignore it entirely, so if the rule has
 // been set, it will still error even if it's not applicable to that version number. Since Google sets these
@@ -54,6 +55,7 @@ var SHAREDB_RULES = {
 module.exports = defineConfig([
     {
         extends: [eslintConfigGoogle],
+        files: ["**/*.js"],
         ignores: ['eslint.config.js'],
 
         languageOptions: {
@@ -66,6 +68,13 @@ module.exports = defineConfig([
         },
 
         rules: Object.assign({}, DISABLED_ES6_OPTIONS, SHAREDB_RULES),
+    },
+    {
+        extends: [
+            jsEslint.configs.recommended,
+            tsEslint.configs.recommended,
+        ],
+        files: ["**/*.ts"],
     },
     globalIgnores(["docs/"]),
     {
