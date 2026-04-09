@@ -13,6 +13,9 @@ module.exports = function(options) {
     });
 
     afterEach(function() {
+      if (sinon.clock) {
+        sinon.clock.uninstall();
+      }
       sinon.restore();
     });
 
