@@ -4,9 +4,11 @@ on:
   push:
     branches:
     - master
+    - typescript
   pull_request:
     branches:
     - master
+    - typescript
 
 jobs:
   test:
