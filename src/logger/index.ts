@@ -1,3 +1,3 @@
-var Logger = require('./logger');
+import Logger = require('./logger');
 var logger = new Logger();
-module.exports = logger;
+export = logger;

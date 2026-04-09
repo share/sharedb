@@ -1,26 +1,30 @@
-var Presence = require('./presence');
-var LocalDocPresence = require('./local-doc-presence');
-var RemoteDocPresence = require('./remote-doc-presence');
+import Presence = require('./presence');
+import LocalDocPresence = require('./local-doc-presence');
+import RemoteDocPresence = require('./remote-doc-presence');
 
-function DocPresence(connection, collection, id) {
-  var channel = DocPresence.channel(collection, id);
-  Presence.call(this, connection, channel);
+class DocPresence extends Presence {
+  collection;
+  id;
 
-  this.collection = collection;
-  this.id = id;
+  constructor(connection, collection, id) {
+    var channel = DocPresence.channel(collection, id);
+    super(connection, channel);
+
+    this.collection = collection;
+    this.id = id;
+  }
+
+  _createLocalPresence(id) {
+    return new LocalDocPresence(this, id);
+  }
+
+  _createRemotePresence(id) {
+    return new RemoteDocPresence(this, id);
+  }
+
+  static channel(collection, id) {
+    return collection + '.' + id;
+  }
 }
-module.exports = DocPresence;
 
-DocPresence.prototype = Object.create(Presence.prototype);
-
-DocPresence.channel = function(collection, id) {
-  return collection + '.' + id;
-};
-
-DocPresence.prototype._createLocalPresence = function(id) {
-  return new LocalDocPresence(this, id);
-};
-
-DocPresence.prototype._createRemotePresence = function(id) {
-  return new RemoteDocPresence(this, id);
-};
+export = DocPresence;

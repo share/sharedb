@@ -1,5 +1,5 @@
-var PubSub = require('./index');
-var util = require('../util');
+import PubSub = require('./index');
+import util = require('../util');
 
 // In-memory ShareDB pub/sub
 //
@@ -9,31 +9,31 @@ var util = require('../util');
 // easy to swap in an external pub/sub adapter if/when additional server
 // processes are desired. No pub/sub APIs are adapter specific.
 
-function MemoryPubSub(options) {
-  if (!(this instanceof MemoryPubSub)) return new MemoryPubSub(options);
-  PubSub.call(this, options);
-}
-module.exports = MemoryPubSub;
+class MemoryPubSub extends PubSub {
+  constructor(options) {
+    super(options);
+  }
 
-MemoryPubSub.prototype = Object.create(PubSub.prototype);
+  _subscribe(channel, callback) {
+    util.nextTick(callback);
+  }
 
-MemoryPubSub.prototype._subscribe = function(channel, callback) {
-  util.nextTick(callback);
-};
+  _unsubscribe(channel, callback) {
+    util.nextTick(callback);
+  }
 
-MemoryPubSub.prototype._unsubscribe = function(channel, callback) {
-  util.nextTick(callback);
-};
-
-MemoryPubSub.prototype._publish = function(channels, data, callback) {
-  var pubsub = this;
-  util.nextTick(function() {
-    for (var i = 0; i < channels.length; i++) {
-      var channel = channels[i];
-      if (pubsub.subscribed[channel]) {
-        pubsub._emit(channel, data);
+  _publish(channels, data, callback) {
+    var pubsub = this;
+    util.nextTick(function() {
+      for (var i = 0; i < channels.length; i++) {
+        var channel = channels[i];
+        if (pubsub.subscribed[channel]) {
+          pubsub._emit(channel, data);
+        }
       }
-    }
-    callback();
-  });
-};
+      callback();
+    });
+  }
+}
+
+export = MemoryPubSub;

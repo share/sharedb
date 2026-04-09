@@ -1,7 +1,7 @@
-var MilestoneDB = require('./index');
-var util = require('../util');
+import MilestoneDB = require('./index');
+import util = require('../util');
 
-module.exports = NoOpMilestoneDB;
+export = NoOpMilestoneDB;
 
 /**
  * A no-op implementation of the MilestoneDB class.
@@ -9,28 +9,28 @@ module.exports = NoOpMilestoneDB;
  * This class exists as a simple, silent default drop-in for ShareDB, which allows the backend to call its methods with
  * no effect.
  */
-function NoOpMilestoneDB(options) {
-  MilestoneDB.call(this, options);
+class NoOpMilestoneDB extends MilestoneDB {
+  constructor(options) {
+    super(options);
+  }
+
+  getMilestoneSnapshot(collection, id, version, callback) {
+    var snapshot = undefined;
+    util.nextTick(callback, null, snapshot);
+  }
+
+  saveMilestoneSnapshot(collection, snapshot, callback) {
+    if (callback) return util.nextTick(callback, null);
+    this.emit('save', collection, snapshot);
+  }
+
+  getMilestoneSnapshotAtOrBeforeTime(collection, id, timestamp, callback) {
+    var snapshot = undefined;
+    util.nextTick(callback, null, snapshot);
+  }
+
+  getMilestoneSnapshotAtOrAfterTime(collection, id, timestamp, callback) {
+    var snapshot = undefined;
+    util.nextTick(callback, null, snapshot);
+  }
 }
-
-NoOpMilestoneDB.prototype = Object.create(MilestoneDB.prototype);
-
-NoOpMilestoneDB.prototype.getMilestoneSnapshot = function(collection, id, version, callback) {
-  var snapshot = undefined;
-  util.nextTick(callback, null, snapshot);
-};
-
-NoOpMilestoneDB.prototype.saveMilestoneSnapshot = function(collection, snapshot, callback) {
-  if (callback) return util.nextTick(callback, null);
-  this.emit('save', collection, snapshot);
-};
-
-NoOpMilestoneDB.prototype.getMilestoneSnapshotAtOrBeforeTime = function(collection, id, timestamp, callback) {
-  var snapshot = undefined;
-  util.nextTick(callback, null, snapshot);
-};
-
-NoOpMilestoneDB.prototype.getMilestoneSnapshotAtOrAfterTime = function(collection, id, timestamp, callback) {
-  var snapshot = undefined;
-  util.nextTick(callback, null, snapshot);
-};

@@ -1,27 +1,29 @@
-var SnapshotRequest = require('./snapshot-request');
-var util = require('../../util');
-var ACTIONS = require('../../message-actions').ACTIONS;
+import SnapshotRequest = require('./snapshot-request');
+import util = require('../../util');
+import { ACTIONS } from '../../message-actions';
 
-module.exports = SnapshotVersionRequest;
+export = SnapshotVersionRequest;
 
-function SnapshotVersionRequest(connection, requestId, collection, id, version, callback) {
-  SnapshotRequest.call(this, connection, requestId, collection, id, callback);
+class SnapshotVersionRequest extends SnapshotRequest {
+  version;
 
-  if (!util.isValidVersion(version)) {
-    throw new Error('Snapshot version must be a positive integer or null');
+  constructor(connection, requestId, collection, id, version, callback) {
+    super(connection, requestId, collection, id, callback);
+
+    if (!util.isValidVersion(version)) {
+      throw new Error('Snapshot version must be a positive integer or null');
+    }
+
+    this.version = version;
   }
 
-  this.version = version;
+  _message() {
+    return {
+      a: ACTIONS.snapshotFetch,
+      id: this.requestId,
+      c: this.collection,
+      d: this.id,
+      v: this.version
+    };
+  }
 }
-
-SnapshotVersionRequest.prototype = Object.create(SnapshotRequest.prototype);
-
-SnapshotVersionRequest.prototype._message = function() {
-  return {
-    a: ACTIONS.snapshotFetch,
-    id: this.requestId,
-    c: this.collection,
-    d: this.id,
-    v: this.version
-  };
-};
