@@ -518,7 +518,6 @@ function commonTests(options) {
 
   it('pollDebounce option reduces subsequent poll interval', function(done) {
     var clock = util.useFakeTimers();
-    clock.setTickMode({mode: 'nextAsync'});
     var connection = this.backend.connect();
     this.backend.db.canPollDoc = function() {
       return false;
