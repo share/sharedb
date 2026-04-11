@@ -22,8 +22,16 @@ exports.pluck = function(docs, key) {
  * @see {@link https://github.com/sinonjs/fake-timers#clocksettickmodemode}
  */
 exports.useFakeTimers = function(config) {
+  if (config == null) {
+    config = {};
+  } else if (typeof config !== 'object') {
+    // Number or Date
+    config = {now: config};
+  }
+  if (config.toFake == null) {
+    config.toFake = ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"];
+  }
   var clock = sinon.useFakeTimers(config);
-  clock.setTickMode({mode: 'nextAsync'});
   return clock;
 };
 
