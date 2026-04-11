@@ -29,7 +29,7 @@ exports.useFakeTimers = function(config) {
     config = {now: config};
   }
   if (config.toFake == null) {
-    config.toFake = ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"];
+    config.toFake = ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'];
   }
   var clock = sinon.useFakeTimers(config);
   return clock;
