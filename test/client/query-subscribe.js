@@ -13,6 +13,9 @@ module.exports = function(options) {
     });
 
     afterEach(function() {
+      if (sinon.clock) {
+        sinon.clock.uninstall();
+      }
       sinon.restore();
     });
 
@@ -517,7 +520,7 @@ function commonTests(options) {
   });
 
   it('pollDebounce option reduces subsequent poll interval', function(done) {
-    var clock = sinon.useFakeTimers();
+    var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.db.canPollDoc = function() {
       return false;
@@ -539,7 +542,7 @@ function commonTests(options) {
           connection.get('items', i.toString()).on('error', done).create({}, function(err) {
             if (err) return done(err);
             counter++;
-            if (counter === 9) clock.tickAsync(10000);
+            if (counter === 9) clock.tick(10000);
           });
         }
       }
@@ -561,12 +564,12 @@ function commonTests(options) {
     // event firing the first time, while sharedb is definitely
     // debouncing
     connection.get('items', '0').on('error', done).create({}, function() {
-      clock.tickAsync(3000);
+      clock.tick(3000);
     });
   });
 
   it('db.pollDebounce option reduces subsequent poll interval', function(done) {
-    var clock = sinon.useFakeTimers();
+    var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.db.canPollDoc = function() {
       return false;
@@ -589,7 +592,7 @@ function commonTests(options) {
           connection.get('items', i.toString()).on('error', done).create({}, function(err) {
             if (err) return done(err);
             counter++;
-            if (counter === 9) clock.tickAsync(10000);
+            if (counter === 9) clock.tick(10000);
           });
         }
       }
@@ -611,12 +614,12 @@ function commonTests(options) {
     // event firing the first time, while sharedb is definitely
     // debouncing
     connection.get('items', '0').on('error', done).create({}, function() {
-      clock.tickAsync(3000);
+      clock.tick(3000);
     });
   });
 
   it('pollInterval updates a subscribed query after an unpublished create', function(done) {
-    var clock = sinon.useFakeTimers();
+    var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.suppressPublish = true;
     var query = connection.createSubscribeQuery(
@@ -626,7 +629,7 @@ function commonTests(options) {
       function(err) {
         if (err) return done(err);
         connection.get('dogs', 'fido').on('error', done).create({}, function() {
-          clock.tickAsync(51);
+          clock.tick(51);
         });
       }
     );
@@ -638,7 +641,7 @@ function commonTests(options) {
   });
 
   it('db.pollInterval updates a subscribed query after an unpublished create', function(done) {
-    var clock = sinon.useFakeTimers();
+    var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.suppressPublish = true;
     this.backend.db.pollDebounce = 0;
@@ -646,7 +649,7 @@ function commonTests(options) {
     var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, null, function(err) {
       if (err) return done(err);
       connection.get('dogs', 'fido').on('error', done).create({}, function() {
-        clock.tickAsync(51);
+        clock.tick(51);
       });
     });
     query.on('error', done);
@@ -657,7 +660,7 @@ function commonTests(options) {
   });
 
   it('pollInterval captures additional unpublished creates', function(done) {
-    var clock = sinon.useFakeTimers();
+    var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.suppressPublish = true;
     var count = 0;
@@ -667,7 +670,7 @@ function commonTests(options) {
       var doc = connection.get('dogs', count.toString()).on('error', done);
       doc.create({}, function(e) {
         if (e) return done(e);
-        clock.tickAsync(2000);
+        clock.tick(2000);
       });
     });
     query.on('error', done);
@@ -677,10 +680,10 @@ function commonTests(options) {
       var doc = connection.get('dogs', count.toString()).on('error', done);
       doc.create({}, function(e) {
         if (e) return done(e);
-        clock.tickAsync(10000);
+        clock.tick(10000);
       });
     });
-    clock.tickAsync(1);
+    clock.tick(1);
   });
 
   it('query extra is returned to client', function(done) {

@@ -1,3 +1,4 @@
+var sinon = require('sinon');
 
 exports.sortById = function(docs) {
   return docs.slice().sort(function(a, b) {
@@ -13,6 +14,25 @@ exports.pluck = function(docs, key) {
     values.push(docs[i][key]);
   }
   return values;
+};
+
+/**
+ * @param {Parameters<typeof sinon.useFakeTimers>[0]} config
+ * @see {@link sinon.useFakeTimers}
+ * @see {@link https://github.com/sinonjs/fake-timers#clocksettickmodemode}
+ */
+exports.useFakeTimers = function(config) {
+  if (config == null) {
+    config = {};
+  } else if (typeof config !== 'object') {
+    // Number or Date
+    config = {now: config};
+  }
+  if (config.toFake == null) {
+    config.toFake = ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'];
+  }
+  var clock = sinon.useFakeTimers(config);
+  return clock;
 };
 
 // Wrap a done function to call back only after a specified number of calls.

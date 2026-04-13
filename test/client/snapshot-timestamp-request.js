@@ -2,6 +2,7 @@ var Backend = require('../../lib/backend');
 var expect = require('chai').expect;
 var MemoryDb = require('../../lib/db/memory');
 var MemoryMilestoneDb = require('../../lib/milestone-db/memory');
+var util = require('../util');
 var sinon = require('sinon');
 var async = require('async');
 
@@ -17,12 +18,12 @@ describe('SnapshotTimestampRequest', function() {
   var ONE_DAY = 1000 * 60 * 60 * 24;
 
   beforeEach(function() {
-    clock = sinon.useFakeTimers(day1);
+    clock = util.useFakeTimers(day1);
     backend = new Backend();
   });
 
   afterEach(function(done) {
-    clock.uninstall();
+    sinon.restore();
     backend.close(done);
   });
 
