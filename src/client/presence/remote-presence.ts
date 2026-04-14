@@ -1,24 +1,33 @@
-var util = require('../../util');
+import util = require('../../util');
 
-module.exports = RemotePresence;
-function RemotePresence(presence, presenceId) {
-  this.presence = presence;
-  this.presenceId = presenceId;
-  this.connection = this.presence.connection;
+export = RemotePresence;
 
-  this.value = null;
-  this.presenceVersion = 0;
+class RemotePresence {
+  presence;
+  presenceId;
+  connection;
+  value;
+  presenceVersion;
+
+  constructor(presence, presenceId) {
+    this.presence = presence;
+    this.presenceId = presenceId;
+    this.connection = this.presence.connection;
+
+    this.value = null;
+    this.presenceVersion = 0;
+  }
+
+  receiveUpdate(message) {
+    if (message.pv < this.presenceVersion) return;
+    this.value = message.p;
+    this.presenceVersion = message.pv;
+    this.presence._updateRemotePresence(this);
+  }
+
+  destroy(callback) {
+    delete this.presence._remotePresenceInstances[this.presenceId];
+    delete this.presence.remotePresences[this.presenceId];
+    if (callback) util.nextTick(callback);
+  }
 }
-
-RemotePresence.prototype.receiveUpdate = function(message) {
-  if (message.pv < this.presenceVersion) return;
-  this.value = message.p;
-  this.presenceVersion = message.pv;
-  this.presence._updateRemotePresence(this);
-};
-
-RemotePresence.prototype.destroy = function(callback) {
-  delete this.presence._remotePresenceInstances[this.presenceId];
-  delete this.presence.remotePresences[this.presenceId];
-  if (callback) util.nextTick(callback);
-};

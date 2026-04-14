@@ -1,27 +1,29 @@
-var SnapshotRequest = require('./snapshot-request');
-var util = require('../../util');
-var ACTIONS = require('../../message-actions').ACTIONS;
+import SnapshotRequest = require('./snapshot-request');
+import util = require('../../util');
+import { ACTIONS } from '../../message-actions';
 
-module.exports = SnapshotTimestampRequest;
+export = SnapshotTimestampRequest;
 
-function SnapshotTimestampRequest(connection, requestId, collection, id, timestamp, callback) {
-  SnapshotRequest.call(this, connection, requestId, collection, id, callback);
+class SnapshotTimestampRequest extends SnapshotRequest {
+  timestamp;
 
-  if (!util.isValidTimestamp(timestamp)) {
-    throw new Error('Snapshot timestamp must be a positive integer or null');
+  constructor(connection, requestId, collection, id, timestamp, callback) {
+    super(connection, requestId, collection, id, callback);
+
+    if (!util.isValidTimestamp(timestamp)) {
+      throw new Error('Snapshot timestamp must be a positive integer or null');
+    }
+
+    this.timestamp = timestamp;
   }
 
-  this.timestamp = timestamp;
+  _message() {
+    return {
+      a: ACTIONS.snapshotFetchByTimestamp,
+      id: this.requestId,
+      c: this.collection,
+      d: this.id,
+      ts: this.timestamp
+    };
+  }
 }
-
-SnapshotTimestampRequest.prototype = Object.create(SnapshotRequest.prototype);
-
-SnapshotTimestampRequest.prototype._message = function() {
-  return {
-    a: ACTIONS.snapshotFetchByTimestamp,
-    id: this.requestId,
-    c: this.collection,
-    d: this.id,
-    ts: this.timestamp
-  };
-};

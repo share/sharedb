@@ -1,4 +1,4 @@
-module.exports = {
+export = {
   major: 1,
   minor: 2,
   checkAtLeast: checkAtLeast
