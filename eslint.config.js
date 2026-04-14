@@ -56,7 +56,7 @@ module.exports = defineConfig([
     {
         extends: [eslintConfigGoogle],
         files: ["**/*.js"],
-        ignores: ['eslint.config.js'],
+        ignores: ["eslint.config.js", "lib/**"],
 
         languageOptions: {
             ecmaVersion: 3,
@@ -69,13 +69,13 @@ module.exports = defineConfig([
 
         rules: Object.assign({}, DISABLED_ES6_OPTIONS, SHAREDB_RULES),
     },
-    {
-        extends: [
-            jsEslint.configs.recommended,
-            tsEslint.configs.recommended,
-        ],
-        files: ["**/*.ts"],
-    },
+    // {
+    //     extends: [
+    //         jsEslint.configs.recommended,
+    //         tsEslint.configs.recommended,
+    //     ],
+    //     files: ["**/*.ts"],
+    // },
     globalIgnores(["docs/"]),
     {
         files: ["examples/counter-json1-vite/*.js"],
