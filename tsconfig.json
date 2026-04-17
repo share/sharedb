@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./lib",
+    "target": "ES5",
+    "module": "CommonJS",
+    "types": [
+      "node"
+    ],
+    "strict": true,
+    "esModuleInterop": false,
+    "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    // Disable specific strict checks until the codebase is more properly typed
+    "strictNullChecks": false,
+    "useUnknownInCatchVariables": false,
+    "alwaysStrict": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+}
