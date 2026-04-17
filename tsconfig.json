@@ -9,12 +9,10 @@
     ],
     "strict": true,
     "esModuleInterop": false,
-    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0",
     "noImplicitAny": false,
     "noImplicitThis": false,
-    "removeComments": false,
     // Disable specific strict checks until the codebase is more properly typed
     "strictNullChecks": false,
     "useUnknownInCatchVariables": false,
