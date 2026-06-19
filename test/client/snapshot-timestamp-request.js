@@ -139,6 +139,21 @@ describe('SnapshotTimestampRequest', function() {
       ], done);
     });
 
+    it('fetches the current snapshot when ops are missing and the timestamp is after the latest op', function(done) {
+      var connection = backend.connect();
+      async.series([
+        // Simulate ops having been deleted/TTLed so the snapshot can't be rebuilt from ops.
+        backend.db.deleteOps.bind(backend.db, 'books', 'time-machine', null, null, null),
+        function(next) {
+          connection.fetchSnapshotByTimestamp('books', 'time-machine', day4, function(error, snapshot) {
+            if (error) return next(error);
+            expect(snapshot).to.eql(v3);
+            next();
+          });
+        }
+      ], done);
+    });
+
     it('fetches the most recent version when not specifying a timestamp', function(done) {
       var connection = backend.connect();
       async.waterfall([
