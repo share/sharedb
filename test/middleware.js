@@ -702,6 +702,79 @@ describe('middleware', function() {
       });
     });
 
+    it('applies the fixup once when the submit is retried', function(done) {
+      var remoteDoc = backend.connect().get('dogs', 'fido');
+
+      doc.submitOp([{p: ['fixups'], oi: 0}], function(error) {
+        if (error) return done(error);
+        remoteDoc.fetch(function(error) {
+          if (error) return done(error);
+
+          backend.use('apply', function(request, next) {
+            request.$fixup([{p: ['fixups'], na: 1}]);
+            next();
+          });
+
+          var commitDoc;
+          var commitRemoteDoc;
+          backend.use('commit', function(request, next) {
+            // Once we've forced the race, let the retry through untouched
+            if (commitDoc && commitRemoteDoc) return next();
+            if (request.op.src === doc.connection.id) commitDoc = next;
+            else commitRemoteDoc = next;
+            // Both ops have now been applied to the same snapshot, so
+            // committing one of them will force the other to retry
+            if (commitDoc && commitRemoteDoc) commitDoc();
+          });
+
+          doc.submitOp([{p: ['name', 0], si: 'a'}], function(error) {
+            if (error) return done(error);
+            commitRemoteDoc();
+          });
+
+          remoteDoc.submitOp([{p: ['name', 0], si: 'b'}], function(error) {
+            if (error) return done(error);
+            backend.db.getSnapshot('dogs', 'fido', null, null, function(error, snapshot) {
+              if (error) return done(error);
+              expect(snapshot.data.fixups).to.equal(2);
+              expect(snapshot.data).to.eql(remoteDoc.data);
+              expect(snapshot.v).to.equal(remoteDoc.version);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    it('applies the fixup once when a create is retried', function(done) {
+      backend.use('apply', function(request, next) {
+        request.$fixup([{p: ['fixups'], na: 1}]);
+        next();
+      });
+
+      // A create can only be retried if the database reports a failed commit
+      // without another op having landed, since a create that loses a genuine
+      // race is rejected during transform
+      var commit = backend.db.commit;
+      var lostRace = false;
+      sinon.stub(backend.db, 'commit').callsFake(function(collection, id, op, snapshot, options, callback) {
+        if (lostRace) return commit.call(this, collection, id, op, snapshot, options, callback);
+        lostRace = true;
+        process.nextTick(callback, null, false);
+      });
+
+      doc = connection.get('dogs', 'rover');
+      doc.create({name: 'rover', fixups: 0}, function(error) {
+        if (error) return done(error);
+        backend.db.getSnapshot('dogs', 'rover', null, null, function(error, snapshot) {
+          if (error) return done(error);
+          expect(snapshot.data.fixups).to.equal(1);
+          expect(snapshot.data).to.eql(doc.data);
+          done();
+        });
+      });
+    });
+
     it('applies two fixups', function(done) {
       backend.use('apply', function(request, next) {
         request.$fixup([{p: ['tricks', 0], li: 'sit'}]);

@@ -65,6 +65,9 @@ backend.use('apply', (context, next) => {
 })
 ```
 
+{: .warn :}
+The `'apply'` hook may be triggered more than once for a single submission. If another client wins the race to commit, the op is transformed over the winning op and applied again to the newer snapshot, re-triggering the hook. Be careful, therefore, with any side effects that assume the hook only runs once per op.
+
 ### Commit
 
 The [`commit`]({{ site.baseurl }}{% link middleware/actions.md %}#commit) hook is triggered after the op has been applied to the snapshot in memory, and both the op and snapshot are about to be written to the database.
@@ -157,6 +160,9 @@ backend.use('apply', (request, next) => {
 
 {: .warn :}
 The `request.$fixup()` method may throw an error, which should be handled appropriately, usually by passing directly to the `next()` callback.
+
+{: .info :}
+Since the [`'apply'`](#apply) hook can be triggered more than once for a single submission, `request.$fixup()` may also be called more than once. Fixups from an abandoned attempt are discarded along with it, and the hook is expected to fix the op up again against the newer snapshot. Only the fixups from the attempt that is actually committed are sent to the client.
 
 ## Comparing old snapshot version with new version
 
