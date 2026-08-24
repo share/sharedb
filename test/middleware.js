@@ -565,6 +565,68 @@ describe('middleware', function() {
       });
     });
 
+    it('transforms a pending op by multiple fixups', function(done) {
+      var applied = false;
+      backend.use('apply', function(request, next) {
+        if (applied) return next();
+        applied = true;
+        request.$fixup([{p: ['tricks', 0], li: 'sit'}]);
+        request.$fixup([{p: ['tricks', 0], li: 'stay'}]);
+        next();
+      });
+
+      var remoteConnection = backend.connect();
+      var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+      remoteDoc.subscribe(function(error) {
+        if (error) return done(error);
+
+        expect(remoteDoc.data).to.eql({name: 'fido'});
+
+        remoteDoc.on('op batch', function() {
+          if (remoteDoc.version !== 3) return;
+          expect(remoteDoc.data.tricks).to.eql(['stay', 'sit', 'fetch', 'lie down']);
+          expect(remoteDoc.data).to.eql(doc.data);
+          done();
+        });
+
+        doc.preventCompose = true;
+        doc.submitOp([{p: ['tricks'], oi: ['fetch']}], errorHandler(done));
+        doc.submitOp([{p: ['tricks', 1], li: 'lie down'}], errorHandler(done));
+      });
+    });
+
+    it('transforms multiple pending ops by a fixup', function(done) {
+      var applied = false;
+      backend.use('apply', function(request, next) {
+        if (applied) return next();
+        applied = true;
+        request.$fixup([{p: ['tricks', 0], li: 'stay'}]);
+        next();
+      });
+
+      var remoteConnection = backend.connect();
+      var remoteDoc = remoteConnection.get('dogs', 'fido');
+
+      remoteDoc.subscribe(function(error) {
+        if (error) return done(error);
+
+        expect(remoteDoc.data).to.eql({name: 'fido'});
+
+        remoteDoc.on('op batch', function() {
+          if (remoteDoc.version !== 4) return;
+          expect(remoteDoc.data.tricks).to.eql(['stay', 'fetch', 'sit', 'roll over']);
+          expect(remoteDoc.data).to.eql(doc.data);
+          done();
+        });
+
+        doc.preventCompose = true;
+        doc.submitOp([{p: ['tricks'], oi: ['fetch']}], errorHandler(done));
+        doc.submitOp([{p: ['tricks', 1], li: 'sit'}], errorHandler(done));
+        doc.submitOp([{p: ['tricks', 2], li: 'roll over'}], errorHandler(done));
+      });
+    });
+
     it('applies a fixup to a creation op', function(done) {
       backend.use('apply', function(request, next) {
         request.$fixup([{p: ['goodBoy'], oi: true}]);
