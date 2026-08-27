@@ -251,6 +251,15 @@ backend.use(action, middleware)
 
 > A [middleware]({{ site.baseurl }}{% link middleware/index.md %}) function
 
+`order` -- number
+
+Optional
+{: .label .label-grey }
+
+> Default: `0`
+
+> The order to run this middleware relative to other middlewares. Middleware with higher `order` will run later. Ties are broken on registration order.
+
 ### addProjection()
 
 Defines a [projection]({{ site.baseurl }}{% link projections.md %}).
