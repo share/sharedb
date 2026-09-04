@@ -15,7 +15,7 @@
     "chai": "^6.2.2",
     "eslint": "^10.1.0",
     "eslint-config-google": "^0.14.0",
-    "mocha": "^11.7.5",
+    "mocha": "^12.0.0",
     "nyc": "^18.0.0",
     "ot-json0-v2": "https://github.com/ottypes/json0#90a3ae26364c4fa3b19b6df34dad46707a704421",
     "ot-json1": "^1.0.2",
