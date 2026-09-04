@@ -385,4 +385,20 @@ describe('projection utility methods', function() {
       );
     });
   });
+
+  describe('field names inherited from Object.prototype', function() {
+    ['__proto__', 'constructor', 'toString'].forEach(function(badProp) {
+      it('does not treat ' + badProp + ' as a projected field', function() {
+        var op = {op: [{p: [badProp, 'x'], oi: 'oops'}]};
+        expect(projections.isOpAllowed(null, {x: true}, op)).equal(false);
+        projections.projectOp({x: true}, op);
+        expect(op).eql({op: []});
+      });
+
+      it('does not treat ' + badProp + ' as an allowed snapshot field', function() {
+        var data = JSON.parse('{"' + badProp + '": "oops"}');
+        expect(projections.isSnapshotAllowed({x: true}, {type: type, data: data})).equal(false);
+      });
+    });
+  });
 });
