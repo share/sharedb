@@ -760,16 +760,21 @@ describe('Doc', function() {
       });
     });
 
-    // ot-json0 walks ops with .length and numeric indexing, so it applies an
-    // array-like object as if it were an op
     [
       {
         name: 'an array-like op',
-        op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1}
+        op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1},
+        error: 'json0 op must be an array'
       },
       {
         name: 'ops with a path segment that is not a string',
-        op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}]
+        op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}],
+        error: 'Invalid path segment'
+      },
+      {
+        name: 'ops with a component that is not an object',
+        op: [null],
+        error: 'Missing path'
       }
     ].forEach(function(test) {
       it('Rejects ' + test.name, function(done) {
@@ -780,13 +785,59 @@ describe('Doc', function() {
           if (err) {
             return done(err);
           }
-          expectReceiveError(connection, collectionName, docId, 'Invalid path segment', function(error) {
+          expectReceiveError(connection, collectionName, docId, test.error, function(error) {
             if (error) {
               return done(error);
             }
             expect({}.polluted).to.equal(undefined);
             done();
           });
+          connection.send({
+            a: 'op',
+            c: collectionName,
+            d: docId,
+            v: 1,
+            seq: connection.seq++,
+            x: {},
+            op: test.op
+          });
+        });
+      });
+    });
+
+    // ot-json0's apply() quietly ignores an op that isn't an array, but its
+    // compose() and invert() throw on one. $fixup() composes, and it is called
+    // from middleware, so the throw is uncaught and takes the process down
+    [
+      {
+        name: 'an array-like op',
+        op: {0: {p: ['colour'], oi: 'red'}, length: 1},
+        error: 'json0 op must be an array'
+      },
+      {
+        name: 'a bare op component',
+        op: {p: ['colour'], oi: 'red'},
+        error: 'json0 op must be an array'
+      },
+      {
+        name: 'an op component that is not an object',
+        op: [null],
+        error: 'Missing path'
+      }
+    ].forEach(function(test) {
+      it('Rejects ' + test.name + ' before the apply middleware can fix it up', function(done) {
+        var connection = this.connection;
+        var collectionName = 'test-collection';
+        var docId = 'test-doc';
+        this.backend.use('apply', function(request, next) {
+          if ('op' in request.op) request.$fixup([{p: ['fixed'], oi: true}]);
+          next();
+        });
+        connection.get(collectionName, docId).create({id: docId}, function(err) {
+          if (err) {
+            return done(err);
+          }
+          expectReceiveError(connection, collectionName, docId, test.error, done);
           connection.send({
             a: 'op',
             c: collectionName,
