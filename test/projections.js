@@ -385,4 +385,33 @@ describe('projection utility methods', function() {
       );
     });
   });
+
+  describe('non-truthy field values', function() {
+    it('does not treat a false field as a projected field', function() {
+      var op = {op: [{p: ['x', 'y'], oi: 'nope'}]};
+      expect(projections.isOpAllowed(null, {x: false}, op)).equal(false);
+      projections.projectOp({x: false}, op);
+      expect(op).eql({op: []});
+    });
+
+    it('does not treat a false field as an allowed snapshot field', function() {
+      expect(projections.isSnapshotAllowed({x: false}, {type: type, data: {x: 1}})).equal(false);
+    });
+  });
+
+  describe('field names inherited from Object.prototype', function() {
+    ['__proto__', 'constructor', 'toString'].forEach(function(badProp) {
+      it('does not treat ' + badProp + ' as a projected field', function() {
+        var op = {op: [{p: [badProp, 'x'], oi: 'oops'}]};
+        expect(projections.isOpAllowed(null, {x: true}, op)).equal(false);
+        projections.projectOp({x: true}, op);
+        expect(op).eql({op: []});
+      });
+
+      it('does not treat ' + badProp + ' as an allowed snapshot field', function() {
+        var data = JSON.parse('{"' + badProp + '": "oops"}');
+        expect(projections.isSnapshotAllowed({x: true}, {type: type, data: data})).equal(false);
+      });
+    });
+  });
 });
