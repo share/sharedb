@@ -125,6 +125,106 @@ describe('ot', function() {
     });
   });
 
+  describe('json0 op validation', function() {
+    var snapshot;
+
+    beforeEach(function() {
+      snapshot = {v: 6, type: type.uri, data: {colour: 'blue'}};
+    });
+
+    afterEach(function() {
+      delete Object.prototype.polluted;
+    });
+
+    it('does not pollute the prototype through an array-like op', function() {
+      var op = {0: {p: ['__proto__', 'polluted'], oi: 'yes'}, length: 1};
+      var error = ot.apply(snapshot, {v: 6, op: op});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Invalid path segment');
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('does not pollute the prototype through an array-like op with a string length', function() {
+      var op = {0: {p: ['__proto__', 'polluted'], oi: 'yes'}, length: '1'};
+      var error = ot.apply(snapshot, {v: 6, op: op});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Invalid path segment');
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    it('does not pollute the prototype through a path segment that is not a string', function() {
+      var error = ot.apply(snapshot, {v: 6, op: [{p: [['__proto__'], 'polluted'], oi: 'yes'}]});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Invalid path segment');
+      expect({}.polluted).to.equal(undefined);
+    });
+
+    ['__proto__', 'constructor'].forEach(function(badProp) {
+      it('rejects ' + badProp + ' as a path segment', function() {
+        var error = ot.apply(snapshot, {v: 6, op: [{p: [badProp, 'polluted'], oi: 'yes'}]});
+        expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+        expect(error.message).to.equal('Invalid path segment');
+        expect({}.polluted).to.equal(undefined);
+      });
+    });
+
+    it('returns an error for an op component that is not an object', function() {
+      var error;
+      expect(function() {
+        error = ot.apply(snapshot, {v: 6, op: [null]});
+      }).to.not.throw();
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+    });
+
+    it('returns an error for an array-like op whose components are missing', function() {
+      var error = ot.apply(snapshot, {v: 6, op: {length: 1e9}});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+    });
+
+    it('accepts an op that ot-json0 treats as a no-op', function() {
+      expect(ot.apply(snapshot, {v: 6, op: {p: ['colour'], oi: 'red'}})).equal();
+      expect(snapshot).to.eql({v: 7, type: type.uri, data: {colour: 'blue'}});
+    });
+  });
+
+  describe('checkOpForType', function() {
+    it('rejects an array-like json0 op', function() {
+      var op = {op: {0: {p: ['colour'], oi: 'red'}, length: 1}};
+      var error = ot.checkOpForType(type.uri, op);
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_BADLY_FORMED);
+    });
+
+    it('rejects a json0 op that is not an array', function() {
+      var error = ot.checkOpForType(type.uri, {op: {p: ['colour'], oi: 'red'}});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_BADLY_FORMED);
+    });
+
+    it('rejects a json0 op component that is not an object', function() {
+      var error = ot.checkOpForType(type.uri, {op: [null]});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Missing path');
+    });
+
+    it('rejects a dangerous path segment', function() {
+      var error = ot.checkOpForType(type.uri, {op: [{p: ['__proto__', 'x'], oi: 'yes'}]});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Invalid path segment');
+    });
+
+    it('accepts a valid json0 op', function() {
+      expect(ot.checkOpForType(type.uri, {op: [{p: ['colour'], oi: 'red'}]})).equal();
+    });
+
+    it('leaves ops for other types alone', function() {
+      expect(ot.checkOpForType(presenceType.uri, {op: {index: 0, value: 'hi'}})).equal();
+    });
+
+    it('leaves creates and deletes alone', function() {
+      expect(ot.checkOpForType(type.uri, {create: {type: type.uri}})).equal();
+      expect(ot.checkOpForType(type.uri, {del: true})).equal();
+    });
+  });
+
   describe('no-op', function() {
     it('works on existing docs', function() {
       var doc = {v: 6, type: type.uri, data: 'Hi'};
@@ -374,6 +474,55 @@ describe('ot', function() {
 
   describe('applyOps', function() {
     describe('with normalization turned on', function() {
+      afterEach(function() {
+        delete Object.prototype.polluted;
+      });
+
+      it('does not pollute the prototype while normalizing a legacy op', function() {
+        var snapshot = {
+          type: 'http://sharejs.org/types/JSONv0',
+          data: {title: 'Wee Free Men'}
+        };
+
+        var ops = [
+          {
+            v: 1,
+            op: [
+              {p: ['__proto__', 'polluted'], oi: 'yes'},
+              {p: ['title'], od: 'Wee Free Men', oi: 'Nation'}
+            ]
+          }
+        ];
+
+        var error = ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+        expect(error.message).to.equal('Invalid path segment');
+        expect({}.polluted).to.equal(undefined);
+      });
+
+      it('replays a legacy op that ot-json0 treats as a no-op', function() {
+        var snapshot = {
+          type: 'http://sharejs.org/types/JSONv0',
+          data: {title: 'Wee Free Men'}
+        };
+
+        var ops = [
+          {
+            v: 1,
+            op: {p: ['title'], od: 'Wee Free Men', oi: 'Nation'}
+          }
+        ];
+
+        var error = ot.applyOps(snapshot, ops, {
+          _normalizeLegacyJson0Ops: true
+        });
+        expect(error).to.be.undefined;
+        expect(snapshot.data).to.eql({title: 'Wee Free Men'});
+        expect(snapshot.v).to.equal(2);
+      });
+
       it('applies an op to a snapshot', function() {
         var snapshot = {
           type: 'http://sharejs.org/types/JSONv0',

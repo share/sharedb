@@ -682,6 +682,10 @@ describe('Doc', function() {
       });
     }
 
+    afterEach(function() {
+      delete Object.prototype.polluted;
+    });
+
     ['__proto__', 'constructor'].forEach(function(badProp) {
       it('Rejects ops with collection ' + badProp, function(done) {
         var collectionName = badProp;
@@ -752,6 +756,76 @@ describe('Doc', function() {
             x: {},
             op: [{p: ['foo', badProp], oi: 'oops'}]
           });
+        });
+      });
+    });
+
+    [
+      {
+        name: 'an array-like op',
+        op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1},
+        error: 'json0 op must be an array'
+      },
+      {
+        name: 'ops with a path segment that is not a string',
+        op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}],
+        error: 'Invalid path segment'
+      },
+      {
+        name: 'ops with a component that is not an object',
+        op: [null],
+        error: 'Missing path'
+      }
+    ].forEach(function(test) {
+      it('Rejects ' + test.name, function(done) {
+        var connection = this.connection;
+        var collectionName = 'test-collection';
+        var docId = 'test-doc';
+        connection.get(collectionName, docId).create({id: docId}, function(err) {
+          if (err) {
+            return done(err);
+          }
+          expectReceiveError(connection, collectionName, docId, test.error, function(error) {
+            if (error) {
+              return done(error);
+            }
+            expect({}.polluted).to.equal(undefined);
+            done();
+          });
+          connection.send({
+            a: 'op',
+            c: collectionName,
+            d: docId,
+            v: 1,
+            seq: connection.seq++,
+            x: {},
+            op: test.op
+          });
+        });
+      });
+    });
+
+    it('Rejects an array-like op before the apply middleware can fix it up', function(done) {
+      var connection = this.connection;
+      var collectionName = 'test-collection';
+      var docId = 'test-doc';
+      this.backend.use('apply', function(request, next) {
+        if ('op' in request.op) request.$fixup([{p: ['fixed'], oi: true}]);
+        next();
+      });
+      connection.get(collectionName, docId).create({id: docId}, function(err) {
+        if (err) {
+          return done(err);
+        }
+        expectReceiveError(connection, collectionName, docId, 'json0 op must be an array', done);
+        connection.send({
+          a: 'op',
+          c: collectionName,
+          d: docId,
+          v: 1,
+          seq: connection.seq++,
+          x: {},
+          op: {0: {p: ['colour'], oi: 'red'}, length: 1}
         });
       });
     });
