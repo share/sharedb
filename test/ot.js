@@ -187,6 +187,44 @@ describe('ot', function() {
     });
   });
 
+  describe('checkOpForType', function() {
+    it('rejects an array-like json0 op', function() {
+      var op = {op: {0: {p: ['colour'], oi: 'red'}, length: 1}};
+      var error = ot.checkOpForType(type.uri, op);
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_BADLY_FORMED);
+    });
+
+    it('rejects a json0 op that is not an array', function() {
+      var error = ot.checkOpForType(type.uri, {op: {p: ['colour'], oi: 'red'}});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_BADLY_FORMED);
+    });
+
+    it('rejects a json0 op component that is not an object', function() {
+      var error = ot.checkOpForType(type.uri, {op: [null]});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Missing path');
+    });
+
+    it('rejects a dangerous path segment', function() {
+      var error = ot.checkOpForType(type.uri, {op: [{p: ['__proto__', 'x'], oi: 'yes'}]});
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Invalid path segment');
+    });
+
+    it('accepts a valid json0 op', function() {
+      expect(ot.checkOpForType(type.uri, {op: [{p: ['colour'], oi: 'red'}]})).equal();
+    });
+
+    it('leaves ops for other types alone', function() {
+      expect(ot.checkOpForType(presenceType.uri, {op: {index: 0, value: 'hi'}})).equal();
+    });
+
+    it('leaves creates and deletes alone', function() {
+      expect(ot.checkOpForType(type.uri, {create: {type: type.uri}})).equal();
+      expect(ot.checkOpForType(type.uri, {del: true})).equal();
+    });
+  });
+
   describe('no-op', function() {
     it('works on existing docs', function() {
       var doc = {v: 6, type: type.uri, data: 'Hi'};
