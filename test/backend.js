@@ -248,7 +248,7 @@ describe('Backend', function() {
             title: '1984',
             author: 'George Orwell'
           });
-          var op = {op: {p: ['publication'], oi: 1949}};
+          var op = {op: [{p: ['publication'], oi: 1949}]};
           stream.on('data', function(data) {
             expect(data.op).to.eql(op.op);
             done();
@@ -328,7 +328,7 @@ describe('Backend', function() {
           done();
         });
 
-        var op = {op: {p: ['publicationYear'], oi: 1949}};
+        var op = {op: [{p: ['publicationYear'], oi: 1949}]};
         backend.submit(agent, 'books', '1984', op, null, function(error) {
           if (error) done(error);
         });
@@ -345,7 +345,7 @@ describe('Backend', function() {
           done();
         });
 
-        var op = {op: {p: ['publicationYear'], oi: 1949}};
+        var op = {op: [{p: ['publicationYear'], oi: 1949}]};
         backend.submit(agent, 'books', '1984', op, null, function() {
           // Swallow the error
         });
