@@ -829,6 +829,123 @@ describe('Doc', function() {
         });
       });
     });
+
+    function expectInvalidPathSegment(error) {
+      expect(error.code).to.equal(ShareDBError.CODES.ERR_OT_OP_NOT_APPLIED);
+      expect(error.message).to.equal('Invalid path segment');
+      expect({}.polluted).to.equal(undefined);
+    }
+
+    describe('ops from the server', function() {
+      var multiComponentOp = [{p: ['baz'], oi: true}, {p: ['__proto__', 'polluted'], oi: 'oops'}];
+      var connection;
+      var doc;
+
+      beforeEach(function(done) {
+        connection = this.connection;
+        doc = connection.get('test-collection', 'test-doc');
+        doc.create({foo: 'bar'}, done);
+      });
+
+      function sendOp(op) {
+        connection.handleMessage({
+          a: 'op',
+          c: doc.collection,
+          d: doc.id,
+          v: 1,
+          src: 'hostile',
+          seq: 1,
+          op: op
+        });
+      }
+
+      [
+        {
+          name: 'ops with a dangerous first path segment',
+          op: [{p: ['__proto__', 'polluted'], oi: 'oops'}]
+        },
+        {
+          name: 'ops with a dangerous later path segment',
+          op: [{p: ['foo', 'constructor'], oi: 'oops'}]
+        },
+        {
+          name: 'an array-like op',
+          op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1}
+        },
+        {
+          name: 'ops with a path segment that is not a string',
+          op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}]
+        },
+        {
+          name: 'multi-component ops',
+          op: multiComponentOp
+        }
+      ].forEach(function(test) {
+        it('Rejects ' + test.name, function(done) {
+          doc.on('error', function(error) {
+            expectInvalidPathSegment(error);
+            done();
+          });
+          sendOp(test.op);
+        });
+      });
+
+      it('does not apply the valid components of a rejected multi-component op', function(done) {
+        doc.on('error', function() {
+          expect(doc.data).to.not.have.property('baz');
+          done();
+        });
+        sendOp(multiComponentOp);
+      });
+    });
+
+    describe('locally submitted ops', function() {
+      var badOp = [{p: ['__proto__', 'polluted'], oi: 'oops'}];
+
+      it('rejects an op composed into a pending create', function(done) {
+        var doc = this.connection.get('test-collection', 'test-doc');
+        doc.create({foo: 'bar'});
+        doc.submitOp(badOp, function(error) {
+          expectInvalidPathSegment(error);
+          done();
+        });
+      });
+
+      it('rejects an op without sending it to the server', function(done) {
+        var doc = this.connection.get('test-collection', 'test-doc');
+        doc.create({foo: 'bar'}, function(error) {
+          if (error) return done(error);
+          var calledBack = false;
+          doc.submitOp(badOp, function(error) {
+            calledBack = true;
+            expectInvalidPathSegment(error);
+          });
+          // The server would only reject asynchronously, so calling back
+          // synchronously is how we know the op never left the client
+          expect(calledBack).to.equal(true);
+          done();
+        });
+      });
+
+      it('leaves the doc usable after rejecting an op', function(done) {
+        var doc = this.connection.get('test-collection', 'test-doc');
+        async.series([
+          doc.create.bind(doc, {foo: 'bar'}),
+          function(next) {
+            doc.submitOp(badOp, function(error) {
+              expect(error).to.be.instanceOf(Error);
+              next();
+            });
+          },
+          doc.submitOp.bind(doc, [{p: ['baz'], oi: true}]),
+          doc.whenNothingPending.bind(doc),
+          function(next) {
+            expect(doc.data).to.eql({foo: 'bar', baz: true});
+            next();
+          }
+        ], done);
+      });
+    });
   });
 
   describe('toSnapshot', function() {
