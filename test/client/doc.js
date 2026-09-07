@@ -682,6 +682,10 @@ describe('Doc', function() {
       });
     }
 
+    afterEach(function() {
+      delete Object.prototype.polluted;
+    });
+
     ['__proto__', 'constructor'].forEach(function(badProp) {
       it('Rejects ops with collection ' + badProp, function(done) {
         var collectionName = badProp;
@@ -751,6 +755,46 @@ describe('Doc', function() {
             seq: connection.seq++,
             x: {},
             op: [{p: ['foo', badProp], oi: 'oops'}]
+          });
+        });
+      });
+    });
+
+    // ot-json0 walks ops with .length and numeric indexing, so it applies an
+    // array-like object as if it were an op
+    [
+      {
+        name: 'an array-like op',
+        op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1}
+      },
+      {
+        name: 'ops with a path segment that is not a string',
+        op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}]
+      }
+    ].forEach(function(test) {
+      it('Rejects ' + test.name, function(done) {
+        var connection = this.connection;
+        var collectionName = 'test-collection';
+        var docId = 'test-doc';
+        connection.get(collectionName, docId).create({id: docId}, function(err) {
+          if (err) {
+            return done(err);
+          }
+          expectReceiveError(connection, collectionName, docId, 'Invalid path segment', function(error) {
+            if (error) {
+              return done(error);
+            }
+            expect({}.polluted).to.equal(undefined);
+            done();
+          });
+          connection.send({
+            a: 'op',
+            c: collectionName,
+            d: docId,
+            v: 1,
+            seq: connection.seq++,
+            x: {},
+            op: test.op
           });
         });
       });
