@@ -4,11 +4,13 @@ on:
   push:
     branches:
     - master
+    - main
     paths:
     - docs/**
   pull_request:
     branches:
     - master
+    - main
     paths:
     - docs/**
 
