@@ -25,7 +25,7 @@ You may also wish to install other [OT types]({{ site.baseurl }}{% link types/in
 
 ## Examples
 
-There are [working examples](https://github.com/share/sharedb/tree/master/examples) in the git repository.
+There are [working examples](https://github.com/share/sharedb/tree/main/examples) in the git repository.
 
 ## Usage
 
@@ -65,7 +65,7 @@ This server will accept any WebSocket connection on port 8080, and bind it to Sh
 
 This client example uses [`reconnecting-websocket`](https://www.npmjs.com/package/reconnecting-websocket) to reconnect clients after a socket is closed.
 
-Try running the [working example](https://github.com/share/sharedb/tree/master/examples/counter) to see this in action.
+Try running the [working example](https://github.com/share/sharedb/tree/main/examples/counter) to see this in action.
 
 ```js
 var ReconnectingWebSocket = require('reconnecting-websocket')
