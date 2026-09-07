@@ -11,6 +11,9 @@
 # VS Code
 .vscode/
 
+# LLMs
+.claude/worktrees
+
 # Logs
 logs
 *.log
