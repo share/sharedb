@@ -7,6 +7,7 @@ var ACTIONS = require('../lib/message-actions').ACTIONS;
 var Connection = require('../lib/client/connection');
 var protocol = require('../lib/protocol');
 var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
+var ShareDBError = require('../lib/error');
 
 describe('Agent', function() {
   var backend;
@@ -81,6 +82,53 @@ describe('Agent', function() {
         });
         done();
       });
+    });
+
+    // The client sends its handshake both on socket open and again after the
+    // legacy init reply (see Connection.prototype._handleLegacyInit), so the
+    // server's error reply can arrive twice. Guard against asserting/calling
+    // done() more than once.
+    function expectHandshakeError(connection, done) {
+      var handled = false;
+      connection.on('error', function(err) {
+        if (handled) return;
+        handled = true;
+        expect(err.code).to.equal(ShareDBError.CODES.ERR_MESSAGE_BADLY_FORMED);
+        done();
+      });
+    }
+
+    ['__proto__', 'constructor', 'hasOwnProperty'].forEach(function(badId) {
+      it('rejects a handshake with id ' + badId, function(done) {
+        var socket = new StreamSocket();
+        backend.listen(socket.stream);
+        var connection = new Connection(socket);
+        connection.id = badId;
+        expectHandshakeError(connection, done);
+        socket._open();
+      });
+    });
+
+    it('rejects a handshake with a non-string id', function(done) {
+      var socket = new StreamSocket();
+      backend.listen(socket.stream);
+      var connection = new Connection(socket);
+      connection.id = 123;
+      expectHandshakeError(connection, done);
+      socket._open();
+    });
+
+    it('accepts a handshake with a valid string id', function(done) {
+      var socket = new StreamSocket();
+      var agent = backend.listen(socket.stream);
+      var connection = new Connection(socket);
+      connection.id = 'valid-client-id';
+      connection.once('connected', function() {
+        expect(agent.src).to.equal('valid-client-id');
+        expect(connection.id).to.equal('valid-client-id');
+        done();
+      });
+      socket._open();
     });
   });
 });
