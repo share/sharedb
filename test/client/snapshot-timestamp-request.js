@@ -128,6 +128,17 @@ describe('SnapshotTimestampRequest', function() {
       ], done);
     });
 
+    it('fetches ops up to the current version when there are no milestones', function(done) {
+      sinon.spy(backend.db, 'getOps');
+      var halfwayBetweenDays2and3 = (day2 + day3) * 0.5;
+
+      backend.connect().fetchSnapshotByTimestamp('books', 'time-machine', halfwayBetweenDays2and3, function(error) {
+        if (error) return done(error);
+        expect(backend.db.getOps.calledWith('books', 'time-machine', 0, 3)).to.equal(true);
+        done();
+      });
+    });
+
     it('fetches the day 3 version when asking for a time after day 3', function(done) {
       var connection = backend.connect();
       async.waterfall([
@@ -209,8 +220,11 @@ describe('SnapshotTimestampRequest', function() {
     });
 
     it('returns an empty snapshot if trying to fetch a non-existent document', function(done) {
+      sinon.spy(backend.db, 'getOps');
+
       backend.connect().fetchSnapshotByTimestamp('books', 'does-not-exist', day1, function(error, snapshot) {
         if (error) return done(error);
+        expect(backend.db.getOps.called).to.be.false;
         expect(snapshot).to.eql({
           id: 'does-not-exist',
           v: 0,
@@ -449,6 +463,7 @@ describe('SnapshotTimestampRequest', function() {
       it('fetches a snapshot that matches a milestone snapshot', function(done) {
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime');
         sinon.spy(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime');
+        sinon.spy(db, 'getOps');
 
         backendWithMilestones.connect()
           .fetchSnapshotByTimestamp('books', 'mocking-bird', day2, function(error, snapshot) {
@@ -456,9 +471,31 @@ describe('SnapshotTimestampRequest', function() {
 
             expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.equal(true);
             expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.equal(true);
+            expect(db.getOps.called).to.be.false;
 
             expect(snapshot.v).to.equal(2);
             expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lea'});
+            done();
+          });
+      });
+
+      it('skips fetching ops when milestone times are out of version order', function(done) {
+        var milestoneAtVersion = function(version) {
+          return function(collection, id, _timestamp, callback) {
+            milestoneDb.getMilestoneSnapshot(collection, id, version, callback);
+          };
+        };
+        sinon.stub(milestoneDb, 'getMilestoneSnapshotAtOrBeforeTime').callsFake(milestoneAtVersion(4));
+        sinon.stub(milestoneDb, 'getMilestoneSnapshotAtOrAfterTime').callsFake(milestoneAtVersion(2));
+        sinon.spy(db, 'getOps');
+        var halfwayBetweenDays3and4 = (day3 + day4) * 0.5;
+
+        backendWithMilestones.connect()
+          .fetchSnapshotByTimestamp('books', 'mocking-bird', halfwayBetweenDays3and4, function(error, snapshot) {
+            if (error) return done(error);
+            expect(db.getOps.called).to.be.false;
+            expect(snapshot.v).to.equal(4);
+            expect(snapshot.data).to.eql({title: 'To Kill a Mocking Bird', author: 'Harper Lee', year: 1959});
             done();
           });
       });
@@ -493,7 +530,7 @@ describe('SnapshotTimestampRequest', function() {
 
             expect(milestoneDb.getMilestoneSnapshotAtOrBeforeTime.calledOnce).to.equal(true);
             expect(milestoneDb.getMilestoneSnapshotAtOrAfterTime.calledOnce).to.equal(true);
-            expect(db.getOps.calledWith('books', 'mocking-bird', 4, null)).to.equal(true);
+            expect(db.getOps.calledWith('books', 'mocking-bird', 4, 5)).to.equal(true);
 
             expect(snapshot.v).to.equal(5);
             expect(snapshot.data).to.eql({
