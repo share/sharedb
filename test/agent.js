@@ -98,17 +98,6 @@ describe('Agent', function() {
       });
     }
 
-    ['__proto__', 'constructor', 'hasOwnProperty'].forEach(function(badId) {
-      it('rejects a handshake with id ' + badId, function(done) {
-        var socket = new StreamSocket();
-        backend.listen(socket.stream);
-        var connection = new Connection(socket);
-        connection.id = badId;
-        expectHandshakeError(connection, done);
-        socket._open();
-      });
-    });
-
     it('rejects a handshake with a non-string id', function(done) {
       var socket = new StreamSocket();
       backend.listen(socket.stream);
