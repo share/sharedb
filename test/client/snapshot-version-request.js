@@ -143,6 +143,26 @@ describe('SnapshotVersionRequest', function() {
       expect(fetch).to.throw(Error);
     });
 
+    [{}, null, '__proto__'].forEach(function(badValue) {
+      it('errors without reading the database if the collection is ' + JSON.stringify(badValue), function(done) {
+        var getSnapshot = sinon.spy(MemoryDb.prototype, 'getSnapshot');
+        backend.connect().fetchSnapshot(badValue, 'don-quixote', null, function(error) {
+          expect(error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: 'Invalid collection'});
+          expect(getSnapshot).not.to.have.been.called;
+          done();
+        });
+      });
+
+      it('errors without reading the database if the id is ' + JSON.stringify(badValue), function(done) {
+        var getSnapshot = sinon.spy(MemoryDb.prototype, 'getSnapshot');
+        backend.connect().fetchSnapshot('books', badValue, null, function(error) {
+          expect(error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: 'Invalid id'});
+          expect(getSnapshot).not.to.have.been.called;
+          done();
+        });
+      });
+    });
+
     it('errors if asking for a version that does not exist', function(done) {
       backend.connect().fetchSnapshot('books', 'don-quixote', 4, function(error, snapshot) {
         expect(error).to.be.ok;
