@@ -208,6 +208,26 @@ describe('SnapshotTimestampRequest', function() {
       expect(fetch).to.throw(Error);
     });
 
+    [{}, null, '__proto__'].forEach(function(badValue) {
+      it('errors without reading the database if the collection is ' + JSON.stringify(badValue), function(done) {
+        var getSnapshot = sinon.spy(MemoryDb.prototype, 'getSnapshot');
+        backend.connect().fetchSnapshotByTimestamp(badValue, 'time-machine', null, function(error) {
+          expect(error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: 'Invalid collection'});
+          expect(getSnapshot).not.to.have.been.called;
+          done();
+        });
+      });
+
+      it('errors without reading the database if the id is ' + JSON.stringify(badValue), function(done) {
+        var getSnapshot = sinon.spy(MemoryDb.prototype, 'getSnapshot');
+        backend.connect().fetchSnapshotByTimestamp('books', badValue, null, function(error) {
+          expect(error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: 'Invalid id'});
+          expect(getSnapshot).not.to.have.been.called;
+          done();
+        });
+      });
+    });
+
     it('returns an empty snapshot if trying to fetch a non-existent document', function(done) {
       backend.connect().fetchSnapshotByTimestamp('books', 'does-not-exist', day1, function(error, snapshot) {
         if (error) return done(error);
