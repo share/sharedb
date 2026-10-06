@@ -78,6 +78,8 @@ This action has these additional `context` properties:
 `presence` -- Object
 
 > The presence object that was received. Its shape depends on its [type]({{ site.baseurl }}{% link types/index.md %})
+>
+> `presence.p` is `null` when the presence leaves the channel: when it is destroyed, or when its client unsubscribes or disconnects.
 
 ## `'sendPresence'`
 
