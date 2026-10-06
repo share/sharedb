@@ -92,6 +92,8 @@ Optional
 
 {: .warn }
 > Depending on use-case, the same client may have **multiple** presences, so a user or client ID may not be appropriate to use as a presence ID.
+>
+> Presence IDs are sent to every subscriber, so the server should check that a client only uses its own. See [Access control]({{ site.baseurl }}{% link presence.md %}#presence-ids).
 
 Return value
 

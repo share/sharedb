@@ -69,6 +69,9 @@ This action has these additional `context` properties:
 
 Presence information has just been received from a client. The presence has not yet been transformed against any ops it has missed.
 
+{: .warn }
+Presence is not covered by document permissions. See [Access control]({{ site.baseurl }}{% link presence.md %}#access-control).
+
 This action has these additional `context` properties:
 
 `collection` -- string
@@ -82,6 +85,9 @@ This action has these additional `context` properties:
 ## `'sendPresence'`
 
 Presence information is about to be sent to a client.
+
+{: .warn }
+Presence is not covered by document permissions. See [Access control]({{ site.baseurl }}{% link presence.md %}#access-control).
 
 This action has these additional `context` properties:
 
