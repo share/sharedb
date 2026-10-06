@@ -137,7 +137,10 @@ This action has these additional `context` properties:
 
 ## `'readSnapshots'`
 
-One or more snapshots were loaded from the database for a fetch or subscribe.
+One or more snapshots were loaded from the database for a fetch, subscribe or query.
+
+{: .warn }
+Ops sent to the client do not pass through this action. Read access control also needs [`'op'`](#op) middleware. See [Access control]({{ site.baseurl }}{% link middleware/access-control.md %}).
 
 This action has these additional `context` properties:
 
@@ -158,7 +161,10 @@ This action has these additional `context` properties:
 
 ## `'op'`
 
-An operation was loaded from the database.
+An operation is being read for a client, from the database or over [pub/sub]({{ site.baseurl }}{% link pub-sub.md %}), usually to send to it.
+
+{: .warn }
+Snapshots sent to the client do not pass through this action. Read access control also needs [`'readSnapshots'`](#readsnapshots) middleware. See [Access control]({{ site.baseurl }}{% link middleware/access-control.md %}).
 
 This action has these additional `context` properties:
 
