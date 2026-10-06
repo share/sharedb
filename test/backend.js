@@ -279,6 +279,37 @@ describe('Backend', function() {
           done();
         });
       });
+
+      describe('when one subscribe fails', function() {
+        var finishSubscribe;
+
+        beforeEach(function() {
+          finishSubscribe = {};
+          backend.pubsub._subscribe = function(channel, callback) {
+            finishSubscribe[channel] = callback;
+          };
+        });
+
+        it('destroys streams that subscribed before the failure', function(done) {
+          backend.subscribeBulk(agent, 'books', ['1984', 'bad'], function(error) {
+            expect(error.message).to.equal('subscribe failed');
+            expect(backend.pubsub.streamsCount).to.equal(0);
+            done();
+          });
+          finishSubscribe['books.1984']();
+          finishSubscribe['books.bad'](new Error('subscribe failed'));
+        });
+
+        it('destroys streams that subscribe after the failure', function(done) {
+          backend.subscribeBulk(agent, 'books', ['1984', 'bad'], function(error) {
+            expect(error.message).to.equal('subscribe failed');
+            finishSubscribe['books.1984']();
+            expect(backend.pubsub.streamsCount).to.equal(0);
+            done();
+          });
+          finishSubscribe['books.bad'](new Error('subscribe failed'));
+        });
+      });
     });
 
     describe('submitRequestEnd', function() {
