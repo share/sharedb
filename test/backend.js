@@ -229,6 +229,17 @@ describe('Backend', function() {
       });
     });
 
+    describe('subscribeBulk', function() {
+      it('only subscribes once to a duplicated id', function(done) {
+        backend.subscribeBulk(agent, 'books', ['1984', '1984'], function(error, streams) {
+          if (error) return done(error);
+          expect(Object.keys(streams)).to.eql(['1984']);
+          expect(backend.pubsub.streamsCount).to.equal(1);
+          done();
+        });
+      });
+    });
+
     describe('submitRequestEnd', function() {
       it('emits after write', function(done) {
         var afterWriteCalled = false;

@@ -486,6 +486,54 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('does not leak Streams when subscribing the same presence multiple times in parallel', function(done) {
+    var streamsCount = backend.pubsub.streamsCount;
+    async.series([
+      function(next) {
+        presence1.subscribe();
+        // Trick it into sending a duplicate request
+        presence1.wantSubscribe = false;
+        presence1.subscribe(next);
+      },
+      function(next) {
+        expect(backend.pubsub.streamsCount).to.equal(streamsCount + 1);
+        next();
+      },
+      presence1.unsubscribe.bind(presence1),
+      function(next) {
+        expect(backend.pubsub.streamsCount).to.equal(streamsCount);
+        next();
+      }
+    ], done);
+  });
+
+  it('does not broadcast a disconnect when subscribing the same presence multiple times in parallel', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence1.subscribe();
+        // Trick it into sending a duplicate request
+        presence1.wantSubscribe = false;
+        presence1.subscribe(next);
+      },
+      function(next) {
+        localPresence1.submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+      }
+    ], done);
+  });
+
   it('throws an error when trying to create a presence with a non-string ID', function() {
     expect(function() {
       presence1.create(123);
