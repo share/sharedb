@@ -127,11 +127,13 @@ module.exports = function(options) {
 
         it('does not duplicate messages', function(done) {
           var connection = this.backend.connect();
+          this.backend.db.pollInterval = 0;
+          this.backend.db.pollDebounce = 0;
           var count = 0;
           var query = connection.createSubscribeQuery(
             'dogs',
             this.matchAllDbQuery,
-            {pollInterval: 0, pollDebounce: 0},
+            null,
             function(err) {
               if (err) return done(err);
               connection.get('dogs', '1').on('error', done).create({});
@@ -519,13 +521,17 @@ function commonTests(options) {
     });
   });
 
-  it('pollDebounce option reduces subsequent poll interval', function(done) {
+  it('query middleware pollDebounce option reduces subsequent poll interval', function(done) {
     var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.db.canPollDoc = function() {
       return false;
     };
-    var query = connection.createSubscribeQuery('items', this.matchAllDbQuery, {pollDebounce: 2000});
+    this.backend.use('query', function(context, next) {
+      context.options.pollDebounce = 2000;
+      next();
+    });
+    var query = connection.createSubscribeQuery('items', this.matchAllDbQuery);
     query.on('error', done);
     var batchSizes = [];
     var total = 0;
@@ -618,21 +624,21 @@ function commonTests(options) {
     });
   });
 
-  it('pollInterval updates a subscribed query after an unpublished create', function(done) {
+  it('query middleware pollInterval updates a subscribed query after an unpublished create', function(done) {
     var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.suppressPublish = true;
-    var query = connection.createSubscribeQuery(
-      'dogs',
-      this.matchAllDbQuery,
-      {pollDebounce: 0, pollInterval: 50},
-      function(err) {
-        if (err) return done(err);
-        connection.get('dogs', 'fido').on('error', done).create({}, function() {
-          clock.tick(51);
-        });
-      }
-    );
+    this.backend.use('query', function(context, next) {
+      context.options.pollDebounce = 0;
+      context.options.pollInterval = 50;
+      next();
+    });
+    var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, null, function(err) {
+      if (err) return done(err);
+      connection.get('dogs', 'fido').on('error', done).create({}, function() {
+        clock.tick(51);
+      });
+    });
     query.on('error', done);
     query.on('insert', function(docs) {
       expect(util.pluck(docs, 'id')).eql(['fido']);
@@ -659,13 +665,17 @@ function commonTests(options) {
     });
   });
 
-  it('pollInterval captures additional unpublished creates', function(done) {
+  it('query middleware pollInterval captures additional unpublished creates', function(done) {
     var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     this.backend.suppressPublish = true;
+    this.backend.use('query', function(context, next) {
+      context.options.pollInterval = 1000;
+      next();
+    });
     var count = 0;
 
-    var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, {pollInterval: 1000}, function(err) {
+    var query = connection.createSubscribeQuery('dogs', this.matchAllDbQuery, null, function(err) {
       if (err) return done(err);
       var doc = connection.get('dogs', count.toString()).on('error', done);
       doc.create({}, function(e) {
@@ -684,6 +694,34 @@ function commonTests(options) {
       });
     });
     clock.tick(1);
+  });
+
+  it('does not pass client pollInterval or pollDebounce to query middleware', function(done) {
+    var connection = this.backend.connect();
+    var queryOptions;
+    this.backend.use('query', function(context, next) {
+      queryOptions = context.options;
+      next();
+    });
+    connection.createSubscribeQuery('dogs', this.matchAllDbQuery, {pollInterval: 1, pollDebounce: 0}, function(err) {
+      if (err) return done(err);
+      expect(queryOptions).not.to.have.any.keys('pollInterval', 'pollDebounce');
+      done();
+    });
+  });
+
+  it('ignores pollInterval from client query options', function(done) {
+    var clock = util.useFakeTimers();
+    var connection = this.backend.connect();
+    var db = this.backend.db;
+    db.pollInterval = 0;
+    sinon.spy(db, 'queryPoll');
+    connection.createSubscribeQuery('dogs', this.matchAllDbQuery, {pollInterval: 50}, function(err) {
+      if (err) return done(err);
+      clock.tick(1000);
+      expect(db.queryPoll.called).to.be.false;
+      done();
+    });
   });
 
   it('query extra is returned to client', function(done) {
@@ -906,7 +944,7 @@ function commonTests(options) {
     connection.createSubscribeQuery(
       'dogs',
       this.matchAllDbQuery,
-      {pollInterval: 0, pollDebounce: 0},
+      null,
       function(err) {
         if (err) {
           expect(err.message).to.be.equal('TEST_ERROR');
