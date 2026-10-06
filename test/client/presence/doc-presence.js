@@ -792,6 +792,21 @@ describe('DocPresence', function() {
     ], done);
   });
 
+  it('does not keep presence when fetching its doc version fails', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function(context, next) {
+      next(new Error('denied'));
+    });
+
+    localPresence1.submit({index: 1}, function(error) {
+      expect(error.message).to.contain('denied');
+      expect(connection1.agent.presenceRequests).to.be.empty;
+      expect(connection1.agent._pendingPresenceBroadcasts).to.be.empty;
+      done();
+    });
+  });
+
   it('errors when trying to submit presence on a type that does not support it', function(done) {
     var jsonDoc = connection1.get('books', 'snuff');
     var jsonPresence = connection1.getDocPresence('books', 'snuff');
@@ -989,6 +1004,46 @@ describe('DocPresence', function() {
           expect(presence).to.be.null;
           next();
         });
+      }
+    ], done);
+  });
+
+  it('releases the doc version stream of presence in flight when unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var streamsCount;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      if (context.presence.p === null) return next();
+      presence1.unsubscribe(function(error) {
+        if (error) return done(error);
+        next();
+      });
+    });
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        streamsCount = backend.pubsub.streamsCount;
+        next();
+      },
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        async.parallel([
+          function(cb) {
+            presence2.once('receive', function(id, presence) {
+              expect(id).to.equal('presence-1');
+              expect(presence).to.be.null;
+              cb();
+            });
+          },
+          function(cb) {
+            localPresence1.submit({index: 1}, cb);
+          }
+        ], next);
+      },
+      function(next) {
+        expect(backend.pubsub.streamsCount).to.equal(streamsCount);
+        next();
       }
     ], done);
   });

@@ -7,6 +7,10 @@ var ACTIONS = require('../lib/message-actions').ACTIONS;
 var Connection = require('../lib/client/connection');
 var protocol = require('../lib/protocol');
 var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
+var async = require('async');
+var types = require('../lib/types');
+var presenceTestType = require('./client/presence/presence-test-type');
+types.register(presenceTestType.type);
 
 describe('Agent', function() {
   var backend;
@@ -185,6 +189,73 @@ describe('Agent', function() {
           });
         });
       });
+    });
+  });
+
+  describe('cleanup', function() {
+    var connection;
+
+    beforeEach(function(done) {
+      backend.close(function(error) {
+        if (error) return done(error);
+        backend = new Backend({presence: true});
+        connection = backend.connect();
+        connection.get('books', 'northern-lights').create('North Lights', presenceTestType.type.name, done);
+      });
+    });
+
+    function closeConnection(callback) {
+      connection.agent.stream.once('end', callback);
+      connection.close();
+    }
+
+    function opensStreams(count, step) {
+      return function(next) {
+        var streamsCount = backend.pubsub.streamsCount;
+        step(function(error) {
+          if (error) return next(error);
+          expect(backend.pubsub.streamsCount - streamsCount).to.equal(count);
+          next();
+        });
+      };
+    }
+
+    it('destroys a stream that is missing from its subscription map', function(done) {
+      connection.get('dogs', 'fido').subscribe(function(error) {
+        if (error) return done(error);
+        delete connection.agent.subscribedDocs.dogs;
+        closeConnection(function() {
+          expect(backend.pubsub.streamsCount).to.equal(0);
+          done();
+        });
+      });
+    });
+
+    it('destroys every pub/sub stream when the connection closes', function(done) {
+      var presence = connection.getDocPresence('books', 'northern-lights');
+      async.series([
+        opensStreams(1, function(next) {
+          connection.get('dogs', 'fido').subscribe(next);
+        }),
+        opensStreams(2, function(next) {
+          connection.startBulk();
+          connection.get('dogs', 'rex').subscribe();
+          connection.get('dogs', 'spot').subscribe(next);
+          connection.endBulk();
+        }),
+        opensStreams(1, presence.subscribe.bind(presence)),
+        opensStreams(1, function(next) {
+          presence.create('presence-1').submit({index: 0}, next);
+        }),
+        opensStreams(1, function(next) {
+          connection.createSubscribeQuery('dogs', {}, null, next);
+        }),
+        closeConnection,
+        function(next) {
+          expect(backend.pubsub.streamsCount).to.equal(0);
+          next();
+        }
+      ], done);
     });
   });
 });
