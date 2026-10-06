@@ -383,6 +383,24 @@ describe('projection utility methods', function() {
         {x: true},
         {op: [{p: [], oi: {y: 1}}]}
       );
+      test(
+        {0: true},
+        {op: [{p: [0], na: 1}]}
+      );
+    });
+
+    [
+      null,
+      {},
+      [null],
+      [{}],
+      [{p: null}],
+      [{p: 'x'}],
+      [{p: [{toString: 'x'}]}]
+    ].forEach(function(edit) {
+      it('does not allow the malformed op ' + JSON.stringify(edit), function() {
+        expect(projections.isOpAllowed(null, {x: true}, {op: edit})).equal(false);
+      });
     });
   });
 
