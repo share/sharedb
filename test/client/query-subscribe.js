@@ -428,6 +428,32 @@ function commonTests(options) {
     });
   });
 
+  it('subscribed query results catch up on ops missed while disconnected', function(done) {
+    var backend = this.backend;
+    var connection = backend.connect();
+    var doc2 = backend.connect().get('dogs', 'fido').on('error', done);
+    var matchAllDbQuery = this.matchAllDbQuery;
+    doc2.create({age: 3}, function(err) {
+      if (err) return done(err);
+      var query = connection.createSubscribeQuery('dogs', matchAllDbQuery, null, function(err, results) {
+        if (err) return done(err);
+        var doc = results[0];
+        doc.on('op', function() {
+          expect(doc.version).to.equal(2);
+          expect(doc.data).to.eql({age: 4});
+          done();
+        });
+
+        connection.close();
+        doc2.submitOp({p: ['age'], na: 1}, function(err) {
+          if (err) return done(err);
+          backend.connect(connection);
+        });
+      });
+      query.on('error', done);
+    });
+  });
+
   it('subscribed query gets simultaneous insert and remove after reconnecting', function(done) {
     var backend = this.backend;
     var connection = backend.connect();

@@ -7,6 +7,7 @@ var ACTIONS = require('../lib/message-actions').ACTIONS;
 var Connection = require('../lib/client/connection');
 var protocol = require('../lib/protocol');
 var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
+var util = require('./util');
 
 describe('Agent', function() {
   var backend;
@@ -184,6 +185,103 @@ describe('Agent', function() {
             });
           });
         });
+      });
+    });
+  });
+
+  describe('query subscribe with known results', function() {
+    var connection;
+
+    beforeEach(function(done) {
+      connection = backend.connect();
+      connection.get('dogs', 'fido').create({name: 'Fido'}, done);
+    });
+
+    function resubscribe(callback) {
+      connection.on('receive', function(request) {
+        if (request.data.a === ACTIONS.querySubscribe) callback(request.data);
+      });
+      connection.send({
+        a: ACTIONS.querySubscribe,
+        id: 1,
+        c: 'dogs',
+        q: {},
+        o: {pollDebounce: 0, pollInterval: 50},
+        r: [['fido', 0], ['spot', null]]
+      });
+    }
+
+    it('does not read known results when the query middleware rejects it', function(done) {
+      backend.use('query', function(context, next) {
+        next(new Error('Forbidden'));
+      });
+      sinon.spy(backend.db, 'getOpsBulk');
+      sinon.spy(backend.db, 'getSnapshotBulk');
+      resubscribe(function(reply) {
+        expect(reply.error).to.have.property('message', 'Forbidden');
+        expect(backend.db.getOpsBulk).not.to.have.been.called;
+        expect(backend.db.getSnapshotBulk).not.to.have.been.called;
+        done();
+      });
+    });
+
+    it('does not stay subscribed if fetching known results fails', function(done) {
+      backend.use('op', function(context, next) {
+        next(new Error('Forbidden'));
+      });
+      resubscribe(function(reply) {
+        expect(reply.error).to.have.property('message', 'Forbidden');
+        expect(connection.agent.subscribedQueries).to.be.empty;
+        expect(backend.pubsub.streamsCount).to.equal(0);
+        done();
+      });
+    });
+
+    it('does not stay subscribed if re-polling the query fails', function(done) {
+      var clock = util.useFakeTimers();
+      connection.get('dogs', 'rex').create({name: 'Rex'}, function(error) {
+        if (error) return done(error);
+        backend.use('readSnapshots', function(context, next) {
+          var forbidden = context.snapshots.some(function(snapshot) {
+            return snapshot.id === 'rex';
+          });
+          next(forbidden ? new Error('Forbidden') : null);
+        });
+        resubscribe(function(reply) {
+          expect(reply.error).to.have.property('message', 'Forbidden');
+          expect(connection.agent.subscribedQueries).to.be.empty;
+          expect(backend.pubsub.streamsCount).to.equal(0);
+          sinon.spy(backend.db, 'queryPoll');
+          clock.tick(1000);
+          expect(backend.db.queryPoll).not.to.have.been.called;
+          done();
+        });
+      });
+    });
+
+    it('delivers an op committed while fetching known results', function(done) {
+      var writer = backend.connect().get('dogs', 'fido');
+      connection.createSubscribeQuery('dogs', {}, null, function(error, results) {
+        if (error) return done(error);
+        var fido = results[0];
+        fido.on('op', function() {
+          expect(fido.data).to.eql({name: 'Rex'});
+          done();
+        });
+        var getOpsBulk = backend.db.getOpsBulk;
+        sinon.stub(backend.db, 'getOpsBulk').callsFake(function(collection, fromMap, toMap, options, callback) {
+          backend.db.getOpsBulk.restore();
+          getOpsBulk.call(backend.db, collection, fromMap, toMap, options, function(error, opsMap) {
+            writer.fetch(function(error) {
+              if (error) return done(error);
+              writer.submitOp({p: ['name'], od: 'Fido', oi: 'Rex'}, function(error) {
+                callback(error, opsMap);
+              });
+            });
+          });
+        });
+        connection.close();
+        backend.connect(connection);
       });
     });
   });
