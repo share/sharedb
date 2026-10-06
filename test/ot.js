@@ -159,6 +159,22 @@ describe('ot', function() {
       expect({}.polluted).to.equal(undefined);
     });
 
+    it('returns an error for a path segment that cannot be converted to a key', function() {
+      var error;
+      expect(function() {
+        error = ot.apply(snapshot, {v: 6, op: [{p: ['colour', {toString: 'x'}], oi: 'yes'}]});
+      }).to.not.throw();
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+    });
+
+    it('returns an error for an op whose length cannot be converted to a number', function() {
+      var error;
+      expect(function() {
+        error = ot.apply(snapshot, {v: 6, op: {length: {toString: 'x'}}});
+      }).to.not.throw();
+      expect(error.code).to.equal(ERROR_CODE.ERR_OT_OP_NOT_APPLIED);
+    });
+
     ['__proto__', 'constructor'].forEach(function(badProp) {
       it('rejects ' + badProp + ' as a path segment', function() {
         var error = ot.apply(snapshot, {v: 6, op: [{p: [badProp, 'polluted'], oi: 'yes'}]});
