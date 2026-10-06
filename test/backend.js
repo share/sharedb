@@ -1,4 +1,5 @@
 var Backend = require('../lib/backend');
+var MemoryDB = require('../lib/db/memory');
 var expect = require('chai').expect;
 var sinon = require('sinon');
 var logger = require('../lib/logger');
@@ -26,6 +27,46 @@ describe('Backend', function() {
         var error = new Error('foo');
         backend.errorHandler(error);
         expect(handler.callCount).to.equal(1);
+      });
+    });
+
+    describe('extraDbs', function() {
+      var archive;
+
+      beforeEach(function() {
+        archive = new MemoryDB();
+        backend = new Backend({extraDbs: {archive: archive}});
+      });
+
+      ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
+        it(method + ' queries the extra DB named by the db option', function(done) {
+          var query = sinon.spy(archive, 'query');
+          backend.connect()[method]('books', {}, {db: 'archive'}, function(error) {
+            if (error) return done(error);
+            expect(query).to.have.been.calledWith('books');
+            done();
+          });
+        });
+
+        ['constructor', '__proto__', {toString: 1}].forEach(function(badValue) {
+          it(method + ' errors if the db option is ' + JSON.stringify(badValue), function(done) {
+            backend.connect()[method]('books', {}, {db: badValue}, function(error) {
+              expect(error).to.include({code: 'ERR_DATABASE_ADAPTER_NOT_FOUND'});
+              done();
+            });
+          });
+
+          it(method + ' errors if middleware sets the db option to ' + JSON.stringify(badValue), function(done) {
+            backend.use('query', function(request, next) {
+              request.options.db = badValue;
+              process.nextTick(next);
+            });
+            backend.connect()[method]('books', {}, null, function(error) {
+              expect(error).to.include({code: 'ERR_DATABASE_ADAPTER_NOT_FOUND'});
+              done();
+            });
+          });
+        });
       });
     });
   });
