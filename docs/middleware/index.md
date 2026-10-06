@@ -10,6 +10,5 @@ has_children: true
 
 Middleware enables consumers to hook into the ShareDB server pipeline. Objects can be asynchronously manipulated as they flow through ShareDB.
 
-<!-- TODO: Link to an auth example -->
 <!-- TODO: Link to a metadata example -->
-This can be particularly useful for authentication, or adding metadata.
+This can be particularly useful for authentication, [access control]({{ site.baseurl }}{% link middleware/access-control.md %}), or adding metadata.
