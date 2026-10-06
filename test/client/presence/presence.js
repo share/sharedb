@@ -685,6 +685,32 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('ignores presence from another client with the same ID as its local presence', function(done) {
+    var connection3 = backend.connect();
+    var localPresence3 = connection3.getPresence('test-channel').create('presence-1');
+    var localPresence1 = presence1.create('presence-1');
+    var hasReceivedOwnPresence = false;
+    presence1.on('receive', function(id) {
+      done(new Error('Unexpected presence received: ' + id));
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        connection1.on('receive', function(request) {
+          if (request.data.src === connection1.id) hasReceivedOwnPresence = true;
+          if (request.data.src !== connection3.id) return;
+          localPresence1.submit({index: 1}, function(error) {
+            if (error) return done(error);
+            expect(hasReceivedOwnPresence).to.be.true;
+            next();
+          });
+        });
+        localPresence3.submit({index: 9}, errorHandler(done));
+      }
+    ], done);
+  });
+
   it('adds itself back onto the connection after a destroy and a resubscribe', function(done) {
     async.series([
       presence1.destroy.bind(presence1),
@@ -778,6 +804,27 @@ describe('Presence', function() {
       // TODO: This functionality is deprecated
       it('sends an error to a subscribed client', function(done) {
         var localPresence1 = presence1.create('presence-1');
+
+        backend.use(backend.MIDDLEWARE_ACTIONS.sendPresence, function(context, next) {
+          next(new Error('uh-oh!'));
+        });
+
+        async.series([
+          presence2.subscribe.bind(presence2),
+          function(next) {
+            localPresence1.submit({index: 3}, errorHandler(done));
+            presence2.once('error', function(error) {
+              expect(error.message).to.equal('uh-oh!');
+              next();
+            });
+          }
+        ], done);
+      });
+
+      it('emits an error for a presence with the same ID on the presence, not its local presence', function(done) {
+        var localPresence1 = presence1.create('presence-1');
+        var localPresence2 = presence2.create('presence-1');
+        localPresence2.on('error', done);
 
         backend.use(backend.MIDDLEWARE_ACTIONS.sendPresence, function(context, next) {
           next(new Error('uh-oh!'));
