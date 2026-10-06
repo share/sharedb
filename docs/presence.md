@@ -76,3 +76,76 @@ const localPresence = presence.create()
 // The presence value depends on the type
 localPresence.submit(value)
 ```
+
+## Access control
+
+{: .warn }
+Presence is **not** covered by document permissions: being able to read or write a document does not control who can see or send presence on it. Use [middleware]({{ site.baseurl }}{% link middleware/index.md %}) to restrict presence.
+
+### Receiving presence
+
+Subscribing to presence doesn't trigger any presence middleware, so any client can subscribe to any presence channel -- including the presence of a document it can't read.
+
+To stop a client receiving presence, reject the update in the [`'sendPresence'`]({{ site.baseurl }}{% link middleware/actions.md %}#sendpresence) middleware. For typed presence, ShareDB makes sure that `presence.c` and `presence.d` match the presence channel. This middleware runs for every update about to be sent to every client, so keep the check cheap -- for example, by caching permissions on [`agent.custom`]({{ site.baseurl }}{% link api/agent.md %}#custom--object).
+
+{: .warn }
+Rejecting updates in `'sendPresence'` only stops them reaching the client if you set the [`doNotForwardSendPresenceErrorsToClient`]({{ site.baseurl }}{% link api/backend.md %}#options) option. Otherwise, the client is sent an error for each rejected update, including its presence ID. With the option set, each rejected update is passed to the `errorHandler` instead.
+
+### Sending presence
+
+ShareDB rejects typed presence whose collection and document ID don't match its channel. It also only broadcasts typed presence if the client can read the document, as determined by the [`'readSnapshots'`]({{ site.baseurl }}{% link middleware/actions.md %}#readsnapshots) middleware. This is checked when the client starts sending presence on the document, not on every update.
+
+ShareDB doesn't check:
+
+ - whether the client can write to the document
+ - `null` presence, which is sent when a client leaves
+ - untyped presence
+
+Check these in the [`'receivePresence'`]({{ site.baseurl }}{% link middleware/actions.md %}#receivepresence) middleware if you need to.
+
+If you only use typed presence, reject untyped presence in `'receivePresence'`: older clients still apply untyped presence sent on a document's channel.
+
+### Presence IDs
+
+Presence IDs are chosen by the client, and sent to every subscriber, so a client could use another client's presence ID to overwrite or clear its presence.
+
+To prevent this, tie presence IDs to the user in `'receivePresence'` -- for example by requiring them to start with the user ID:
+
+```js
+const localPresence = presence.create(`${userId}:${randomId}`)
+```
+
+{: .info }
+Keep a random suffix, so that the same user can have more than one presence -- for example, in multiple browser tabs.
+
+### Example
+
+```js
+backend.use('receivePresence', (context, next) => {
+  // agent.custom is usually set in the 'connect' hook
+  const userId = context.agent.custom.userId
+  const presence = context.presence
+  if (!presence.id.startsWith(`${userId}:`)) {
+    return next(new Error('Unauthorized'))
+  }
+  // This app only uses typed presence
+  if (!presence.c) {
+    return next(new Error('Unauthorized'))
+  }
+  // Let users clear their own presence, even if they've lost access
+  if (presence.p === null) return next()
+  if (!userCanChangeDoc(userId, presence.c, presence.d)) {
+    return next(new Error('Unauthorized'))
+  }
+  next()
+})
+
+backend.use('sendPresence', (context, next) => {
+  const userId = context.agent.custom.userId
+  const presence = context.presence
+  if (!userCanReadDoc(userId, presence.c, presence.d)) {
+    return next(new Error('Unauthorized'))
+  }
+  next()
+})
+```
