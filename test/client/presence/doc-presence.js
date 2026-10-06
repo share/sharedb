@@ -584,6 +584,244 @@ describe('DocPresence', function() {
     connection1.send(message);
   });
 
+  it('rejects a presence message with a non-integer version', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    localPresence1.on('error', function(error) {
+      expect(error.code).to.eql('ERR_MESSAGE_BADLY_FORMED');
+      done();
+    });
+
+    var message = localPresence1._message();
+    message.v = 1.5;
+    message.t = presenceTestType.type.uri;
+    connection1.send(message);
+  });
+
+  [{index: 1}, null].forEach(function(value) {
+    it('rejects ' + JSON.stringify(value) + ' presence whose version is ahead of the doc', function(done) {
+      var localPresence1 = presence1.create('presence-1');
+      presence2.on('receive', function() {
+        done(new Error('Should not broadcast presence from the future'));
+      });
+
+      async.series([
+        presence2.subscribe.bind(presence2),
+        function(next) {
+          localPresence1.on('error', function(error) {
+            expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+            expect(connection1.agent.presenceRequests[presence1.channel]).not.to.have.property('presence-1');
+            next();
+          });
+
+          var message = localPresence1._message();
+          message.p = value;
+          message.v = doc1.version + 1;
+          message.t = presenceTestType.type.uri;
+          connection1.send(message);
+        }
+      ], done);
+    });
+
+    it('rejects ' + JSON.stringify(value) + ' presence ahead of a tracked doc without a snapshot read', function(done) {
+      var localPresence1 = presence1.create('presence-1');
+
+      async.series([
+        localPresence1.submit.bind(localPresence1, {index: 1}),
+        function(next) {
+          sinon.spy(backend.db, 'getSnapshot');
+          localPresence1.on('error', function(error) {
+            expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+            expect(backend.db.getSnapshot).not.to.have.been.called;
+            next();
+          });
+
+          var message = localPresence1._message();
+          message.p = value;
+          message.v = doc1.version + 1;
+          message.t = presenceTestType.type.uri;
+          connection1.send(message);
+        }
+      ], done);
+    });
+  });
+
+  it('broadcasts null presence on disconnect after rejecting presence ahead of the doc', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+
+        var message = localPresence1._message();
+        message.v = doc1.version + 1;
+        message.t = presenceTestType.type.uri;
+        connection1.send(message);
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('keeps newer presence cached when an earlier presence ahead of the doc is rejected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseGetOps;
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        var getOps = backend.db.getOps;
+        sinon.stub(backend.db, 'getOps').callsFake(function() {
+          var args = arguments;
+          releaseGetOps = function() {
+            getOps.apply(backend.db, args);
+          };
+          next();
+        });
+
+        var message = localPresence1._message();
+        message.v = doc1.version + 1;
+        message.t = presenceTestType.type.uri;
+        connection1.send(message);
+      },
+      function(next) {
+        backend.db.getOps.restore();
+        localPresence1.submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        releaseGetOps();
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('accepts up-to-date presence when the agent\'s tracked doc version lags behind', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
+        doc2.once('op', function() {
+          next();
+        });
+      },
+      function(next) {
+        connection1.agent.latestDocVersions.books['northern-lights'] = 1;
+        localPresence1.submit({index: 12}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(doc2.version).to.eql(2);
+          expect(presence).to.eql({index: 12});
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('broadcasts null presence on an up-to-date doc whose ops have been deleted', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      backend.db.deleteOps.bind(backend.db, 'books', 'northern-lights', null, null, null),
+      function(next) {
+        localPresence1.submit(null, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.be.null;
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('broadcasts null presence from a second local presence on a doc whose ops have been deleted', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        localPresence2.submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      backend.db.deleteOps.bind(backend.db, 'books', 'northern-lights', null, null, null),
+      function(next) {
+        localPresence1.submit(null, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        sinon.spy(backend.db, 'getSnapshot');
+        localPresence2.submit(null, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-2');
+          expect(presence).to.be.null;
+          expect(backend.db.getSnapshot).to.have.been.called;
+          next();
+        });
+      }
+    ], done);
+  });
+
   it('rejects a presence message without an ID', function(done) {
     var localPresence1 = presence1.create('presence-1');
     // Have to catch the error on the Presence instance, because obviously
