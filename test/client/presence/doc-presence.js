@@ -600,6 +600,137 @@ describe('DocPresence', function() {
     connection1.send(message);
   });
 
+  it('rejects a presence message for a different doc than its channel', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    localPresence1.on('error', function(error) {
+      expect(error.code).to.eql('ERR_MESSAGE_BADLY_FORMED');
+      done();
+    });
+
+    var message = localPresence1._message();
+    message.d = 'subtle-knife';
+    message.v = 1;
+    message.t = presenceTestType.type.uri;
+    connection1.send(message);
+  });
+
+  it('rejects a presence message with a doc ID but no collection', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    localPresence1.on('error', function(error) {
+      expect(error.code).to.eql('ERR_MESSAGE_BADLY_FORMED');
+      done();
+    });
+
+    var message = localPresence1._message();
+    message.c = null;
+    message.v = 1;
+    message.t = presenceTestType.type.uri;
+    connection1.send(message);
+  });
+
+  it('rejects a presence message with an empty collection', function(done) {
+    var localPresence1 = connection1.getDocPresence('', 'northern-lights').create('presence-1');
+    localPresence1.on('error', function(error) {
+      expect(error.code).to.eql('ERR_MESSAGE_BADLY_FORMED');
+      done();
+    });
+
+    var message = localPresence1._message();
+    message.v = 1;
+    message.t = presenceTestType.type.uri;
+    connection1.send(message);
+  });
+
+  it('rejects presence on a doc the client cannot read', function(done) {
+    backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function(context, next) {
+      next(new Error('Forbidden'));
+    });
+
+    var localPresence1 = presence1.create('presence-1');
+    localPresence1.submit({index: 1}, function(error) {
+      expect(error.message).to.equal('Forbidden');
+      done();
+    });
+  });
+
+  it('ignores untyped presence on its channel', function(done) {
+    var connection3 = backend.connect();
+    var untypedPresence3 = connection3.getPresence('books.northern-lights');
+    var localPresence1 = presence1.create('presence-1');
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      untypedPresence3.subscribe.bind(untypedPresence3),
+      function(next) {
+        connection2.on('receive', function(request) {
+          if (request.data.src !== connection3.id) return;
+          localPresence1.submit({index: 1}, errorHandler(done));
+        });
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+        connection3.send({
+          a: 'p', ch: 'books.northern-lights', id: 'presence-1', p: {index: 9}, pv: 0, v: doc1.version
+        });
+      }
+    ], done);
+  });
+
+  it('does not let untyped presence with the same ID ack its local presence', function(done) {
+    var connection3 = backend.connect();
+    var untypedPresence3 = connection3.getPresence('books.northern-lights');
+    var localPresence1 = presence1.create('presence-1');
+    var hasReceivedOwnPresence = false;
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      untypedPresence3.subscribe.bind(untypedPresence3),
+      function(next) {
+        connection1.on('receive', function(request) {
+          if (request.data.src === connection1.id) hasReceivedOwnPresence = true;
+          if (request.data.src !== connection3.id) return;
+          localPresence1.submit({index: 1}, function(error) {
+            if (error) return done(error);
+            expect(hasReceivedOwnPresence).to.be.true;
+            next();
+          });
+        });
+        connection3.send({
+          a: 'p', ch: 'books.northern-lights', id: 'presence-1', p: {index: 9}, pv: 0, v: doc1.version
+        });
+      }
+    ], done);
+  });
+
+  it('ignores presence for a doc whose collection and id join to the same channel', function(done) {
+    var connection3 = backend.connect();
+    var notesDoc1 = connection1.get('notes', 'private.alice');
+    var notesDoc3 = connection3.get('notes', 'private.alice');
+    var diaryDoc2 = connection2.get('notes.private', 'alice');
+    var localNotesPresence1 = connection1.getDocPresence('notes', 'private.alice').create('notes-presence');
+    var localDiaryPresence2 = connection2.getDocPresence('notes.private', 'alice').create('diary-presence');
+    var notesPresence3 = connection3.getDocPresence('notes', 'private.alice');
+
+    async.series([
+      notesDoc1.create.bind(notesDoc1, 'Hello', presenceTestType.type.name),
+      diaryDoc2.create.bind(diaryDoc2, 'Dear diary', presenceTestType.type.name),
+      notesDoc3.subscribe.bind(notesDoc3),
+      notesPresence3.subscribe.bind(notesPresence3),
+      function(next) {
+        notesPresence3.once('receive', function(id) {
+          expect(id).to.equal('notes-presence');
+          next();
+        });
+        localDiaryPresence2.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          localNotesPresence1.submit({index: 1}, errorHandler(done));
+        });
+      }
+    ], done);
+  });
+
   it('only sends presence responses for the associated doc', function(done) {
     var localPresence1 = presence1.create('presence-1');
     var localPresence2 = presence2.create('presence-2');
