@@ -718,6 +718,79 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('broadcasts a null presence when a connection that never subscribed is disconnected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('broadcasts a null presence when unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      }
+    ], done);
+  });
+
+  it('does not broadcast a null presence again when disconnecting after unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var agent1 = connection1.agent;
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function() {
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        sinon.spy(agent1, '_broadcastPresence');
+        agent1.stream.once('end', next);
+        connection1.close();
+      },
+      function(next) {
+        expect(agent1._broadcastPresence).not.to.have.been.called;
+        next();
+      }
+    ], done);
+  });
+
   describe('middleware', function() {
     describe('receivePresence', function() {
       it('provides the presence in the middleware', function(done) {
@@ -732,7 +805,7 @@ describe('Presence', function() {
 
       it('can mutate the presence in the middleware', function(done) {
         backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
-          context.presence.p.index++;
+          if (context.presence.p) context.presence.p.index++;
           next();
         });
 

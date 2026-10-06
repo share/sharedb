@@ -54,7 +54,7 @@ Optional
 
 ### unsubscribe()
 
-Unsubscribe from presence updates from remote clients.
+Unsubscribe from presence updates from remote clients. Any presence this client has submitted on the channel is broadcast to remote subscribers as `null`.
 
 ```javascript
 presence.unsubscribe([callback])
