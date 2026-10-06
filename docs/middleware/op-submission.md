@@ -141,6 +141,57 @@ backend.on('submitRequestEnd', () => {
 {: .info :}
 Since `'submitRequestEnd'` is an event -- not a middleware hook -- it provides no callback, and no way to return an error to the client. It is purely informational.
 
+## Restricting op sources
+
+Every op carries a `src` and a `seq`, which ShareDB uses to recognise an op that a client resends after reconnecting, so that it isn't applied twice. The `src` is chosen by the client: a reconnecting client reclaims its previous [`clientId`]({{ site.baseurl }}{% link api/agent.md %}#clientid--string) in its handshake, and it can also set `src` on an individual op.
+
+{: .warn :}
+Every op is broadcast with its `src` and `seq`, so a client can submit an op with another client's `src` and that client's next `seq`. ShareDB will then mistake that client's real op for a duplicate, and drop it while telling the client it succeeded.
+
+If your users must not be able to do this to each other, make each `src` name its user. The `'connect'` hook below gives each new client a `clientId` that names its user. The [`'receive'`]({{ site.baseurl }}{% link middleware/actions.md %}#receive) hook drops a reclaimed ID that names someone else, so that the client is given a new one, and rejects ops whose `src` names someone else:
+
+```js
+const crypto = require('crypto')
+const ACTIONS = require('sharedb').MESSAGE_ACTIONS
+
+function srcFor(userId) {
+  return userId + ':' + crypto.randomUUID()
+}
+
+function isSrcOf(userId, src) {
+  if (typeof src !== 'string') return false
+  const separator = src.lastIndexOf(':')
+  return separator !== -1 && src.slice(0, separator) === String(userId)
+}
+
+backend.use('connect', (context, next) => {
+  const userId = authenticatedUserId(context.req)
+  context.agent.custom.userId = userId
+  context.agent.clientId = srcFor(userId)
+  next()
+})
+
+backend.use('receive', (context, next) => {
+  const message = context.data
+  const userId = context.agent.custom.userId
+  if (message.a === ACTIONS.handshake && message.id != null && !isSrcOf(userId, message.id)) {
+    delete message.id
+  }
+  if (message.a === ACTIONS.op && message.src != null && !isSrcOf(userId, message.src)) {
+    return next(new Error('Op src belongs to another user'))
+  }
+  next()
+})
+```
+
+The user ID is sent to collaborators and stored with every op as part of its `src`, so use an opaque ID rather than something personal like an email address.
+
+{: .info :}
+A client that connected before you add these hooks, or whose `Connection` is reused after a different user logs in, is given a new ID when it next reconnects. An op it was still sending under its old ID is rejected.
+
+{: .warn :}
+These hooks need clients from ShareDB v1.2 or later. Older clients are sent their ID before `'connect'` runs, so they never learn the new one.
+
 ## Mutating ops
 
 Ops may be amended in the `apply` middleware using the special `request.$fixup()` method:
