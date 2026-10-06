@@ -11,6 +11,7 @@ var LegacyConnection = require('sharedb-legacy/lib/client').Connection;
 var async = require('async');
 var types = require('../lib/types');
 var presenceTestType = require('./client/presence/presence-test-type');
+var util = require('./util');
 types.register(presenceTestType.type);
 
 describe('Agent', function() {
@@ -459,6 +460,151 @@ describe('Agent', function() {
           next();
         }
       ], done);
+    });
+  });
+
+  describe('query subscribe with known results', function() {
+    var connection;
+
+    beforeEach(function(done) {
+      connection = backend.connect();
+      connection.get('dogs', 'fido').create({name: 'Fido'}, done);
+    });
+
+    function resubscribe(knownResults, callback) {
+      connection.on('receive', function(request) {
+        if (request.data.a === ACTIONS.querySubscribe) callback(request.data);
+      });
+      connection.send({
+        a: ACTIONS.querySubscribe,
+        id: 1,
+        c: 'dogs',
+        q: {},
+        r: knownResults
+      });
+    }
+
+    it('does not read known results when the query middleware rejects it', function(done) {
+      backend.use('query', function(context, next) {
+        next(new Error('Forbidden'));
+      });
+      sinon.spy(backend.db, 'getOpsBulk');
+      sinon.spy(backend.db, 'getSnapshotBulk');
+      resubscribe([['fido', 0], ['spot', null]], function(reply) {
+        expect(reply.error).to.have.property('message', 'Forbidden');
+        expect(backend.db.getOpsBulk).not.to.have.been.called;
+        expect(backend.db.getSnapshotBulk).not.to.have.been.called;
+        done();
+      });
+    });
+
+    it('does not stay subscribed if fetching known results fails', function(done) {
+      backend.use('op', function(context, next) {
+        next(new Error('Forbidden'));
+      });
+      resubscribe([['fido', 0], ['spot', null]], function(reply) {
+        expect(reply.error).to.have.property('message', 'Forbidden');
+        expect(connection.agent.subscribedQueries).to.be.empty;
+        expect(backend.pubsub.streamsCount).to.equal(0);
+        done();
+      });
+    });
+
+    it('does not stay subscribed if one of its known snapshots is rejected', function(done) {
+      backend.use('readSnapshots', function(context, next) {
+        context.snapshots.forEach(function(snapshot) {
+          if (snapshot.id === 'spot') context.rejectSnapshotRead(snapshot, new Error('Forbidden'));
+        });
+        next();
+      });
+      resubscribe([['fido', null], ['spot', null]], function(reply) {
+        expect(reply.error).to.have.property('code', 'ERR_SNAPSHOT_READS_REJECTED');
+        expect(connection.agent.subscribedQueries).to.be.empty;
+        expect(backend.pubsub.streamsCount).to.equal(0);
+        done();
+      });
+    });
+
+    it('does not send known results\' ops if reading their snapshots fails', function(done) {
+      backend.use('readSnapshots', function(context, next) {
+        next(new Error('Forbidden'));
+      });
+      var sentOps = [];
+      backend.on('send', function(agent, message) {
+        if (message.a === ACTIONS.op) sentOps.push(message);
+      });
+      var getOpsBulk = backend.getOpsBulk;
+      var finishGettingOps;
+      sinon.stub(backend, 'getOpsBulk').callsFake(function(agent, collection, fromMap, toMap, callback) {
+        finishGettingOps = function() {
+          getOpsBulk.call(backend, agent, collection, fromMap, toMap, function(error, opsMap) {
+            callback(error, opsMap);
+            expect(sentOps).to.be.empty;
+            done();
+          });
+        };
+      });
+      resubscribe([['fido', 0], ['spot', null]], function(reply) {
+        expect(reply.error).to.have.property('message', 'Forbidden');
+        finishGettingOps();
+      });
+    });
+
+    it('does not stay subscribed if re-polling the query fails', function(done) {
+      var clock = util.useFakeTimers();
+      backend.db.pollInterval = 50;
+      sinon.stub(backend.db, 'queryPoll').yieldsAsync(new Error('Forbidden'));
+      resubscribe([['fido', 0], ['spot', null]], function(reply) {
+        expect(reply.error).to.have.property('message', 'Forbidden');
+        expect(connection.agent.subscribedQueries).to.be.empty;
+        expect(backend.pubsub.streamsCount).to.equal(0);
+        clock.tick(1000);
+        expect(backend.db.queryPoll).to.have.been.calledOnce;
+        done();
+      });
+    });
+
+    it('keeps a newer subscription with the same id if re-polling the query fails', function(done) {
+      var failRepoll;
+      sinon.stub(backend.db, 'queryPoll').callsFake(function(collection, query, options, callback) {
+        failRepoll = callback.bind(null, new Error('Forbidden'));
+        connection.send({a: ACTIONS.querySubscribe, id: 1, c: 'dogs', q: {}});
+      });
+      var replies = [];
+      resubscribe([['fido', 0]], function(reply) {
+        replies.push(reply);
+        if (replies.length === 1) return failRepoll();
+        expect(replies[0]).not.to.have.property('error');
+        expect(replies[1].error).to.have.property('message', 'Forbidden');
+        expect(connection.agent.subscribedQueries).to.have.property('1');
+        done();
+      });
+    });
+
+    it('delivers an op committed while fetching known results', function(done) {
+      var writer = backend.connect().get('dogs', 'fido');
+      connection.createSubscribeQuery('dogs', {}, null, function(error, results) {
+        if (error) return done(error);
+        var fido = results[0];
+        fido.on('op', function() {
+          expect(fido.data).to.eql({name: 'Rex'});
+          done();
+        });
+        var getOpsBulk = backend.db.getOpsBulk;
+        sinon.stub(backend.db, 'getOpsBulk').callsFake(function(collection, fromMap, toMap, options, callback) {
+          backend.db.getOpsBulk.restore();
+          getOpsBulk.call(backend.db, collection, fromMap, toMap, options, function(error, opsMap) {
+            writer.fetch(function(error) {
+              if (error) return done(error);
+              writer.submitOp({p: ['name'], od: 'Fido', oi: 'Rex'}, function(error) {
+                callback(error, opsMap);
+              });
+            });
+          });
+        });
+        connection.close();
+        backend.connect(connection);
+      });
     });
   });
 });
