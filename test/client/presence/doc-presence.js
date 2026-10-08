@@ -6,6 +6,7 @@ var presenceTestType = require('./presence-test-type');
 var errorHandler = require('../../util').errorHandler;
 var PresencePauser = require('./presence-pauser');
 var sinon = require('sinon');
+var ACTIONS = require('../../../lib/message-actions').ACTIONS;
 types.register(presenceTestType.type);
 
 describe('DocPresence', function() {
@@ -967,6 +968,59 @@ describe('DocPresence', function() {
           next();
         });
         doc1.submitOp({index: 5, value: 'ern'});
+      }
+    ], done);
+  });
+
+  it('emits an error and drops stale remote presence that cannot be transformed', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var catchUpCount = 0;
+
+    function sendUntypedPresenceAtVersion(version) {
+      var message = localPresence1._message();
+      message.d = null;
+      message.p = {index: 0};
+      message.v = version;
+      connection1.send(message);
+    }
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        connection2.on('send', function(message) {
+          if (message.a !== ACTIONS.presenceRequest) return;
+          catchUpCount++;
+          if (catchUpCount === 1) next();
+        });
+        sendUntypedPresenceAtVersion(0);
+      },
+      function(next) {
+        doc2.once('op', function() {
+          next();
+        });
+        doc1.submitOp({index: 5, value: 'ern'}, errorHandler(done));
+      },
+      function(next) {
+        presence2.once('error', function(error) {
+          expect(error).to.be.an.instanceOf(Error);
+          expect(error.code).to.equal('ERR_DOC_TYPE_NOT_RECOGNIZED');
+          next();
+        });
+        sendUntypedPresenceAtVersion(1);
+      },
+      function(next) {
+        doc2.once('op', function() {
+          next();
+        });
+        doc1.submitOp({index: 0, value: 'The'}, errorHandler(done));
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 1});
+          expect(catchUpCount).to.equal(1);
+          next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
       }
     ], done);
   });
