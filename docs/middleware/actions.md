@@ -129,7 +129,7 @@ This action has these additional `context` properties:
 
 `options` -- Object
 
-> The query [options]({{ site.baseurl }}{% link api/connection.md %}#createfetchquery)
+> The query [options]({{ site.baseurl }}{% link api/connection.md %}#createfetchquery). Any `pollInterval` or `pollDebounce` sent by the client has already been removed. Set them here to control how often this query polls the database.
 
 `db` -- [DB]({{ site.baseurl }}{% link adapters/database.md %})
 
