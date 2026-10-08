@@ -1,4 +1,5 @@
 var Backend = require('../lib/backend');
+var MemoryDb = require('../lib/db/memory');
 var logger = require('../lib/logger');
 var sinon = require('sinon');
 var StreamSocket = require('../lib/stream-socket');
@@ -17,6 +18,141 @@ describe('Agent', function() {
 
   afterEach(function(done) {
     backend.close(done);
+  });
+
+  describe('request validation', function() {
+    var socket;
+    var connection;
+
+    beforeEach(function(done) {
+      socket = new StreamSocket();
+      backend.listen(socket.stream);
+      connection = new Connection(socket);
+      socket._open();
+      connection.once('connected', function() {
+        done();
+      });
+    });
+
+    function expectRejected(message, expectedError, done) {
+      var dbReads = ['getSnapshot', 'getSnapshotBulk', 'getOps', 'getOpsBulk', 'query'].map(function(method) {
+        return sinon.spy(MemoryDb.prototype, method);
+      });
+      connection.on('receive', function(request) {
+        var reply = request.data;
+        if (!reply || !reply.error) return;
+        request.data = null;
+        expect(reply.error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: expectedError});
+        dbReads.forEach(function(dbRead) {
+          expect(dbRead).not.to.have.been.called;
+        });
+        done();
+      });
+      socket.send(JSON.stringify(message));
+    }
+
+    var unconvertible = {toString: 1};
+    var badIds = [unconvertible, 42, null, '__proto__'];
+    var badVersions = [unconvertible, '1', -1];
+
+    [ACTIONS.fetch, ACTIONS.subscribe, ACTIONS.snapshotFetch].forEach(function(action) {
+      badVersions.forEach(function(badVersion) {
+        it('rejects a ' + action + ' with version ' + JSON.stringify(badVersion), function(done) {
+          expectRejected({a: action, c: 'dogs', d: 'fido', v: badVersion}, 'Invalid version', done);
+        });
+      });
+    });
+
+    [unconvertible, '1'].forEach(function(badTimestamp) {
+      it('rejects a snapshot fetch with timestamp ' + JSON.stringify(badTimestamp), function(done) {
+        var message = {a: ACTIONS.snapshotFetchByTimestamp, c: 'dogs', d: 'fido', ts: badTimestamp};
+        expectRejected(message, 'Invalid timestamp', done);
+      });
+    });
+
+    [ACTIONS.bulkFetch, ACTIONS.bulkSubscribe, ACTIONS.bulkUnsubscribe].forEach(function(action) {
+      it('rejects a ' + action + ' without bulk data', function(done) {
+        expectRejected({a: action, c: 'dogs', b: null}, 'Invalid bulk subscribe data', done);
+      });
+
+      badIds.forEach(function(badId) {
+        it('rejects a ' + action + ' with id ' + JSON.stringify(badId), function(done) {
+          expectRejected({a: action, c: 'dogs', b: ['fido', badId]}, 'Invalid id', done);
+        });
+      });
+
+      badVersions.forEach(function(badVersion) {
+        it('rejects a ' + action + ' with version ' + JSON.stringify(badVersion), function(done) {
+          expectRejected({a: action, c: 'dogs', b: {fido: badVersion}}, 'Invalid version', done);
+        });
+      });
+
+      it('rejects a ' + action + ' with a __proto__ key in its version map', function(done) {
+        expectRejected({a: action, c: 'dogs', b: JSON.parse('{"__proto__": 0}')}, 'Invalid id', done);
+      });
+    });
+
+    [ACTIONS.queryFetch, ACTIONS.querySubscribe].forEach(function(action) {
+      [unconvertible, ['dogs'], '__proto__'].forEach(function(badCollection) {
+        it('rejects a ' + action + ' with collection ' + JSON.stringify(badCollection), function(done) {
+          expectRejected({a: action, id: 1, c: badCollection, q: {}}, 'Invalid collection', done);
+        });
+      });
+
+      badIds.forEach(function(badId) {
+        it('rejects a ' + action + ' with result id ' + JSON.stringify(badId), function(done) {
+          expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: [[badId]]}, 'Invalid id', done);
+        });
+      });
+
+      badVersions.forEach(function(badVersion) {
+        it('rejects a ' + action + ' with result version ' + JSON.stringify(badVersion), function(done) {
+          expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: [['fido', badVersion]]}, 'Invalid version', done);
+        });
+      });
+
+      [{fido: 0}, ['fido']].forEach(function(badResults) {
+        it('rejects a ' + action + ' with results ' + JSON.stringify(badResults), function(done) {
+          expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: badResults}, 'Invalid query results', done);
+        });
+      });
+    });
+
+    it('accepts a query unsubscribe without a collection', function(done) {
+      connection.on('receive', function(request) {
+        var reply = request.data;
+        if (!reply || reply.a !== ACTIONS.queryUnsubscribe) return;
+        request.data = null;
+        expect(reply).not.to.have.property('error');
+        done();
+      });
+      socket.send(JSON.stringify({a: ACTIONS.queryUnsubscribe, id: 1}));
+    });
+
+    [ACTIONS.presenceSubscribe, ACTIONS.presenceUnsubscribe].forEach(function(action) {
+      [unconvertible, '1'].forEach(function(badSeq) {
+        it('rejects a ' + action + ' with seq ' + JSON.stringify(badSeq), function(done) {
+          expectRejected({a: action, ch: 'dogs.fido', seq: badSeq}, 'Invalid seq', done);
+        });
+      });
+    });
+
+    badVersions.forEach(function(badVersion) {
+      it('rejects presence with presence version ' + JSON.stringify(badVersion), function(done) {
+        var message = {a: ACTIONS.presence, ch: 'dogs.fido', id: 'rex', p: null, pv: badVersion};
+        expectRejected(message, 'Invalid presence version', done);
+      });
+    });
+
+    [unconvertible, true].forEach(function(badProtocol) {
+      it('rejects a handshake with protocol ' + JSON.stringify(badProtocol), function(done) {
+        expectRejected({a: ACTIONS.handshake, protocol: badProtocol, protocolMinor: 2}, 'Invalid protocol', done);
+      });
+
+      it('rejects a handshake with minor protocol ' + JSON.stringify(badProtocol), function(done) {
+        expectRejected({a: ACTIONS.handshake, protocol: 1, protocolMinor: badProtocol}, 'Invalid protocol', done);
+      });
+    });
   });
 
   describe('handshake', function() {
