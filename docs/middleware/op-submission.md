@@ -18,7 +18,7 @@ When an op is submitted, it will pass through a number of middleware hooks as it
  - [**Submit**](#submit) -- an op has been received by the server
  - [**Apply**](#apply) -- an op is about to be applied to the snapshot
  - [**Commit**](#commit) -- an op and its updated snapshot are about to be committed to the database
- - [**Retry**](#retry) -- an op lost the race to commit, and is about to be submitted again
+ - [**Retry**](#retry) -- an op lost the race to commit, and is about to be retried against a newer snapshot
  - [**After write**](#after-write) -- an op and its updated snapshot have successfully been committed to the database
  - [**Submit request end**](#submit-request-end) -- an op submission has finished (this is an _event_, **not** a middleware hook)
 
@@ -67,7 +67,7 @@ backend.use('apply', (context, next) => {
 ```
 
 {: .warn :}
-The `'apply'` hook may be triggered more than once for a single submission. If another client wins the race to commit, the op is transformed over the winning op and applied again to the newer snapshot, re-triggering the hook. Be careful, therefore, with any side effects that assume the hook only runs once per op.
+The `'apply'` hook may be triggered more than once for a single submission. If another client wins the race to commit, the op is transformed over the winning op and applied again to the newer snapshot, re-triggering the hook. Be careful, therefore, with any side effects that assume the hook only runs once per op. Use the [retry](#retry) hook to reset any state stored on the `context` during the failed attempt.
 
 ### Commit
 
@@ -91,12 +91,15 @@ backend.use('commit', (context, next) => {
 
 ### Retry
 
-The [`retry`]({{ site.baseurl }}{% link middleware/actions.md %}#retry) hook is triggered when another client wins the race to commit, before the op is submitted again. The op then passes through the [apply](#apply) and [commit](#commit) hooks again, against the newer snapshot. The [submit](#submit) hook is not triggered again.
+The [`retry`]({{ site.baseurl }}{% link middleware/actions.md %}#retry) hook is triggered when another client wins the race to commit, before the op is retried. The op then passes through the [apply](#apply) and [commit](#commit) hooks again, against the newer snapshot. The [submit](#submit) hook is not triggered again.
 
 The retry reuses the same `context`, so any properties set on it during the failed attempt are still there. This hook is the place to reset them.
 
+In the example below, several `'apply'` middlewares share one lazily-taken snapshot clone, so only the first one that needs it pays for the copy. Without a reset, the retry would keep the failed attempt's clone. A plain `=` assignment, as in [Comparing old snapshot version with new version](#comparing-old-snapshot-version-with-new-version), re-captures on every attempt and doesn't need this hook.
+
 ```js
 backend.use('apply', (context, next) => {
+  // Any of several 'apply' middlewares may take the clone first
   context.snapshotBeforeApply ??= structuredClone(context.snapshot)
   next()
 })

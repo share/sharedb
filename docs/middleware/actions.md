@@ -229,6 +229,8 @@ An operation lost the race to commit, because another op was committed to the sa
 
 This is the place to reset any state that middleware stored on the request during the failed attempt.
 
+The `snapshot` and `channels` are still those of the failed attempt, so the `snapshot` already has the op applied. The snapshot is fetched again and the channels reset after this action, before [`'apply'`](#apply).
+
 This action has the same additional `context` properties as [`'submit'`](#submit).
 
 ## `'afterWrite'`
