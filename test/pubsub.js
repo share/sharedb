@@ -60,6 +60,51 @@ module.exports = function(create) {
       });
     });
 
+    it('calls _subscribe once for concurrent subscribes to a channel', function(done) {
+      var pubsub = this.pubsub;
+      var _subscribe = pubsub._subscribe;
+      var subscribeCalls = 0;
+      pubsub._subscribe = function() {
+        subscribeCalls++;
+        return _subscribe.apply(this, arguments);
+      };
+      var received = [];
+      var finished = 0;
+      function onSubscribe(err, stream) {
+        if (err) return done(err);
+        var messages = [];
+        received.push(messages);
+        stream.on('data', function(data) {
+          messages.push(data.n);
+          if (data.n !== 2 || ++finished < 2) return;
+          expect(received).eql([[1, 2], [1, 2]]);
+          done();
+        });
+        if (received.length < 2) return;
+        expect(subscribeCalls).equal(1);
+        pubsub.publish(['x'], {n: 1});
+        pubsub.publish(['x'], {n: 2});
+      }
+      pubsub.subscribe('x', onSubscribe);
+      pubsub.subscribe('x', onSubscribe);
+    });
+
+    it('keeps a channel subscribed when a concurrent subscriber destroys its stream', function(done) {
+      var pubsub = this.pubsub;
+      pubsub.subscribe('x', function(err, stream) {
+        if (err) return done(err);
+        stream.destroy();
+      });
+      pubsub.subscribe('x', function(err, stream) {
+        if (err) return done(err);
+        stream.on('data', function(data) {
+          expect(data).eql({test: true});
+          done();
+        });
+        pubsub.publish(['x'], {test: true});
+      });
+    });
+
     it('stream.destroy() unsubscribes from a channel', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {
