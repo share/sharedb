@@ -18,6 +18,7 @@ When an op is submitted, it will pass through a number of middleware hooks as it
  - [**Submit**](#submit) -- an op has been received by the server
  - [**Apply**](#apply) -- an op is about to be applied to the snapshot
  - [**Commit**](#commit) -- an op and its updated snapshot are about to be committed to the database
+ - [**Retry**](#retry) -- an op lost the race to commit, and is about to be submitted again
  - [**After write**](#after-write) -- an op and its updated snapshot have successfully been committed to the database
  - [**Submit request end**](#submit-request-end) -- an op submission has finished (this is an _event_, **not** a middleware hook)
 
@@ -84,6 +85,25 @@ backend.use('commit', (context, next) => {
   const userId = context.agent.custom.userId
   context.op.m.userId = userId
   context.snapshot.m.lastEditBy = userId
+  next()
+})
+```
+
+### Retry
+
+The [`retry`]({{ site.baseurl }}{% link middleware/actions.md %}#retry) hook is triggered when another client wins the race to commit, before the op is submitted again. The op then passes through the [apply](#apply) and [commit](#commit) hooks again, against the newer snapshot. The [submit](#submit) hook is not triggered again.
+
+The retry reuses the same `context`, so any properties set on it during the failed attempt are still there. This hook is the place to reset them.
+
+```js
+backend.use('apply', (context, next) => {
+  context.snapshotBeforeApply ??= structuredClone(context.snapshot)
+  next()
+})
+
+backend.use('retry', (context, next) => {
+  // Capture the newer snapshot on the next attempt
+  delete context.snapshotBeforeApply
   next()
 })
 ```

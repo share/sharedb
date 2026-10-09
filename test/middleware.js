@@ -423,6 +423,104 @@ describe('middleware', function() {
     });
   });
 
+  describe('retry', function() {
+    var backend;
+    var doc;
+    var remoteDoc;
+
+    beforeEach(function(done) {
+      backend = this.backend;
+      doc = backend.connect().get('dogs', 'fido');
+      remoteDoc = backend.connect().get('dogs', 'fido');
+      doc.create({age: 3}, function(error) {
+        if (error) return done(error);
+        remoteDoc.fetch(done);
+      });
+    });
+
+    // Holds both ops in 'commit' until they've been applied to the same snapshot,
+    // then commits the remote op first, so the local op loses the race and retries
+    function forceRetry(callback) {
+      var commitDoc;
+      var commitRemoteDoc;
+      backend.use('commit', function(request, next) {
+        if (commitDoc && commitRemoteDoc) return next();
+        if (request.op.src === doc.connection.id) commitDoc = next;
+        else commitRemoteDoc = next;
+        if (commitDoc && commitRemoteDoc) commitRemoteDoc();
+      });
+
+      remoteDoc.submitOp([{p: ['age'], na: 7}], function(error) {
+        if (error) return callback(error);
+        commitDoc();
+      });
+      doc.submitOp([{p: ['age'], na: 2}], callback);
+    }
+
+    it('is triggered between a lost commit and the next attempt', function(done) {
+      var actions = [];
+      ['submit', 'apply', 'commit', 'retry', 'afterWrite'].forEach(function(action) {
+        backend.use(action, function(request, next) {
+          if (request.op.src === doc.connection.id) actions.push(action);
+          next();
+        });
+      });
+
+      forceRetry(function(error) {
+        if (error) return done(error);
+        expect(actions).to.eql(['submit', 'apply', 'commit', 'retry', 'apply', 'commit', 'afterWrite']);
+        expect(doc.data).to.eql({age: 12});
+        done();
+      });
+    });
+
+    it('has the number of retries so far', function(done) {
+      var retries = [];
+      backend.use('retry', function(request, next) {
+        retries.push(request.retries);
+        next();
+      });
+
+      forceRetry(function(error) {
+        if (error) return done(error);
+        expect(retries).to.eql([1]);
+        done();
+      });
+    });
+
+    it('is not triggered if the op commits first time', function(done) {
+      var retry = sinon.spy(function(_request, next) {
+        next();
+      });
+      backend.use('retry', retry);
+
+      doc.submitOp([{p: ['age'], na: 2}], function(error) {
+        if (error) return done(error);
+        expect(retry).not.to.have.been.called;
+        done();
+      });
+    });
+
+    it('is not triggered once the op has used up its retries', function(done) {
+      backend.maxSubmitRetries = 0;
+      var retry = sinon.spy(function(_request, next) {
+        next();
+      });
+      backend.use('retry', retry);
+
+      forceRetry(function(error) {
+        expect(error.code).to.equal(ERROR_CODE.ERR_MAX_SUBMIT_RETRIES_EXCEEDED);
+        expect(retry).not.to.have.been.called;
+        done();
+      });
+    });
+
+    it('rejects the op with an error passed to next', function(done) {
+      backend.use('retry', passError);
+      forceRetry(getErrorTest(done));
+    });
+  });
+
   describe('$fixup', function() {
     var connection;
     var backend;
