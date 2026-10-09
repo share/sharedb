@@ -84,6 +84,27 @@ describe('Agent', function() {
     });
   });
 
+  describe('message validation', function() {
+    it('rejects an op with a non-integer version', function(done) {
+      var connection = backend.connect();
+      connection.on('receive', function(request) {
+        var message = request.data;
+        if (message.c !== 'dogs' || message.d !== 'fido') return;
+        request.data = null;
+        expect(message.error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: 'Invalid version'});
+        done();
+      });
+      connection.send({
+        a: ACTIONS.op,
+        c: 'dogs',
+        d: 'fido',
+        v: 1.5,
+        seq: connection.seq++,
+        op: [{p: ['age'], na: 1}]
+      });
+    });
+  });
+
   describe('pub/sub channel collisions', function() {
     var writer;
     var subscriber;
