@@ -488,6 +488,28 @@ describe('middleware', function() {
       });
     });
 
+    it('lets middleware reset state before the next attempt', function(done) {
+      var snapshotsBeforeApply = [];
+      backend.use('apply', function(request, next) {
+        if (request.op.src !== doc.connection.id) return next();
+        if (!request.snapshotBeforeApply) {
+          request.snapshotBeforeApply = JSON.parse(JSON.stringify(request.snapshot.data));
+        }
+        snapshotsBeforeApply.push(request.snapshotBeforeApply);
+        next();
+      });
+      backend.use('retry', function(request, next) {
+        delete request.snapshotBeforeApply;
+        next();
+      });
+
+      forceRetry(function(error) {
+        if (error) return done(error);
+        expect(snapshotsBeforeApply).to.eql([{age: 3}, {age: 10}]);
+        done();
+      });
+    });
+
     it('is not triggered if the op commits first time', function(done) {
       var retry = sinon.spy(function(_request, next) {
         next();
