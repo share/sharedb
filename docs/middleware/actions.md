@@ -223,6 +223,16 @@ An operation was applied to a snapshot, and is about to be committed to the data
 
 This action has the same additional `context` properties as [`'submit'`](#submit).
 
+## `'retry'`
+
+An operation lost the race to commit, because another op was committed to the same document first. The op is about to be retried: the snapshot will be fetched again, and the op transformed against the newer ops before passing through [`'apply'`](#apply) and [`'commit'`](#commit) again. [`'submit'`](#submit) is not triggered again.
+
+This is the place to reset any state that middleware stored on the request during the failed attempt.
+
+The `snapshot` and `channels` are still those of the failed attempt, so the `snapshot` already has the op applied. The snapshot is fetched again and the channels reset after this action, before [`'apply'`](#apply).
+
+This action has the same additional `context` properties as [`'submit'`](#submit).
+
 ## `'afterWrite'`
 
 An operation and its updated snapshot were successfully written to the database.
