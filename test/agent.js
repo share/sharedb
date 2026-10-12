@@ -1,4 +1,5 @@
 var Backend = require('../lib/backend');
+var MemoryDb = require('../lib/db/memory');
 var logger = require('../lib/logger');
 var sinon = require('sinon');
 var StreamSocket = require('../lib/stream-socket');
@@ -17,6 +18,83 @@ describe('Agent', function() {
 
   afterEach(function(done) {
     backend.close(done);
+  });
+
+  describe('request validation', function() {
+    var socket;
+    var connection;
+
+    beforeEach(function(done) {
+      socket = new StreamSocket();
+      backend.listen(socket.stream);
+      connection = new Connection(socket);
+      socket._open();
+      connection.once('connected', function() {
+        done();
+      });
+    });
+
+    // Sends a raw message and asserts that the agent rejects it before any of
+    // the bulk or query read paths reach the database adapter.
+    function expectRejected(message, expectedError, done) {
+      var getSnapshotBulk = sinon.spy(MemoryDb.prototype, 'getSnapshotBulk');
+      var getOpsBulk = sinon.spy(MemoryDb.prototype, 'getOpsBulk');
+      var query = sinon.spy(MemoryDb.prototype, 'query');
+      connection.on('receive', function(request) {
+        var reply = request.data;
+        if (!reply || !reply.error) return;
+        request.data = null; // Stop the client processing the error reply
+        expect(reply.error).to.include({code: 'ERR_MESSAGE_BADLY_FORMED', message: expectedError});
+        expect(getSnapshotBulk).not.to.have.been.called;
+        expect(getOpsBulk).not.to.have.been.called;
+        expect(query).not.to.have.been.called;
+        done();
+      });
+      socket.send(JSON.stringify(message));
+    }
+
+    [ACTIONS.bulkFetch, ACTIONS.bulkSubscribe, ACTIONS.bulkUnsubscribe].forEach(function(action) {
+      [{}, 42, null, '__proto__'].forEach(function(badId) {
+        it('rejects a ' + action + ' whose ids contain ' + JSON.stringify(badId), function(done) {
+          expectRejected({a: action, c: 'dogs', b: ['fido', badId]}, 'Invalid id', done);
+        });
+      });
+
+      [{$gt: -1}, '1', null, -1].forEach(function(badVersion) {
+        it('rejects a ' + action + ' with version ' + JSON.stringify(badVersion), function(done) {
+          expectRejected({a: action, c: 'dogs', b: {fido: badVersion}}, 'Invalid version', done);
+        });
+      });
+
+      it('rejects a ' + action + ' with a dangerous id in its version map', function(done) {
+        // JSON.parse() is the only way to get '__proto__' as an own key, which
+        // is how it arrives off the wire
+        var versions = JSON.parse('{"__proto__": 0}');
+        expectRejected({a: action, c: 'dogs', b: versions}, 'Invalid id', done);
+      });
+    });
+
+    [ACTIONS.queryFetch, ACTIONS.querySubscribe].forEach(function(action) {
+      [{}, 42, null, '__proto__'].forEach(function(badId) {
+        it('rejects a ' + action + ' reconnecting with id ' + JSON.stringify(badId), function(done) {
+          expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: [[badId]]}, 'Invalid id', done);
+        });
+      });
+
+      [{$gt: -1}, '1', -1].forEach(function(badVersion) {
+        it('rejects a ' + action + ' reconnecting with version ' + JSON.stringify(badVersion), function(done) {
+          expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: [['fido', badVersion]]}, 'Invalid version', done);
+        });
+      });
+
+      it('rejects a ' + action + ' whose reconnect results are not an array', function(done) {
+        expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: {fido: 0}}, 'Invalid query results', done);
+      });
+
+      it('rejects a ' + action + ' whose reconnect result is not an array', function(done) {
+        expectRejected({a: action, id: 1, c: 'dogs', q: {}, r: ['fido']}, 'Invalid query results', done);
+      });
+    });
   });
 
   describe('handshake', function() {
