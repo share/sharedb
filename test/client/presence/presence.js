@@ -718,6 +718,220 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('broadcasts a null presence when a connection that never subscribed is disconnected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('broadcasts a null presence for presence in flight when the connection is disconnected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      if (context.presence.p === null) return next();
+      connection1.agent.stream.once('end', function() {
+        next();
+      });
+      connection1.close();
+    });
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        localPresence1.submit({index: 3}, errorHandler(done));
+      }
+    ], done);
+  });
+
+  it('broadcasts a null presence for presence in flight when unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      if (context.presence.p === null) return next();
+      presence1.unsubscribe(function(error) {
+        if (error) return done(error);
+        next();
+      });
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        async.parallel([
+          function(cb) {
+            presence2.once('receive', function(id, presence) {
+              expect(id).to.equal('presence-1');
+              expect(presence).to.be.null;
+              cb();
+            });
+          },
+          function(cb) {
+            localPresence1.submit({index: 3}, cb);
+          }
+        ], next);
+      }
+    ], done);
+  });
+
+  it('broadcasts presence submitted after unsubscribing while earlier presence was in flight', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var received = {};
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      if (context.presence.id !== 'presence-1' || context.presence.p === null) return next();
+      presence1.unsubscribe(function(error) {
+        if (error) return done(error);
+        localPresence2.submit({index: 2}, function(error) {
+          if (error) return done(error);
+          next();
+        });
+      });
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received[id] = presence;
+          if (Object.keys(received).length === 2) next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        expect(received).to.eql({'presence-1': null, 'presence-2': {index: 2}});
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts a null presence for presence held in receive middleware when disconnected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receive, function(context, next) {
+      if (context.agent !== connection1.agent || context.data.a !== 'p') return next();
+      connection1.agent.stream.once('end', function() {
+        next();
+      });
+      connection1.close();
+    });
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        localPresence1.submit({index: 3}, errorHandler(done));
+      }
+    ], done);
+  });
+
+  it('does not rewrite a null presence again when middleware fills it in on disconnect', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var nullPresenceCount = 0;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (context.presence.p !== null) return callback();
+          if (++nullPresenceCount > 1) return done(new Error('Rewrote a null presence more than once'));
+          context.presence.p = {index: 0};
+          callback();
+        });
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-1');
+          expect(nullPresenceCount).to.equal(1);
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('broadcasts a null presence when unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      }
+    ], done);
+  });
+
+  it('does not broadcast a null presence again when disconnecting after unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var agent1 = connection1.agent;
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function() {
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        sinon.spy(agent1, '_broadcastPresence');
+        agent1.stream.once('end', next);
+        connection1.close();
+      },
+      function(next) {
+        expect(agent1._broadcastPresence).not.to.have.been.called;
+        next();
+      }
+    ], done);
+  });
+
   describe('middleware', function() {
     describe('receivePresence', function() {
       it('provides the presence in the middleware', function(done) {
@@ -732,7 +946,7 @@ describe('Presence', function() {
 
       it('can mutate the presence in the middleware', function(done) {
         backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
-          context.presence.p.index++;
+          if (context.presence.p) context.presence.p.index++;
           next();
         });
 
@@ -767,8 +981,34 @@ describe('Presence', function() {
             localPresence1.submit({index: 5}, function(error) {
               expect(error.message).to.contain('bad!');
               expect(connection1.agent.presenceRequests['test-channel']).not.to.be.ok;
+              expect(connection1.agent._pendingPresenceBroadcasts).to.be.empty;
               next();
             });
+          }
+        ], done);
+      });
+
+      it('still broadcasts presence in flight when another presence on the channel is rejected', function(done) {
+        var localPresence1 = presence1.create('presence-1');
+        var localPresence2 = presence1.create('presence-2');
+
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+          if (context.presence.id === 'presence-2') return next(new Error('bad!'));
+          localPresence2.submit({index: 2}, function(error) {
+            expect(error.message).to.contain('bad!');
+            next();
+          });
+        });
+
+        async.series([
+          presence2.subscribe.bind(presence2),
+          function(next) {
+            presence2.once('receive', function(id, presence) {
+              expect(id).to.equal('presence-1');
+              expect(presence).to.eql({index: 1});
+              next();
+            });
+            localPresence1.submit({index: 1}, errorHandler(done));
           }
         ], done);
       });
