@@ -148,6 +148,11 @@ describe('Agent', function() {
       });
     });
 
+    it('rejects an op with a non-integer version', function(done) {
+      var message = {a: ACTIONS.op, c: 'dogs', d: 'fido', v: 1.5, seq: 1, op: [{p: ['age'], na: 1}]};
+      expectRejected(message, 'Invalid version', done);
+    });
+
     [unconvertible, ['dogs'], '__proto__'].forEach(function(badCollection) {
       it('rejects doc presence with collection ' + JSON.stringify(badCollection), function(done) {
         var message = {a: ACTIONS.presence, ch: 'dogs.fido', c: badCollection, d: 'fido', id: 'rex', pv: 0, v: 0};
