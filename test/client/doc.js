@@ -657,31 +657,31 @@ describe('Doc', function() {
     });
   });
 
-  describe('errors on ops that could cause prototype corruption', function() {
-    function expectReceiveError(
-      connection,
-      collectionName,
-      docId,
-      expectedError,
-      done
-    ) {
-      connection.on('receive', function(request) {
-        var message = request.data;
-        if (message.c === collectionName && message.d === docId) {
-          if ('error' in message) {
-            request.data = null; // Stop further processing of the message
-            if (message.error.message === expectedError) {
-              return done();
-            } else {
-              return done('Unexpected ShareDB error: ' + message.error.message);
-            }
+  function expectReceiveError(
+    connection,
+    collectionName,
+    docId,
+    expectedError,
+    done
+  ) {
+    connection.on('receive', function(request) {
+      var message = request.data;
+      if (message.c === collectionName && message.d === docId) {
+        if ('error' in message) {
+          request.data = null; // Stop further processing of the message
+          if (message.error.message === expectedError) {
+            return done();
           } else {
-            return done('Expected error on ' + collectionName + '.' + docId + ' but got no error');
+            return done('Unexpected ShareDB error: ' + message.error.message);
           }
+        } else {
+          return done('Expected error on ' + collectionName + '.' + docId + ' but got no error');
         }
-      });
-    }
+      }
+    });
+  }
 
+  describe('errors on ops that could cause prototype corruption', function() {
     afterEach(function() {
       delete Object.prototype.polluted;
     });
@@ -760,16 +760,21 @@ describe('Doc', function() {
       });
     });
 
-    // ot-json0 walks ops with .length and numeric indexing, so it applies an
-    // array-like object as if it were an op
     [
       {
         name: 'an array-like op',
-        op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1}
+        op: {0: {p: ['__proto__', 'polluted'], oi: 'oops'}, length: 1},
+        error: 'json0 op must be an array'
       },
       {
         name: 'ops with a path segment that is not a string',
-        op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}]
+        op: [{p: [['__proto__'], 'polluted'], oi: 'oops'}],
+        error: 'Invalid path segment'
+      },
+      {
+        name: 'ops with a component that is not an object',
+        op: [null],
+        error: 'Missing path'
       }
     ].forEach(function(test) {
       it('Rejects ' + test.name, function(done) {
@@ -780,7 +785,7 @@ describe('Doc', function() {
           if (err) {
             return done(err);
           }
-          expectReceiveError(connection, collectionName, docId, 'Invalid path segment', function(error) {
+          expectReceiveError(connection, collectionName, docId, test.error, function(error) {
             if (error) {
               return done(error);
             }
@@ -911,12 +916,196 @@ describe('Doc', function() {
         });
       });
 
+      // normalize() runs before the paths are checked, and it takes a bare
+      // component as well as an op, fills in a missing path, and branches on
+      // Array.isArray() — so these all reach the check as a real op
+      [
+        {name: 'a bare op component', op: {p: ['__proto__', 'polluted'], oi: 'oops'}},
+        {name: 'an op that is also shaped like a component', op: (function() {
+          var op = [{p: ['__proto__', 'polluted'], oi: 'oops'}];
+          op.p = [];
+          return op;
+        })()},
+        {name: 'an op with a pathless component before a bad one', op: [
+          {p: [], od: {foo: 'bar'}, oi: {foo: 'bar'}},
+          {p: ['__proto__', 'polluted'], oi: 'oops'}
+        ]}
+      ].forEach(function(test) {
+        it('rejects ' + test.name + ' composed into a pending create', function(done) {
+          var doc = this.connection.get('test-collection', 'test-doc');
+          doc.create({foo: 'bar'});
+          doc.submitOp(test.op, function(error) {
+            expectInvalidPathSegment(error);
+            done();
+          });
+        });
+      });
+
       it('leaves the doc usable after rejecting an op', function(done) {
         var doc = this.connection.get('test-collection', 'test-doc');
         async.series([
           doc.create.bind(doc, {foo: 'bar'}),
           function(next) {
             doc.submitOp(badOp, function(error) {
+              expect(error).to.be.instanceOf(Error);
+              next();
+            });
+          },
+          doc.submitOp.bind(doc, [{p: ['baz'], oi: true}]),
+          doc.whenNothingPending.bind(doc),
+          function(next) {
+            expect(doc.data).to.eql({foo: 'bar', baz: true});
+            next();
+          }
+        ], done);
+      });
+    });
+  });
+
+  // ot-json0's apply() quietly ignores an op that isn't an array, but its
+  // compose() and invert() throw on one. $fixup() composes, and it is called
+  // from middleware, so the throw is uncaught and takes the process down
+  describe('errors on badly formed json0 ops', function() {
+    [
+      {
+        name: 'an array-like op',
+        op: {0: {p: ['colour'], oi: 'red'}, length: 1},
+        error: 'json0 op must be an array'
+      },
+      {
+        name: 'a bare op component',
+        op: {p: ['colour'], oi: 'red'},
+        error: 'json0 op must be an array'
+      },
+      {
+        name: 'an op component that is not an object',
+        op: [null],
+        error: 'Missing path'
+      }
+    ].forEach(function(test) {
+      it('Rejects ' + test.name + ' before the apply middleware can fix it up', function(done) {
+        var connection = this.connection;
+        var collectionName = 'test-collection';
+        var docId = 'test-doc';
+        this.backend.use('apply', function(request, next) {
+          if ('op' in request.op) request.$fixup([{p: ['fixed'], oi: true}]);
+          next();
+        });
+        connection.get(collectionName, docId).create({id: docId}, function(err) {
+          if (err) {
+            return done(err);
+          }
+          expectReceiveError(connection, collectionName, docId, test.error, done);
+          connection.send({
+            a: 'op',
+            c: collectionName,
+            d: docId,
+            v: 1,
+            seq: connection.seq++,
+            x: {},
+            op: test.op
+          });
+        });
+      });
+    });
+
+    describe('locally submitted ops', function() {
+      // json0's normalize() throws on a component that isn't an object, and it
+      // runs before the op is checked, so this used to come straight out of
+      // submitOp() rather than through the callback
+      it('rejects an op component that is not an object without sending it to the server', function(done) {
+        var doc = this.connection.get('test-collection', 'test-doc');
+        doc.create({foo: 'bar'}, function(error) {
+          if (error) return done(error);
+          var calledBack = false;
+          doc.submitOp([null], function(error) {
+            calledBack = true;
+            expect(error.code).to.equal(ShareDBError.CODES.ERR_OT_OP_BADLY_FORMED);
+          });
+          // The server would only reject asynchronously, so calling back
+          // synchronously is how we know the op never left the client
+          expect(calledBack).to.equal(true);
+          done();
+        });
+      });
+
+      it('emits an error for an op component that is not an object with no callback', function(done) {
+        var doc = this.connection.get('test-collection', 'test-doc');
+        doc.create({foo: 'bar'}, function(error) {
+          if (error) return done(error);
+          doc.on('error', function(error) {
+            expect(error.code).to.equal(ShareDBError.CODES.ERR_OT_OP_BADLY_FORMED);
+            done();
+          });
+          doc.submitOp([null]);
+        });
+      });
+
+      // A type can throw anything at all, and reading .message off a thrown
+      // null would throw out of the catch, which is what the catch is for
+      [
+        {
+          name: 'a string',
+          thrown: 'not an op',
+          code: ShareDBError.CODES.ERR_OT_OP_BADLY_FORMED,
+          message: 'not an op'
+        },
+        {
+          name: 'null',
+          thrown: null,
+          code: ShareDBError.CODES.ERR_OT_OP_BADLY_FORMED,
+          message: 'null'
+        },
+        {
+          name: 'a ShareDBError',
+          thrown: new ShareDBError('ERR_CUSTOM_TYPE_ERROR', 'Custom type error'),
+          code: 'ERR_CUSTOM_TYPE_ERROR',
+          message: 'Custom type error'
+        }
+      ].forEach(function(test) {
+        it('reports ' + test.name + ' thrown by normalize()', function(done) {
+          var doc = this.connection.get('test-collection', 'test-doc');
+          doc.create({foo: 'bar'}, function(error) {
+            if (error) return done(error);
+            sinon.stub(json0, 'normalize').callsFake(function() {
+              throw test.thrown;
+            });
+            doc.submitOp([{p: ['foo'], od: 'bar'}], function(error) {
+              expect(error.code).to.equal(test.code);
+              expect(error.message).to.equal(test.message);
+              done();
+            });
+          });
+        });
+      });
+
+      // normalize() accepts more than the server does, and everything it
+      // accepts has to stay submittable
+      [
+        {name: 'a bare op component', op: {p: ['baz'], oi: true}},
+        {name: 'an op whose component has no path', op: [{od: {foo: 'bar'}, oi: {foo: 'bar', baz: true}}]},
+        {name: 'a bare component with no path', op: {od: {foo: 'bar'}, oi: {foo: 'bar', baz: true}}}
+      ].forEach(function(test) {
+        it('accepts ' + test.name + ', which json0 normalizes into an op', function(done) {
+          var doc = this.connection.get('test-collection', 'test-doc');
+          async.series([
+            doc.create.bind(doc, {foo: 'bar'}),
+            doc.submitOp.bind(doc, test.op),
+            doc.whenNothingPending.bind(doc),
+            function(next) {
+              expect(doc.data).to.eql({foo: 'bar', baz: true});
+              next();
+            }
+          ], done);
+        });
+      });
+
+      it('leaves the doc usable after rejecting an op', function(done) {
+        var doc = this.connection.get('test-collection', 'test-doc');
+        async.series([
+          doc.create.bind(doc, {foo: 'bar'}),
+          function(next) {
+            doc.submitOp([null], function(error) {
               expect(error).to.be.instanceOf(Error);
               next();
             });
