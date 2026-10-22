@@ -144,6 +144,25 @@ describe('Agent', function() {
       });
     });
 
+    it('rejects an op with a non-integer version', function(done) {
+      var message = {a: ACTIONS.op, c: 'dogs', d: 'fido', v: 1.5, seq: 1, op: [{p: ['age'], na: 1}]};
+      expectRejected(message, 'Invalid version', done);
+    });
+
+    [unconvertible, ['dogs'], '__proto__'].forEach(function(badCollection) {
+      it('rejects doc presence with collection ' + JSON.stringify(badCollection), function(done) {
+        var message = {a: ACTIONS.presence, ch: 'dogs.fido', c: badCollection, d: 'fido', id: 'rex', pv: 0, v: 0};
+        expectRejected(message, 'Invalid collection', done);
+      });
+    });
+
+    [unconvertible, '__proto__'].forEach(function(badChannel) {
+      it('rejects doc presence with channel ' + JSON.stringify(badChannel), function(done) {
+        var message = {a: ACTIONS.presence, ch: badChannel, c: 'dogs', d: 'fido', id: 'rex', pv: 0, v: 0};
+        expectRejected(message, 'Invalid presence channel', done);
+      });
+    });
+
     [unconvertible, true].forEach(function(badProtocol) {
       it('rejects a handshake with protocol ' + JSON.stringify(badProtocol), function(done) {
         expectRejected({a: ACTIONS.handshake, protocol: badProtocol, protocolMinor: 2}, 'Invalid protocol', done);
