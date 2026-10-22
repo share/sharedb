@@ -5,6 +5,7 @@ var types = require('../lib/types');
 var errorHandler = util.errorHandler;
 var ShareDBError = require('../lib/error');
 var sinon = require('sinon');
+var crypto = require('crypto');
 var ACTIONS = require('../lib/message-actions').ACTIONS;
 
 var ERROR_CODE = ShareDBError.CODES;
@@ -61,6 +62,101 @@ describe('middleware', function() {
       var connection = this.backend.connect();
       connection.on('stopped', function() {
         done();
+      });
+    });
+
+    it('uses a clientId set on connect as the connection id and op src', function(done) {
+      var backend = this.backend;
+      backend.use('connect', function(request, next) {
+        request.agent.clientId = 'alice:1';
+        next();
+      });
+
+      var srcs = [];
+      backend.use('submit', function(request, next) {
+        srcs.push(request.op.src);
+        next();
+      });
+
+      backend.connect(null, null, function(connection) {
+        expect(connection.id).to.equal('alice:1');
+        connection.get('dogs', 'fido').create({age: 3}, function(error) {
+          if (error) return done(error);
+          expect(srcs).to.eql(['alice:1']);
+          done();
+        });
+      });
+    });
+  });
+
+  describe('restricting op sources', function() {
+    beforeEach(function() {
+      function srcFor(userId) {
+        return userId + ':' + crypto.randomUUID();
+      }
+
+      function isSrcOf(userId, src) {
+        if (typeof src !== 'string') return false;
+        var separator = src.lastIndexOf(':');
+        return separator !== -1 && src.slice(0, separator) === String(userId);
+      }
+
+      this.backend.use('connect', function(context, next) {
+        var userId = context.req.userId;
+        context.agent.custom.userId = userId;
+        context.agent.clientId = srcFor(userId);
+        next();
+      });
+
+      this.backend.use('receive', function(context, next) {
+        var message = context.data;
+        var userId = context.agent.custom.userId;
+        if (message.a === ACTIONS.handshake && message.id != null && !isSrcOf(userId, message.id)) {
+          delete message.id;
+        }
+        if (message.a === ACTIONS.op && message.src != null && !isSrcOf(userId, message.src)) {
+          return next(new Error('Op src belongs to another user'));
+        }
+        next();
+      });
+    });
+
+    it('keeps a reclaimed id that names the same user', function(done) {
+      var backend = this.backend;
+      backend.connect(null, {userId: 42}, function(connection) {
+        var id = connection.id;
+        expect(id).to.match(/^42:/);
+        connection.close();
+        backend.connect(connection, {userId: 42}, function() {
+          expect(connection.id).to.equal(id);
+          done();
+        });
+      });
+    });
+
+    it('replaces a reclaimed id that names another user', function(done) {
+      var backend = this.backend;
+      backend.connect(null, {userId: 42}, function(connection) {
+        connection.close();
+        connection.id = '7:stale';
+        backend.connect(connection, {userId: 42}, function() {
+          expect(connection.id).to.match(/^42:/);
+          expect(connection.id).to.equal(connection.agent.clientId);
+          done();
+        });
+      });
+    });
+
+    it('rejects an op whose src names another user', function(done) {
+      this.backend.connect(null, {userId: 42}, function(connection) {
+        connection.get('dogs', 'fido').on('error', function(error) {
+          expect(error.message).to.equal('Op src belongs to another user');
+          done();
+        });
+        connection.send({
+          a: ACTIONS.op, c: 'dogs', d: 'fido', v: 0, src: '7:1', seq: 1,
+          create: {type: 'json0', data: {}}
+        });
       });
     });
   });
