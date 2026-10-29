@@ -2239,6 +2239,265 @@ describe('DocPresence', function() {
     ], done);
   });
 
+  it('broadcasts an older presence still transforming when a newer leave fails to transform', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var releaseFirstTransform;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseFirstTransform || context.agent !== connection1.agent) return callback();
+          releaseFirstTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        var leaveAheadOfDoc = localPresence1._message();
+        leaveAheadOfDoc.p = null;
+        leaveAheadOfDoc.v = doc1.version + 2;
+        leaveAheadOfDoc.t = presenceTestType.type.uri;
+        connection1.send(leaveAheadOfDoc);
+      },
+      function(next) {
+        releaseFirstTransform();
+        localPresence2.submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('broadcasts the re-created presence, not the one a rejected leave had superseded', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var releaseFirstTransform;
+    var releaseLeaveTransform;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseFirstTransform || context.agent !== connection1.agent) return callback();
+          releaseFirstTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        var getOps = backend.db.getOps;
+        sinon.stub(backend.db, 'getOps').callsFake(function() {
+          var args = arguments;
+          releaseLeaveTransform = function() {
+            getOps.apply(backend.db, args);
+          };
+          next();
+        });
+
+        var leaveAheadOfDoc = localPresence1._message();
+        leaveAheadOfDoc.p = null;
+        leaveAheadOfDoc.v = doc1.version + 2;
+        leaveAheadOfDoc.t = presenceTestType.type.uri;
+        connection1.send(leaveAheadOfDoc);
+      },
+      function(next) {
+        backend.db.getOps.restore();
+        var recreatedMessage = localPresence1._message();
+        recreatedMessage.p = {index: 2};
+        recreatedMessage.pv = 0;
+        recreatedMessage.v = doc1.version + 1;
+        recreatedMessage.t = presenceTestType.type.uri;
+        connection1.send(recreatedMessage);
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        releaseLeaveTransform();
+      },
+      function(next) {
+        releaseFirstTransform();
+        localPresence2.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-2');
+          next();
+        });
+      },
+      function(next) {
+        expect(presence2.remotePresences['presence-1']).to.eql({index: 2});
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts presence superseded by a rejected leave when its re-creation is rejected too', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var releaseFirstTransform;
+    var releaseLeaveTransform;
+    var releaseRecreationTransform;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseFirstTransform || context.agent !== connection1.agent) return callback();
+          releaseFirstTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        var leaveAheadOfDoc = localPresence1._message();
+        leaveAheadOfDoc.p = null;
+        leaveAheadOfDoc.v = doc1.version + 2;
+        leaveAheadOfDoc.t = presenceTestType.type.uri;
+
+        var recreatedAheadOfDoc = localPresence1._message();
+        recreatedAheadOfDoc.p = {index: 2};
+        recreatedAheadOfDoc.pv = 0;
+        recreatedAheadOfDoc.v = doc1.version + 2;
+        recreatedAheadOfDoc.t = presenceTestType.type.uri;
+
+        var getOps = backend.db.getOps;
+        sinon.stub(backend.db, 'getOps').callsFake(function() {
+          var args = arguments;
+          var releaseTransform = function() {
+            getOps.apply(backend.db, args);
+          };
+          if (releaseLeaveTransform) {
+            releaseRecreationTransform = releaseTransform;
+            backend.db.getOps.restore();
+            return next();
+          }
+          releaseLeaveTransform = releaseTransform;
+          connection1.send(recreatedAheadOfDoc);
+        });
+        connection1.send(leaveAheadOfDoc);
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        releaseLeaveTransform();
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        releaseRecreationTransform();
+      },
+      function(next) {
+        releaseFirstTransform();
+        localPresence2.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('broadcasts an older presence restored when a newer leave and update both fail to transform', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var releaseFirstTransform;
+    var releaseUpdateTransform;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseFirstTransform || context.agent !== connection1.agent) return callback();
+          releaseFirstTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        var getOps = backend.db.getOps;
+        sinon.stub(backend.db, 'getOps').callsFake(function() {
+          var args = arguments;
+          backend.db.getOps.restore();
+          releaseUpdateTransform = function() {
+            getOps.apply(backend.db, args);
+          };
+          next();
+        });
+
+        var updateAheadOfDoc = localPresence1._message();
+        updateAheadOfDoc.p = {index: 2};
+        updateAheadOfDoc.v = doc1.version + 2;
+        updateAheadOfDoc.t = presenceTestType.type.uri;
+        connection1.send(updateAheadOfDoc);
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        var leaveAheadOfDoc = localPresence1._message();
+        leaveAheadOfDoc.p = null;
+        leaveAheadOfDoc.v = doc1.version + 2;
+        leaveAheadOfDoc.t = presenceTestType.type.uri;
+        connection1.send(leaveAheadOfDoc);
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        releaseUpdateTransform();
+      },
+      function(next) {
+        releaseFirstTransform();
+        localPresence2.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      }
+    ], done);
+  });
+
   it('broadcasts a null presence still being transformed when the connection closes', function(done) {
     var localPresence1 = presence1.create('presence-1');
 
