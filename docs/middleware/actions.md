@@ -147,7 +147,7 @@ This action has these additional `context` properties:
 
 ## `'readSnapshots'`
 
-One or more snapshots were loaded from the database for a fetch or subscribe.
+One or more snapshots were loaded from the database for a fetch or subscribe, or to check a client's `null` presence (see [Who can send presence]({{ site.baseurl }}{% link presence.md %}#who-can-send-presence)).
 
 This action has these additional `context` properties:
 

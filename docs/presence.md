@@ -93,12 +93,12 @@ Rejecting updates in `'sendPresence'` only stops them reaching the client if you
 
 ### Who can send presence
 
-ShareDB rejects typed presence whose collection and document ID don't match its channel. It also only broadcasts typed presence if the client can read the document, as determined by the [`'readSnapshots'`]({{ site.baseurl }}{% link middleware/actions.md %}#readsnapshots) middleware. This is checked when the client starts sending presence on the document, not on every update.
+ShareDB rejects typed presence whose collection and document ID don't match its channel. It also only broadcasts typed presence if the client can read the document, as determined by the [`'readSnapshots'`]({{ site.baseurl }}{% link middleware/actions.md %}#readsnapshots) middleware. This is checked when the client starts sending presence on the document, not on every update. It is also checked when the client sends `null` presence after already clearing another presence on the document, so a client that has lost read access may not be able to clear that presence until it unsubscribes or disconnects.
 
 ShareDB doesn't check:
 
  - whether the client can write to the document
- - `null` presence, which is sent when a client leaves
+ - `null` presence, which is sent when a client leaves, apart from the read check above
  - untyped presence
 
 Check these in the [`'receivePresence'`]({{ site.baseurl }}{% link middleware/actions.md %}#receivepresence) middleware if you need to.
