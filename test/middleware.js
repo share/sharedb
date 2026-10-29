@@ -488,6 +488,36 @@ describe('middleware', function() {
       });
     });
 
+    it('is triggered after the failed attempt is reset', function(done) {
+      backend.use('apply', function(request, next) {
+        if (request.op.src === doc.connection.id && !request.retries) {
+          request.$fixup([{p: ['age'], na: 1}]);
+        }
+        next();
+      });
+      var retryRequest;
+      backend.use('retry', function(request, next) {
+        retryRequest = {
+          op: request.op.op,
+          fixup: request.op.m.fixup,
+          snapshot: request.snapshot,
+          channels: request.channels
+        };
+        next();
+      });
+
+      forceRetry(function(error) {
+        if (error) return done(error);
+        expect(retryRequest).to.eql({
+          op: [{p: ['age'], na: 2}],
+          fixup: undefined,
+          snapshot: null,
+          channels: null
+        });
+        done();
+      });
+    });
+
     it('lets middleware reset state before the next attempt', function(done) {
       var snapshotsBeforeApply = [];
       backend.use('apply', function(request, next) {

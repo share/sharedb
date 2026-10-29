@@ -93,7 +93,7 @@ backend.use('commit', (context, next) => {
 
 The [`retry`]({{ site.baseurl }}{% link middleware/actions.md %}#retry) hook is triggered when another client wins the race to commit, before the op is retried. The op then passes through the [apply](#apply) and [commit](#commit) hooks again, against the newer snapshot. The [submit](#submit) hook is not triggered again.
 
-The retry reuses the same `context`, so any properties set on it during the failed attempt are still there. This hook is the place to reset them.
+The retry reuses the same `context`. ShareDB resets its own state before this hook: any [fixups](#mutating-ops) are undone, and `context.snapshot` and `context.channels` are `null` until the next attempt fetches the snapshot again. Any properties that middleware set on the `context` during the failed attempt are still there, though, and this hook is the place to reset them.
 
 In the example below, several `'apply'` middlewares share one lazily-taken snapshot clone, so only the first one that needs it pays for the copy. Without a reset, the retry would keep the failed attempt's clone. A plain `=` assignment, as in [Comparing old snapshot version with new version](#comparing-old-snapshot-version-with-new-version), re-captures on every attempt and doesn't need this hook.
 

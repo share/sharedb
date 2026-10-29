@@ -229,7 +229,7 @@ An operation lost the race to commit, because another op was committed to the sa
 
 This is the place to reset any state that middleware stored on the request during the failed attempt.
 
-The `snapshot` and `channels` are still those of the failed attempt, so the `snapshot` already has the op applied. The snapshot is fetched again and the channels reset after this action, before [`'apply'`](#apply).
+Before this action, the request is reset ready for the next attempt: any [fixups]({{ site.baseurl }}{% link middleware/op-submission.md %}#mutating-ops) are undone, and `snapshot` and `channels` are `null` until the next attempt fetches the snapshot again.
 
 This action has the same additional `context` properties as [`'submit'`](#submit).
 
