@@ -1368,6 +1368,61 @@ describe('DocPresence', function() {
     ], done);
   });
 
+  it('drains a long queue of untyped leaves with the same id in order without recursing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var untypedLeavesToOverflowTheStack = 3000;
+    var leavePresenceVersions = [];
+    for (var pv = 1; pv <= untypedLeavesToOverflowTheStack + 1; pv++) leavePresenceVersions.push(pv);
+    var untypedLeavePresenceVersions = leavePresenceVersions.slice(1);
+    var publishedPresenceVersions = [];
+    var releaseLeaveTransform;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseLeaveTransform || context.agent !== connection1.agent) return callback();
+          releaseLeaveTransform = callback;
+          next();
+        });
+        localPresence1.submit(null, errorHandler(done));
+      },
+      function(next) {
+        var leavesThroughMiddleware = 0;
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (++leavesThroughMiddleware === untypedLeavePresenceVersions.length) next();
+        });
+        untypedLeavePresenceVersions.forEach(function(pv) {
+          connection1.send({a: 'p', ch: 'books.northern-lights', id: 'presence-1', p: null, pv: pv});
+        });
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          publish.apply(backend.pubsub, arguments);
+          publishedPresenceVersions.push(data.pv);
+          if (publishedPresenceVersions.length < leavePresenceVersions.length) return;
+          backend.pubsub.publish.restore();
+          next();
+        });
+        releaseLeaveTransform();
+      },
+      function(next) {
+        expect(publishedPresenceVersions).to.eql(leavePresenceVersions);
+        next();
+      }
+    ], done);
+  });
+
   it('broadcasts leaves with the same id in the order they get through middleware', function(done) {
     var localPresence1 = presence1.create('presence-1');
     var releaseFirstLeaveTransform;
@@ -1490,6 +1545,128 @@ describe('DocPresence', function() {
           next();
         });
         connection1.close();
+      }
+    ], done);
+  });
+
+  it('clears re-created presence on disconnect after a newer update that overtook it is rejected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+
+    function sendRecreated(value, presenceVersion, version) {
+      var message = localPresence1._message();
+      message.p = value;
+      message.pv = presenceVersion;
+      message.v = version;
+      message.t = presenceTestType.type.uri;
+      connection1.send(message);
+    }
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        localPresence1.submit(null, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        var recreationMiddleware;
+        var overtakingUpdateMiddleware;
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (!context.presence.p) return callback();
+          if (context.presence.p.index === 2) recreationMiddleware = callback;
+          if (context.presence.p.index === 3) overtakingUpdateMiddleware = callback;
+          if (!recreationMiddleware || !overtakingUpdateMiddleware) return;
+          overtakingUpdateMiddleware();
+          recreationMiddleware();
+        });
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        sendRecreated({index: 2}, 0, doc2.version);
+        sendRecreated({index: 3}, 1, doc2.version + 1);
+      },
+      function(next) {
+        expect(presence2.remotePresences['presence-1']).to.eql({index: 2});
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('broadcasts re-created presence when an update that overtook it is rejected first', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseRecreationTransform;
+
+    function sendRecreated(value, presenceVersion, version) {
+      var message = localPresence1._message();
+      message.p = value;
+      message.pv = presenceVersion;
+      message.v = version;
+      message.t = presenceTestType.type.uri;
+      connection1.send(message);
+    }
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        localPresence1.submit(null, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseRecreationTransform || context.agent !== connection1.agent) return callback();
+          releaseRecreationTransform = callback;
+        });
+        var recreationMiddleware;
+        var overtakingUpdateMiddleware;
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (!context.presence.p) return callback();
+          if (context.presence.p.index === 2) recreationMiddleware = callback;
+          if (context.presence.p.index === 3) overtakingUpdateMiddleware = callback;
+          if (!recreationMiddleware || !overtakingUpdateMiddleware) return;
+          overtakingUpdateMiddleware();
+          recreationMiddleware();
+        });
+        localPresence1.once('error', function(error) {
+          expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
+          next();
+        });
+        var versionBehindDoc = doc2.version - 1;
+        var versionAheadOfDoc = doc2.version + 1;
+        sendRecreated({index: 2}, 0, versionBehindDoc);
+        sendRecreated({index: 3}, 1, versionAheadOfDoc);
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+        releaseRecreationTransform();
       }
     ], done);
   });
