@@ -113,6 +113,17 @@ Optional
 
 {: .d-inline-block }
 
+`doNotForwardSendPresenceErrorsToClient` -- boolean
+
+Optional
+{: .label .label-grey }
+
+> Default: `false`
+
+> If set to `true`, errors from the [`'sendPresence'`]({{ site.baseurl }}{% link middleware/actions.md %}#sendpresence) middleware will be passed to the `errorHandler` instead of being sent to the client. Sending these errors to the client is deprecated
+
+{: .d-inline-block }
+
 `doNotCommitNoOps` -- boolean
 
 Optional
