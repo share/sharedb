@@ -1339,19 +1339,17 @@ describe('Presence', function() {
     ], done);
   });
 
-  it('does not broadcast the leave for published presence once it is re-created at the same version', function(done) {
+  it('broadcasts the leave for published presence before it is re-created at the same version', function(done) {
     var localPresence1 = presence1.create('presence-1');
     var releaseLeave;
-    var releaseSentinel;
     var onHeld;
+    var received = [];
 
     backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
       var presence = context.presence;
       var isServerLeave = presence.id === 'presence-1' && presence.p === null && !releaseLeave;
-      var isSentinel = presence.id === 'presence-2' && !releaseSentinel;
-      if (isServerLeave) releaseLeave = next;
-      else if (isSentinel) releaseSentinel = next;
-      else return next();
+      if (!isServerLeave) return next();
+      releaseLeave = next;
       onHeld();
     });
 
@@ -1370,36 +1368,32 @@ describe('Presence', function() {
         presence1.unsubscribe(errorHandler(done));
       },
       function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (context.presence.p && context.presence.p.index === 2) next();
+        });
         presence1.create('presence-1').submit({index: 2}, errorHandler(done));
-        presence2.once('receive', function(id, presence) {
-          expect(id).to.equal('presence-1');
-          expect(presence).to.eql({index: 2});
-          next();
+      },
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (received.length === 2) next();
         });
-      },
-      function(next) {
-        onHeld = next;
-        presence1.create('presence-2').submit({index: 3}, errorHandler(done));
-      },
-      function(next) {
         releaseLeave();
-        releaseSentinel();
-        presence2.once('receive', function(id) {
-          expect(id).to.equal('presence-2');
-          next();
-        });
       },
       function(next) {
-        expect(presence2.remotePresences).to.eql({'presence-1': {index: 2}, 'presence-2': {index: 3}});
+        expect(received).to.eql([null, {index: 2}]);
+        expect(presence2.remotePresences).to.eql({'presence-1': {index: 2}});
         next();
       }
     ], done);
   });
 
-  it('broadcasts the leave for presence re-created at a lower version after unsubscribing again', function(done) {
+  it('broadcasts the leave for published presence before its re-creation if unsubscribing again', function(done) {
     var localPresence1 = presence1.create('presence-1');
     var releaseLeave;
     var onHeld;
+    var received = [];
 
     backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
       var presence = context.presence;
@@ -1432,15 +1426,23 @@ describe('Presence', function() {
       presence1.subscribe.bind(presence1),
       presence1.unsubscribe.bind(presence1),
       function(next) {
-        presence1.create('presence-1').submit({index: 2}, next);
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (context.presence.p && context.presence.p.index === 2) next();
+        });
+        presence1.create('presence-1').submit({index: 2}, errorHandler(done));
       },
       function(next) {
-        presence2.once('receive', function(id, presence) {
-          expect(id).to.equal('presence-1');
-          expect(presence).to.be.null;
-          next();
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (received.length === 2) next();
         });
         releaseLeave();
+      },
+      function(next) {
+        expect(received).to.eql([null, {index: 2}]);
+        expect(presence2.remotePresences).to.eql({'presence-1': {index: 2}});
+        next();
       }
     ], done);
   });

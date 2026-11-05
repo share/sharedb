@@ -44,6 +44,21 @@ module.exports = function(create) {
       });
     });
 
+    it('delivers messages on a channel in the order they were published', function(done) {
+      var pubsub = this.pubsub;
+      pubsub.subscribe('x', function(err, stream) {
+        if (err) return done(err);
+        var received = [];
+        stream.on('data', function(data) {
+          received.push(data.n);
+          if (received.length < 10) return;
+          expect(received).eql([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+          done();
+        });
+        for (var n = 0; n < 10; n++) pubsub.publish(['x'], {n: n});
+      });
+    });
+
     it('can subscribe to a channel twice', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('y', function(err) {

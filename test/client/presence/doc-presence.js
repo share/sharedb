@@ -52,6 +52,56 @@ describe('DocPresence', function() {
     backend.close(done);
   });
 
+  function onPresenceThroughMiddleware(index, callback) {
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      next();
+      if (context.presence.p && context.presence.p.index === index) callback();
+    });
+  }
+
+  function sendPresence(localPresence, fields) {
+    var message = localPresence._message();
+    message.v = doc2.version;
+    message.t = presenceTestType.type.uri;
+    for (var key in fields) message[key] = fields[key];
+    connection1.send(message);
+  }
+
+  function holdNextSnapshotFetch(onHeld) {
+    var getSnapshot = backend.db.getSnapshot;
+    sinon.stub(backend.db, 'getSnapshot').callsFake(function(collection, id, fields, options, snapshotCallback) {
+      var args = arguments;
+      backend.db.getSnapshot.restore();
+      onHeld(function release(error) {
+        if (error) return snapshotCallback(error);
+        getSnapshot.apply(backend.db, args);
+      });
+    });
+  }
+
+  function leaveWithHeldTransform(localPresence, leaveCallback) {
+    var leave = {release: null};
+    leave.submit = function(callback) {
+      async.series([
+        presence2.subscribe.bind(presence2),
+        function(next) {
+          localPresence.submit({index: 0}, errorHandler(callback));
+          presence2.once('receive', function() {
+            next();
+          });
+        },
+        function(next) {
+          holdNextSnapshotFetch(function(release) {
+            leave.release = release;
+            next();
+          });
+          localPresence.submit(null, leaveCallback);
+        }
+      ], callback);
+    };
+    return leave;
+  }
+
   it('subscribes to presence from another client', function(done) {
     var localPresence1 = presence1.create('presence-1');
 
@@ -904,6 +954,607 @@ describe('DocPresence', function() {
       expect(error.code).to.equal('ERR_OP_VERSION_NEWER_THAN_CURRENT_SNAPSHOT');
       done();
     });
+  });
+
+  it('broadcasts the old leave before presence re-created with its id while the leave is transforming', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, errorHandler(done));
+    var received = [];
+
+    async.series([
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0});
+      },
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (received.length === 2) next();
+        });
+        leave.release();
+      },
+      function(next) {
+        expect(received).to.eql([null, {index: 2}]);
+        expect(connection1.agent.presenceRequests[presence1.channel]['presence-1'].p).to.eql({index: 2});
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts the old leave before a later update from presence re-created with the same id', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, errorHandler(done));
+    var received = [];
+
+    async.series([
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(3, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0});
+        sendPresence(localPresence1, {p: {index: 3}, pv: 1});
+      },
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (presence && presence.index === 3) next();
+        });
+        leave.release();
+      },
+      function(next) {
+        expect(received[0]).to.be.null;
+        expect(presence2.remotePresences['presence-1']).to.eql({index: 3});
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts the old leave before presence re-created with its id when a later leave is rejected', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, errorHandler(done));
+    var rejectLaterLeave;
+    var received = [];
+
+    async.series([
+      leave.submit,
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (context.presence.pv !== 2) return callback();
+          rejectLaterLeave = callback;
+          next();
+        });
+        sendPresence(localPresence1, {p: null, pv: 2, v: doc1.version});
+      },
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0});
+      },
+      function(next) {
+        localPresence1.once('error', function(error) {
+          expect(error.message).to.equal('Rejected');
+          setImmediate(next);
+        });
+        rejectLaterLeave(new Error('Rejected'));
+      },
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (received.length === 2) next();
+        });
+        leave.release();
+      },
+      function(next) {
+        expect(received).to.eql([null, {index: 2}]);
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts presence re-created with its id when the old leave fails to publish', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var onLeaveAcked;
+    var leave = leaveWithHeldTransform(localPresence1, function(error) {
+      onLeaveAcked(error);
+    });
+
+    async.series([
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0});
+      },
+      function(next) {
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data, callback) {
+          backend.pubsub.publish.restore();
+          callback(new Error('Failed to publish'));
+        });
+        async.parallel([
+          function(cb) {
+            onLeaveAcked = function(error) {
+              expect(error.message).to.equal('Failed to publish');
+              cb();
+            };
+          },
+          function(cb) {
+            presence2.once('receive', function(id, presence) {
+              expect(presence).to.eql({index: 2});
+              cb();
+            });
+          }
+        ], next);
+        leave.release();
+      }
+    ], done);
+  });
+
+  it('broadcasts presence re-created with its id when the old leave fails to transform', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var onLeaveAcked;
+    var leave = leaveWithHeldTransform(localPresence1, function(error) {
+      onLeaveAcked(error);
+    });
+
+    async.series([
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0});
+      },
+      function(next) {
+        async.parallel([
+          function(cb) {
+            onLeaveAcked = function(error) {
+              expect(error.message).to.equal('Failed to get snapshot');
+              cb();
+            };
+          },
+          function(cb) {
+            presence2.once('receive', function(id, presence) {
+              expect(presence).to.eql({index: 2});
+              cb();
+            });
+          }
+        ], next);
+        leave.release(new Error('Failed to get snapshot'));
+      }
+    ], done);
+  });
+
+  it('broadcasts and releases presence re-created behind an old leave that never finishes publishing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, function() {});
+
+    async.series([
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0});
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          if (!data.p) return publish.call(backend.pubsub, channels, data, function() {});
+          connection1.agent._pendingPresenceBroadcasts.forEach(function(broadcast) {
+            expect(broadcast.waitingFor).to.be.null;
+          });
+          backend.pubsub.publish.restore();
+          publish.apply(backend.pubsub, arguments);
+        });
+        presence2.on('receive', function(id, presence) {
+          if (!presence) return;
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+        leave.release();
+      }
+    ], done);
+  });
+
+  it('does not hold presence with another id behind a leave that is transforming', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var otherLocalPresence1 = presence1.create('presence-2');
+    var leave = leaveWithHeldTransform(localPresence1, function() {});
+
+    async.series([
+      leave.submit,
+      function(next) {
+        otherLocalPresence1.submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-2');
+          expect(presence).to.eql({index: 2});
+          leave.release();
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('broadcasts one leave for presence re-created behind its old leave when the client disconnects', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, function() {});
+    var published = [];
+
+    async.series([
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: 0, v: doc1.version});
+      },
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (context.presence.p === null && context.presence.pv === 0) next();
+        });
+        connection1.close();
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          published.push({p: data.p, pv: data.pv, v: data.v});
+          publish.apply(backend.pubsub, arguments);
+        });
+        leave.release();
+        setImmediate(next);
+      },
+      function(next) {
+        backend.pubsub.publish.restore();
+        expect(published).to.have.deep.members([
+          {p: null, pv: 1, v: doc2.version},
+          {p: null, pv: 0, v: doc2.version}
+        ]);
+        next();
+      }
+    ], done);
+  });
+
+  it('drops presence queued behind a held unsubscribe leave when its client disconnects', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var agent = connection1.agent;
+    var releaseUnsubscribeLeave;
+    var droppedPresence;
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      localPresence1.submit.bind(localPresence1, {index: 0}),
+      function(next) {
+        holdNextSnapshotFetch(function(release) {
+          releaseUnsubscribeLeave = release;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        onPresenceThroughMiddleware(1, next);
+        localPresence1.submit({index: 1}, function() {});
+      },
+      function(next) {
+        var dropPresence = agent._dropPresence;
+        sinon.stub(agent, '_dropPresence').callsFake(function(presence) {
+          agent._dropPresence.restore();
+          droppedPresence = presence.p;
+          dropPresence.apply(agent, arguments);
+          next();
+        });
+        connection1.close();
+      },
+      function(next) {
+        expect(droppedPresence).to.eql({index: 1});
+        releaseUnsubscribeLeave();
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts a leave for presence in middleware at disconnect before a held unsubscribe leave', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseUnsubscribeLeave;
+    var releaseUpdate;
+    var updatePv;
+    var published;
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      localPresence1.submit.bind(localPresence1, {index: 0}),
+      function(next) {
+        holdNextSnapshotFetch(function(release) {
+          releaseUnsubscribeLeave = release;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (!context.presence.p || context.presence.p.index !== 1) return callback();
+          updatePv = context.presence.pv;
+          releaseUpdate = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, function() {});
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          backend.pubsub.publish.restore();
+          published = {p: data.p, pv: data.pv};
+          publish.apply(backend.pubsub, arguments);
+          next();
+        });
+        connection1.agent.stream.once('end', function() {
+          releaseUpdate();
+        });
+        connection1.close();
+      },
+      function(next) {
+        expect(published).to.eql({p: null, pv: updatePv});
+        releaseUnsubscribeLeave();
+        next();
+      }
+    ], done);
+  });
+
+  it('acks presence queued behind its leave when its client unsubscribes before the leave publishes', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, function() {});
+    var onUpdateAcked;
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      leave.submit,
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        localPresence1.submit({index: 2}, function(error) {
+          onUpdateAcked(error);
+        });
+      },
+      function(next) {
+        onUpdateAcked = next;
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        leave.release();
+        setImmediate(next);
+      }
+    ], done);
+  });
+
+  it('acks presence retracted behind a held unsubscribe leave, which still precedes a re-creation', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseUnsubscribeLeave;
+    var onUpdateAcked;
+    var received = [];
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        holdNextSnapshotFetch(function(release) {
+          releaseUnsubscribeLeave = release;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        onPresenceThroughMiddleware(1, next);
+        localPresence1.submit({index: 1}, function(error) {
+          onUpdateAcked(error);
+        });
+      },
+      function(next) {
+        onUpdateAcked = next;
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        presence1.create('presence-1').submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (received.length === 2) next();
+        });
+        releaseUnsubscribeLeave();
+      },
+      function(next) {
+        expect(received).to.eql([null, {index: 2}]);
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts presence re-created behind a held leave once a retracted leave supersedes it', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseUnsubscribeLeave;
+    var releaseClientLeave;
+    var clientLeave = 1;
+    var received = [];
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        holdNextSnapshotFetch(function(release) {
+          releaseUnsubscribeLeave = release;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      presence1.subscribe.bind(presence1),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (context.presence.pv === clientLeave) next();
+        });
+        localPresence1.submit(null, errorHandler(done));
+      },
+      function(next) {
+        holdNextSnapshotFetch(function(release) {
+          releaseClientLeave = release;
+          next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        onPresenceThroughMiddleware(2, next);
+        presence1.create('presence-1').submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        presence2.on('receive', function(id, presence) {
+          received.push(presence);
+          if (received.length === 2) next();
+        });
+        releaseClientLeave();
+      },
+      function(next) {
+        releaseUnsubscribeLeave();
+        setImmediate(next);
+      },
+      function(next) {
+        expect(received).to.eql([null, {index: 2}]);
+        expect(presence2.remotePresences['presence-1']).to.eql({index: 2});
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts a leave queued behind a held one when its client unsubscribes, dropping the held one', function(done) {
+    var onEarlierLeaveAcked;
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, function(error) {
+      onEarlierLeaveAcked(error);
+    });
+    var queuedLeave = 2;
+    var unsubscribeLeave = 0;
+    var publishedPresenceVersions = [];
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      leave.submit,
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (context.presence.pv === queuedLeave) next();
+        });
+        sendPresence(localPresence1, {p: null, pv: queuedLeave, v: doc1.version});
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          publishedPresenceVersions.push(data.pv);
+          publish.apply(backend.pubsub, arguments);
+          if (publishedPresenceVersions.length === 2) next();
+        });
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        onEarlierLeaveAcked = next;
+        leave.release();
+      },
+      function(next) {
+        backend.pubsub.publish.restore();
+        expect(publishedPresenceVersions).to.have.members([queuedLeave, unsubscribeLeave]);
+        next();
+      }
+    ], done);
+  });
+
+  it('drains a long queue of untyped leaves with the same id in order without recursing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, errorHandler(done));
+    var untypedLeavesToOverflowTheStack = 3000;
+    var leavePresenceVersions = [];
+    for (var pv = 1; pv <= untypedLeavesToOverflowTheStack + 1; pv++) leavePresenceVersions.push(pv);
+    var untypedLeavePresenceVersions = leavePresenceVersions.slice(1);
+    var publishedPresenceVersions = [];
+
+    async.series([
+      leave.submit,
+      function(next) {
+        var leavesThroughMiddleware = 0;
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (++leavesThroughMiddleware === untypedLeavePresenceVersions.length) next();
+        });
+        untypedLeavePresenceVersions.forEach(function(pv) {
+          connection1.send({a: 'p', ch: 'books.northern-lights', id: 'presence-1', p: null, pv: pv});
+        });
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          publish.apply(backend.pubsub, arguments);
+          publishedPresenceVersions.push(data.pv);
+          if (publishedPresenceVersions.length < leavePresenceVersions.length) return;
+          backend.pubsub.publish.restore();
+          next();
+        });
+        leave.release();
+      },
+      function(next) {
+        expect(publishedPresenceVersions).to.eql(leavePresenceVersions);
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts leaves with the same id in the order they arrive', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var leave = leaveWithHeldTransform(localPresence1, errorHandler(done));
+    var transformingLeave = 1;
+    var earlierArrivingLeave = 2;
+    var laterArrivingLeave = 3;
+    var recreation = 0;
+    var expectedOrder = [transformingLeave, earlierArrivingLeave, laterArrivingLeave, recreation];
+    var releaseEarlierArrivingLeave;
+    var publishedPresenceVersions = [];
+
+    async.series([
+      leave.submit,
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (context.presence.pv !== earlierArrivingLeave) return callback();
+          releaseEarlierArrivingLeave = callback;
+        });
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          callback();
+          if (context.presence.pv === laterArrivingLeave) next();
+        });
+        sendPresence(localPresence1, {p: null, pv: earlierArrivingLeave, v: doc1.version});
+        sendPresence(localPresence1, {p: null, pv: laterArrivingLeave, v: doc1.version});
+      },
+      function(next) {
+        releaseEarlierArrivingLeave();
+        onPresenceThroughMiddleware(2, next);
+        sendPresence(localPresence1, {p: {index: 2}, pv: recreation});
+      },
+      function(next) {
+        var publish = backend.pubsub.publish;
+        sinon.stub(backend.pubsub, 'publish').callsFake(function(channels, data) {
+          publish.apply(backend.pubsub, arguments);
+          publishedPresenceVersions.push(data.pv);
+          if (publishedPresenceVersions.length < expectedOrder.length) return;
+          backend.pubsub.publish.restore();
+          next();
+        });
+        leave.release();
+      },
+      function(next) {
+        expect(publishedPresenceVersions).to.eql(expectedOrder);
+        next();
+      }
+    ], done);
   });
 
   it('rejects a presence message without an ID', function(done) {

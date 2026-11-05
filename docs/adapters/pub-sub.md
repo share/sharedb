@@ -13,6 +13,8 @@ parent: Adapters
 
 The pub/sub adapter is responsible for notifying other ShareDB instances of changes to data.
 
+An adapter must deliver the messages that one ShareDB instance publishes to a channel in the order it published them, so that a presence's leave reaches subscribers before the presence re-created with its ID.
+
 ## Available adapters
 
 ### MemoryPubSub
