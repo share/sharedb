@@ -463,6 +463,31 @@ describe('Agent', function() {
     });
   });
 
+  describe('query options', function() {
+    var connection;
+
+    beforeEach(function() {
+      connection = backend.connect();
+    });
+
+    [ACTIONS.queryFetch, ACTIONS.querySubscribe].forEach(function(action) {
+      it('does not pass a client\'s fields to ' + action + ' middleware', function(done) {
+        var queryOptions;
+        backend.use('query', function(context, next) {
+          queryOptions = context.options;
+          next();
+        });
+        connection.on('receive', function(request) {
+          if (request.data.a !== action) return;
+          expect(request.data).not.to.have.property('error');
+          expect(queryOptions).not.to.have.property('fields');
+          done();
+        });
+        connection.send({a: action, id: 1, c: 'dogs', q: {}, o: {fields: {secret: true}}});
+      });
+    });
+  });
+
   describe('query subscribe with known results', function() {
     var connection;
 
@@ -560,6 +585,54 @@ describe('Agent', function() {
         expect(backend.pubsub.streamsCount).to.equal(0);
         clock.tick(1000);
         expect(backend.db.queryPoll).to.have.been.calledOnce;
+        done();
+      });
+    });
+
+    [
+      {collection: 'dog_names', fields: {name: true}},
+      {collection: 'dogs', fields: undefined}
+    ].forEach(function(test) {
+      it('re-polls ' + test.collection + ' with its projection\'s fields, not the client\'s', function(done) {
+        backend.addProjection('dog_names', 'dogs', {name: true});
+        sinon.spy(backend.db, 'queryPoll');
+        connection.on('receive', function(request) {
+          if (request.data.a !== ACTIONS.querySubscribe) return;
+          expect(request.data).not.to.have.property('error');
+          var pollOptions = backend.db.queryPoll.firstCall.args[2];
+          expect(pollOptions.fields).to.eql(test.fields);
+          done();
+        });
+        connection.send({
+          a: ACTIONS.querySubscribe,
+          id: 1,
+          c: test.collection,
+          q: {},
+          o: {fields: {secret: true}},
+          r: [['fido', 0]]
+        });
+      });
+    });
+
+    it('re-polls each query with its own fields without writing them to shared options', function(done) {
+      backend.addProjection('dog_names', 'dogs', {name: true});
+      sinon.spy(backend.db, 'queryPoll');
+      var options = {ids: ['fido']};
+      async.eachSeries(['dog_names', 'dogs'], function(index, next) {
+        backend.querySubscribe(connection.agent, index, {}, options, function(err, emitter) {
+          if (err) return next(err);
+          emitter.queryPoll(function(err) {
+            emitter.destroy();
+            next(err);
+          });
+        });
+      }, function(err) {
+        if (err) return done(err);
+        var pollFields = backend.db.queryPoll.args.map(function(args) {
+          return args[2].fields;
+        });
+        expect(pollFields).to.eql([{name: true}, undefined]);
+        expect(options).not.to.have.property('fields');
         done();
       });
     });
