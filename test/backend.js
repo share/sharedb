@@ -71,6 +71,50 @@ describe('Backend', function() {
     });
   });
 
+  describe('addProjection', function() {
+    beforeEach(function() {
+      backend = new Backend();
+    });
+
+    it('accepts sub-field paths', function() {
+      backend.addProjection('contacts', 'users', {name: true, 'address.city': true});
+      expect(backend.projections.contacts.hasSubFields).equal(true);
+    });
+
+    it('does not flag projections without sub-fields', function() {
+      backend.addProjection('names', 'users', {name: true});
+      expect(backend.projections.names.hasSubFields).equal(false);
+    });
+
+    ['address.', '.city', 'address..city', '.'].forEach(function(field) {
+      it('rejects the field ' + JSON.stringify(field), function() {
+        var fields = {};
+        fields[field] = true;
+        expect(function() {
+          backend.addProjection('contacts', 'users', fields);
+        }).to.throw(/empty segments/);
+      });
+    });
+
+    it('projects sub-fields itself when the DB projects snapshots', function(done) {
+      // A DB that projects snapshots might treat sub-fields differently, eg
+      // MongoDB projects documents inside arrays, so ShareDB re-projects them
+      var db = new MemoryDB();
+      db.projectsSnapshots = true;
+      backend = new Backend({db: db});
+      backend.addProjection('contacts', 'users', {'address.city': true});
+      var data = {name: 'jim', address: [{city: 'Durham'}]};
+      backend.connect().get('users', 'jim').create(data, function(err) {
+        if (err) return done(err);
+        backend.fetch(backend.connect().agent, 'contacts', 'jim', function(err, snapshot) {
+          if (err) return done(err);
+          expect(snapshot.data).eql({});
+          done();
+        });
+      });
+    });
+  });
+
   describe('a simple document', function() {
     var agent = {
       custom: {

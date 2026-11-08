@@ -359,4 +359,151 @@ module.exports = function(options) {
       });
     });
   });
+
+  describe('client sub-field projections', function() {
+    beforeEach(function(done) {
+      this.backend.addProjection('dogs_contact', 'dogs', {age: true, 'owner.name': true});
+      this.connection = this.backend.connect();
+      var data = {age: 3, color: 'gold', owner: {name: 'jim', phone: '555-0100'}};
+      this.connection.get('dogs', 'fido').create(data, done);
+    });
+
+    ['fetch', 'subscribe'].forEach(function(method) {
+      it('snapshot ' + method, function(done) {
+        var fido = this.backend.connect().get('dogs_contact', 'fido');
+        fido[method](function(err) {
+          if (err) return done(err);
+          expect(fido.data).eql({age: 3, owner: {name: 'jim'}});
+          done();
+        });
+      });
+    });
+
+    if (getQuery) {
+      ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
+        it('snapshot ' + method, function(done) {
+          this.backend.connect()[method]('dogs_contact', matchAllQuery, null, function(err, results) {
+            if (err) return done(err);
+            expect(util.pluck(results, 'data')).eql([{age: 3, owner: {name: 'jim'}}]);
+            done();
+          });
+        });
+      });
+    }
+
+    function opTests(test) {
+      it('projected sub-field', function(done) {
+        test.call(this,
+          {p: ['owner', 'name'], od: 'jim', oi: 'bob'},
+          {age: 3, owner: {name: 'bob'}},
+          done
+        );
+      });
+
+      it('edit inside a projected sub-field', function(done) {
+        test.call(this,
+          {p: ['owner', 'name', 3], si: 'my'},
+          {age: 3, owner: {name: 'jimmy'}},
+          done
+        );
+      });
+
+      it('non-projected sibling sub-field', function(done) {
+        test.call(this,
+          {p: ['owner', 'phone'], od: '555-0100', oi: '555-0199'},
+          {age: 3, owner: {name: 'jim'}},
+          done
+        );
+      });
+
+      it('parent of a projected sub-field replace', function(done) {
+        test.call(this,
+          {p: ['owner'], od: {name: 'jim', phone: '555-0100'}, oi: {name: 'sue', phone: '555-0142'}},
+          {age: 3, owner: {name: 'sue'}},
+          done
+        );
+      });
+    }
+
+    describe('op fetch', function() {
+      opTests(function(op, expected, done) {
+        var connection = this.connection;
+        var fido = this.backend.connect().get('dogs_contact', 'fido');
+        fido.fetch(function(err) {
+          if (err) return done(err);
+          connection.get('dogs', 'fido').submitOp(op, function(err) {
+            if (err) return done(err);
+            fido.fetch(function(err) {
+              if (err) return done(err);
+              expect(fido.data).eql(expected);
+              expect(fido.version).eql(2);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    describe('op subscribe', function() {
+      opTests(function(op, expected, done) {
+        var connection = this.connection;
+        var fido = this.backend.connect().get('dogs_contact', 'fido');
+        fido.subscribe(function(err) {
+          if (err) return done(err);
+          fido.on('op', function() {
+            expect(fido.data).eql(expected);
+            expect(fido.version).eql(2);
+            done();
+          });
+          connection.get('dogs', 'fido').submitOp(op);
+        });
+      });
+    });
+
+    describe('submit on projected doc', function() {
+      var original = {age: 3, color: 'gold', owner: {name: 'jim', phone: '555-0100'}};
+
+      function submit(op, callback) {
+        var doc = this.connection.get('dogs', 'fido');
+        var projected = this.backend.connect().get('dogs_contact', 'fido');
+        projected.fetch(function(err) {
+          if (err) return callback(err);
+          projected.submitOp(op, function(submitErr) {
+            doc.fetch(function(err) {
+              if (err) return callback(err);
+              callback(submitErr, doc);
+            });
+          });
+        });
+      }
+
+      it('can edit a projected sub-field', function(done) {
+        submit.call(this, {p: ['owner', 'name'], od: 'jim', oi: 'bob'}, function(err, doc) {
+          if (err) return done(err);
+          expect(doc.data).eql({age: 3, color: 'gold', owner: {name: 'bob', phone: '555-0100'}});
+          expect(doc.version).equal(2);
+          done();
+        });
+      });
+
+      it('cannot edit a non-projected sibling sub-field', function(done) {
+        submit.call(this, {p: ['owner', 'phone'], od: '555-0100', oi: '555-0199'}, function(err, doc) {
+          expect(err).instanceOf(Error);
+          expect(doc.data).eql(original);
+          expect(doc.version).equal(1);
+          done();
+        });
+      });
+
+      it('cannot replace the parent of a projected sub-field', function(done) {
+        // This would delete the phone number, which the client can't see
+        submit.call(this, {p: ['owner'], od: {name: 'jim'}, oi: {name: 'bob'}}, function(err, doc) {
+          expect(err).instanceOf(Error);
+          expect(doc.data).eql(original);
+          expect(doc.version).equal(1);
+          done();
+        });
+      });
+    });
+  });
 };

@@ -34,3 +34,22 @@ doc.fetch(() => {
   // Only doc.data.firstName and doc.data.lastName will be present
 });
 ```
+
+## Sub-fields
+
+A field can also be a dot-separated path to a sub-field. For example, to expose a user's name and city, but not the rest of their address:
+
+```js
+backend.addProjection('contacts', 'users', {name: true, 'address.city': true})
+```
+
+```js
+// users/123:    {name: 'Jim', email: 'jim@example.com', address: {city: 'Durham', street: '1 Main St'}}
+// contacts/123: {name: 'Jim', address: {city: 'Durham'}}
+```
+
+Ops are projected the same way, so subscribers to `contacts` see changes to `address.city`, and nothing else in `address`. Ops that replace a parent object, like `address` itself, are sent with only the projected sub-fields of the old and new values.
+
+Sub-field paths only go through objects. If a value on the way to a sub-field isn't an object (for example, an array or a string), it's left out of the projection.
+
+When submitting ops to a projection with sub-fields, an op may only change a value at or below a projected path. Ops that would replace a parent of a projected sub-field are rejected, since they could overwrite fields the client can't see.
