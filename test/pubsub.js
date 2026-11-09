@@ -105,6 +105,38 @@ module.exports = function(create) {
       });
     });
 
+    it('can resubscribe to a channel straight after destroying its last stream', function(done) {
+      var pubsub = this.pubsub;
+      pubsub.subscribe('x', function(err, stream) {
+        if (err) return done(err);
+        stream.destroy();
+        pubsub.subscribe('x', function(err, stream) {
+          if (err) return done(err);
+          stream.on('data', function(data) {
+            expect(data).eql({test: true});
+            done();
+          });
+          pubsub.publish(['x'], {test: true});
+        });
+      });
+    });
+
+    it('can subscribe to a channel just before its last stream is destroyed', function(done) {
+      var pubsub = this.pubsub;
+      pubsub.subscribe('x', function(err, lastStream) {
+        if (err) return done(err);
+        pubsub.subscribe('x', function(err, stream) {
+          if (err) return done(err);
+          stream.on('data', function(data) {
+            expect(data).eql({test: true});
+            done();
+          });
+          pubsub.publish(['x'], {test: true});
+        });
+        lastStream.destroy();
+      });
+    });
+
     it('stream.destroy() unsubscribes from a channel', function(done) {
       var pubsub = this.pubsub;
       pubsub.subscribe('x', function(err, stream) {

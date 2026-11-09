@@ -74,6 +74,81 @@ describe('PubSub base class', function() {
     });
   });
 
+  it('stays subscribed when the last stream is destroyed just after a subscribe', function(done) {
+    var pubsub = new PubSub();
+    pubsub._subscribe = sinon.spy(function(channel, callback) {
+      callback();
+    });
+    pubsub._unsubscribe = sinon.spy(function(channel, callback) {
+      callback();
+    });
+    pubsub.subscribe('x', function(err, lastStream) {
+      if (err) return done(err);
+      pubsub.subscribe('x', function(err) {
+        if (err) return done(err);
+        expect(pubsub._unsubscribe).not.to.have.been.called;
+        expect(pubsub._subscribe).to.have.been.calledOnce;
+        expect(pubsub.subscribed.x).to.equal(true);
+        expect(pubsub.streamsCount).to.equal(1);
+        done();
+      });
+      lastStream.destroy();
+    });
+  });
+
+  it('waits for an in-flight _unsubscribe before calling _subscribe', function(done) {
+    var pubsub = new PubSub();
+    var finishUnsubscribe;
+    pubsub._subscribe = sinon.spy(function(channel, callback) {
+      callback();
+    });
+    pubsub._unsubscribe = function(channel, callback) {
+      finishUnsubscribe = callback;
+    };
+    pubsub.subscribe('x', function(err, stream) {
+      if (err) return done(err);
+      stream.destroy();
+      var resubscribed = 0;
+      function onResubscribe(err) {
+        if (err) return done(err);
+        if (++resubscribed < 2) return;
+        expect(pubsub._subscribe).to.have.been.calledTwice;
+        expect(pubsub.streamsCount).to.equal(2);
+        done();
+      }
+      pubsub.subscribe('x', onResubscribe);
+      pubsub.subscribe('x', onResubscribe);
+      expect(pubsub._subscribe).to.have.been.calledOnce;
+      finishUnsubscribe();
+    });
+  });
+
+  it('subscribes before throwing an unhandled in-flight _unsubscribe error', function(done) {
+    var pubsub = new PubSub();
+    var finishUnsubscribe;
+    pubsub._subscribe = function(channel, callback) {
+      callback();
+    };
+    pubsub._unsubscribe = function(channel, callback) {
+      finishUnsubscribe = callback;
+    };
+    pubsub.subscribe('x', function(err, stream) {
+      if (err) return done(err);
+      stream.destroy();
+      var resubscribed = false;
+      pubsub.subscribe('x', function(err) {
+        if (err) return done(err);
+        resubscribed = true;
+      });
+      expect(function() {
+        finishUnsubscribe(new Error('unsubscribe failed'));
+      }).to.throw('unsubscribe failed');
+      expect(resubscribed).to.equal(true);
+      expect(pubsub.subscribed.x).to.equal(true);
+      done();
+    });
+  });
+
   it('emits an error if _unsubscribe is unimplemented', function(done) {
     var pubsub = new PubSub();
     pubsub._subscribe = function(channel, callback) {
