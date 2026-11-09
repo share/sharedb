@@ -74,7 +74,7 @@ Optional
 
 > `options.*` -- any
 
-> > All other options are passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}), except `pollInterval` and `pollDebounce`, which the server ignores.
+> > All other options are passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}), except `fields`, `pollInterval` and `pollDebounce`, which the server ignores.
 
 Return value
 
@@ -111,7 +111,7 @@ Optional
 
 > `options.*` -- any
 
-> > All other options are passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}), except `pollInterval` and `pollDebounce`, which the server ignores. Set those in [`query` middleware]({{ site.baseurl }}{% link middleware/actions.md %}#query) instead.
+> > All other options are passed through to the [database adapter]({{ site.baseurl }}{% link adapters/database.md %}), except `fields`, `pollInterval` and `pollDebounce`, which the server ignores. Set `pollInterval` and `pollDebounce` in [`query` middleware]({{ site.baseurl }}{% link middleware/actions.md %}#query) instead.
 
 Return value
 
