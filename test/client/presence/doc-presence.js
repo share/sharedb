@@ -1733,6 +1733,42 @@ describe('DocPresence', function() {
     ], done);
   });
 
+  it('releases the doc version stream of presence that fails to transform after unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseTransform;
+    var onFailed;
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseTransform || context.agent !== connection1.agent) return callback();
+          releaseTransform = callback;
+          next();
+        });
+        localPresence1.submit({badProp: 'foo'}, function(error) {
+          expect(error.code).to.equal('ERR_PRESENCE_TRANSFORM_FAILED');
+          onFailed();
+        });
+      },
+      function(next) {
+        presence1.unsubscribe(next);
+      },
+      function(next) {
+        onFailed = function() {
+          expect(connection1.agent.latestDocVersions).to.be.empty;
+          expect(connection1.agent.latestDocVersionStreams).to.be.empty;
+          expect(connection1.agent.presenceRequests).to.be.empty;
+          next();
+        };
+        releaseTransform();
+      }
+    ], done);
+  });
+
   it('does not broadcast an older presence that finishes transforming after its client unsubscribes', function(done) {
     var localPresence1 = presence1.create('presence-1');
     var localPresence2 = presence1.create('presence-2');
@@ -1809,6 +1845,471 @@ describe('DocPresence', function() {
           expect(presence).to.eql({index: 1});
           next();
         });
+      }
+    ], done);
+  });
+
+  it('broadcasts an older presence already transformed when a newer one fails to transform', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseTransforms = [];
+    var onNewerPresenceFailed;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (context.agent !== connection1.agent) return callback();
+          releaseTransforms.push(callback);
+          if (releaseTransforms.length === 2) next();
+        });
+        localPresence1.submit({index: 12}, errorHandler(done));
+        localPresence1.submit({badProp: 'foo'}, function(error) {
+          expect(error.code).to.equal('ERR_PRESENCE_TRANSFORM_FAILED');
+          onNewerPresenceFailed();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 15});
+          next();
+        });
+        releaseTransforms[0]();
+      },
+      function(next) {
+        onNewerPresenceFailed = next;
+        releaseTransforms[1]();
+      }
+    ], done);
+  });
+
+  it('does not broadcast an older presence still transforming once a newer one is broadcast', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseOlderTransform;
+    var onOlderPresenceAcked;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseOlderTransform || context.agent !== connection1.agent) return callback();
+          releaseOlderTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          onOlderPresenceAcked();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        var publish = sinon.spy(backend.pubsub, 'publish');
+        onOlderPresenceAcked = function() {
+          expect(publish.called).to.be.false;
+          expect(connection1.agent.latestDocVersionStreams[doc1.collection][doc1.id]).to.be.ok;
+          next();
+        };
+        releaseOlderTransform();
+      }
+    ], done);
+  });
+
+  it('does not broadcast an older presence still transforming once a newer one is broadcast as null', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseOlderTransform;
+    var onOlderPresenceAcked;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (context.presence.pv === 1) context.presence.p = null;
+          callback();
+        });
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseOlderTransform || context.agent !== connection1.agent) return callback();
+          releaseOlderTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          onOlderPresenceAcked();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        var publish = sinon.spy(backend.pubsub, 'publish');
+        onOlderPresenceAcked = function() {
+          expect(publish.called).to.be.false;
+          expect(connection1.agent.latestDocVersions).to.be.empty;
+          next();
+        };
+        releaseOlderTransform();
+      }
+    ], done);
+  });
+
+  it('keeps the doc version for other live presence when dropping an older presence', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence3 = presence1.create('presence-3');
+    var releaseOlderTransform;
+    var onOlderPresenceAcked;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-3');
+          next();
+        });
+        localPresence3.submit({index: 0}, errorHandler(done));
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          var presence = context.presence;
+          if (presence.id === 'presence-1' && presence.pv === 1) presence.p = null;
+          callback();
+        });
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseOlderTransform || context.agent !== connection1.agent) return callback();
+          releaseOlderTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          onOlderPresenceAcked();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        onOlderPresenceAcked = function() {
+          expect(connection1.agent.latestDocVersionStreams[doc1.collection][doc1.id]).to.be.ok;
+          next();
+        };
+        releaseOlderTransform();
+      }
+    ], done);
+  });
+
+  it('releases the doc version when dropping an older presence beside untyped presence', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseOlderTransform;
+    var onOlderPresenceAcked;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        connection2.on('receive', function onUntypedPresence(request) {
+          if (request.data.id !== 'untyped') return;
+          connection2.removeListener('receive', onUntypedPresence);
+          next();
+        });
+        connection1.send({
+          a: 'p', ch: 'books.northern-lights', id: 'untyped', p: {index: 9}, pv: 0, v: doc1.version
+        });
+      },
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          var presence = context.presence;
+          if (presence.id === 'presence-1' && presence.pv === 1) presence.p = null;
+          callback();
+        });
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseOlderTransform || context.agent !== connection1.agent) return callback();
+          releaseOlderTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          onOlderPresenceAcked();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        onOlderPresenceAcked = function() {
+          expect(connection1.agent.latestDocVersions).to.be.empty;
+          next();
+        };
+        releaseOlderTransform();
+      }
+    ], done);
+  });
+
+  it('releases the doc version when dropping an older presence while another presence is leaving', function(done) {
+    var localLeavingPresence = presence1.create('leaving-presence');
+    var localDroppedPresence = presence1.create('dropped-presence');
+    var releaseLeave;
+    var releaseSubscribe;
+    var onLeaveHeld;
+    var onUpdateAcked;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('leaving-presence');
+          next();
+        });
+        localLeavingPresence.submit({index: 0}, errorHandler(done));
+      },
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          var presence = context.presence;
+          if (releaseLeave || presence.id !== 'leaving-presence' || presence.p !== null) return callback();
+          releaseLeave = callback;
+          onLeaveHeld();
+        });
+        onLeaveHeld = next;
+        localLeavingPresence.submit(null, errorHandler(done));
+      },
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.readSnapshots, function(context, callback) {
+          if (releaseSubscribe || context.agent !== connection1.agent) return callback();
+          releaseSubscribe = callback;
+          next();
+        });
+        localDroppedPresence.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          onUpdateAcked();
+        });
+      },
+      function(next) {
+        localDroppedPresence.submit(null, next);
+      },
+      function(next) {
+        onUpdateAcked = function() {
+          expect(connection1.agent.latestDocVersions).to.be.empty;
+          next();
+        };
+        releaseSubscribe();
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('leaving-presence');
+          expect(presence).to.be.null;
+          next();
+        });
+        releaseLeave();
+      }
+    ], done);
+  });
+
+  it('keeps the doc version for re-created presence when dropping its leave from before unsubscribing', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseLeave;
+    var releaseSentinel;
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      var presence = context.presence;
+      var isClientLeave = presence.id === 'presence-1' && presence.p === null && !releaseLeave;
+      var isSentinel = presence.id === 'presence-2' && !releaseSentinel;
+      if (isClientLeave) releaseLeave = next;
+      else if (isSentinel) releaseSentinel = next;
+      else return next();
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        localPresence1.submit(null, errorHandler(done));
+      },
+      function(next) {
+        presence1.unsubscribe(errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        presence1.create('presence-1').submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        presence1.create('presence-2').submit({index: 3}, errorHandler(done));
+      },
+      function(next) {
+        releaseLeave();
+        releaseSentinel();
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-2');
+          expect(connection1.agent.latestDocVersionStreams[doc1.collection][doc1.id]).to.be.ok;
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('does not broadcast an older presence that reaches the agent after a newer one is broadcast', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseOlderPresence;
+    var onOlderPresenceAcked;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receive, function(context, callback) {
+          var isOlderPresence = context.agent === connection1.agent &&
+            context.data.a === ACTIONS.presence &&
+            context.data.pv === 0;
+          if (releaseOlderPresence || !isOlderPresence) return callback();
+          releaseOlderPresence = callback;
+          process.nextTick(next);
+        });
+        localPresence1.submit({index: 1}, function(error) {
+          if (error) return done(error);
+          onOlderPresenceAcked();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        var publish = sinon.spy(backend.pubsub, 'publish');
+        onOlderPresenceAcked = function() {
+          expect(publish.called).to.be.false;
+          next();
+        };
+        releaseOlderPresence();
+      }
+    ], done);
+  });
+
+  it('clears an older presence on disconnect when it overtook a newer one that failed to transform', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseOlderPresence;
+    var releaseNewerTransform;
+    var onNewerPresenceFailed;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      doc1.unsubscribe.bind(doc1),
+      doc2.submitOp.bind(doc2, {index: 5, value: 'ern'}),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (releaseOlderPresence || context.presence.pv !== 0) return callback();
+          releaseOlderPresence = callback;
+        });
+        backend.use(backend.MIDDLEWARE_ACTIONS.op, function(context, callback) {
+          if (releaseNewerTransform || context.agent !== connection1.agent) return callback();
+          releaseNewerTransform = callback;
+          next();
+        });
+        localPresence1.submit({index: 12}, errorHandler(done));
+        localPresence1.submit({badProp: 'foo'}, function(error) {
+          expect(error.code).to.equal('ERR_PRESENCE_TRANSFORM_FAILED');
+          onNewerPresenceFailed();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 15});
+          next();
+        });
+        releaseOlderPresence();
+      },
+      function(next) {
+        onNewerPresenceFailed = next;
+        releaseNewerTransform();
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        connection1.close();
+      }
+    ], done);
+  });
+
+  it('broadcasts presence in flight when its leave fails to read the doc version', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releasePresence;
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, callback) {
+          if (context.presence.p === null || releasePresence) return callback();
+          releasePresence = callback;
+          next();
+        });
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        var getSnapshot = sinon.stub(backend.db, 'getSnapshot').callThrough();
+        getSnapshot.onFirstCall().callsArgWithAsync(4, new Error('bad!'));
+        localPresence1.submit(null, function(error) {
+          expect(error.message).to.equal('bad!');
+          next();
+        });
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+        releasePresence();
       }
     ], done);
   });

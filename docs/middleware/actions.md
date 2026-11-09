@@ -84,7 +84,7 @@ This action has these additional `context` properties:
 >
 > `presence.p` is `null` when the presence leaves the channel: when it is destroyed, or when its client unsubscribes or disconnects. When its client unsubscribes or disconnects, the leave reuses the client's latest `presence` object for that ID, which passes through this middleware again with `p` set to `null` and any changes from its first pass kept, even if it is still being processed. Middleware with side effects should expect to see the same presence object twice.
 >
-> A presence that passes this middleware may still not be broadcast. If a newer presence with the same ID from the same client, or its leave, replaces it before it is published, its client gets an acknowledgement but nobody else receives it.
+> A presence that passes this middleware may still not be broadcast. If a newer presence with the same ID from the same client is broadcast before it, its client gets an acknowledgement but nobody else receives it. Unlike other presence, a presence broadcast with `p` set to `null` only does this to presence that passed [`'receive'`](#receive) middleware before it did.
 
 ## `'sendPresence'`
 

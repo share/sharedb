@@ -972,6 +972,114 @@ describe('Presence', function() {
     ], done);
   });
 
+  it('does not broadcast presence that gets through middleware after a newer one is broadcast as null', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var releasePresence;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      var presence = context.presence;
+      if (presence.id === 'presence-1' && presence.pv === 2) presence.p = null;
+      var isHeldPresence = presence.id === 'presence-1' && presence.pv === 1;
+      if (!isHeldPresence || releasePresence) return next();
+      releasePresence = next;
+    });
+
+    async.series([
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      },
+      function(next) {
+        localPresence1.submit({index: 2}, errorHandler(done));
+        localPresence1.submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        releasePresence();
+        localPresence2.submit({index: 4}, errorHandler(done));
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-2');
+          next();
+        });
+      },
+      function(next) {
+        expect(presence2.remotePresences).to.eql({'presence-2': {index: 4}});
+        next();
+      }
+    ], done);
+  });
+
+  it('does not broadcast a leave from before unsubscribing once its id is re-created and broadcast', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseLeave;
+    var releaseSentinel;
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      var presence = context.presence;
+      var isClientLeave = presence.id === 'presence-1' && presence.p === null && !releaseLeave;
+      var isSentinel = presence.id === 'presence-2' && !releaseSentinel;
+      if (isClientLeave) releaseLeave = next;
+      else if (isSentinel) releaseSentinel = next;
+      else return next();
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        localPresence1.submit(null, errorHandler(done));
+      },
+      function(next) {
+        presence1.unsubscribe(errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        presence1.create('presence-1').submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        presence1.create('presence-2').submit({index: 3}, errorHandler(done));
+      },
+      function(next) {
+        releaseLeave();
+        releaseSentinel();
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-2');
+          next();
+        });
+      },
+      function(next) {
+        expect(presence2.remotePresences).to.eql({'presence-1': {index: 2}, 'presence-2': {index: 3}});
+        next();
+      }
+    ], done);
+  });
+
   it('broadcasts presence in flight when its leave is rejected', function(done) {
     var localPresence1 = presence1.create('presence-1');
     var releasePresence;
@@ -1118,6 +1226,279 @@ describe('Presence', function() {
           expect(presence).to.eql({index: 2});
           next();
         });
+      }
+    ], done);
+  });
+
+  it('broadcasts presence re-created after unsubscribing while its older ones are still in middleware', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var heldPresences = [];
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      if (context.presence.p === null) return next();
+      heldPresences.push(next);
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        onHeld = next;
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        onHeld = next;
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      presence1.unsubscribe.bind(presence1),
+      function(next) {
+        onHeld = next;
+        presence1.create('presence-1').submit({index: 3}, errorHandler(done));
+      },
+      function(next) {
+        heldPresences[0]();
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        heldPresences[1]();
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        heldPresences[2]();
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 3});
+          next();
+        });
+      }
+    ], done);
+  });
+
+  it('does not broadcast leaves for older presence in middleware once it is re-created and broadcast', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var heldPresences = [];
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      if (context.presence.p === null) return next();
+      heldPresences.push(next);
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        onHeld = next;
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        onHeld = next;
+        localPresence1.submit({index: 2}, errorHandler(done));
+      },
+      function(next) {
+        onHeld = next;
+        localPresence2.submit({index: 3}, errorHandler(done));
+      },
+      presence1.unsubscribe.bind(presence1),
+      function(next) {
+        onHeld = next;
+        presence1.create('presence-1').submit({index: 4}, errorHandler(done));
+      },
+      function(next) {
+        heldPresences[3]();
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 4});
+          next();
+        });
+      },
+      function(next) {
+        heldPresences[0]();
+        heldPresences[1]();
+        heldPresences[2]();
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-2');
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        expect(presence2.remotePresences).to.eql({'presence-1': {index: 4}});
+        next();
+      }
+    ], done);
+  });
+
+  it('does not broadcast the leave for published presence once it is re-created at the same version', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseLeave;
+    var releaseSentinel;
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      var presence = context.presence;
+      var isServerLeave = presence.id === 'presence-1' && presence.p === null && !releaseLeave;
+      var isSentinel = presence.id === 'presence-2' && !releaseSentinel;
+      if (isServerLeave) releaseLeave = next;
+      else if (isSentinel) releaseSentinel = next;
+      else return next();
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        presence1.unsubscribe(errorHandler(done));
+      },
+      function(next) {
+        presence1.create('presence-1').submit({index: 2}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 2});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        presence1.create('presence-2').submit({index: 3}, errorHandler(done));
+      },
+      function(next) {
+        releaseLeave();
+        releaseSentinel();
+        presence2.once('receive', function(id) {
+          expect(id).to.equal('presence-2');
+          next();
+        });
+      },
+      function(next) {
+        expect(presence2.remotePresences).to.eql({'presence-1': {index: 2}, 'presence-2': {index: 3}});
+        next();
+      }
+    ], done);
+  });
+
+  it('broadcasts the leave for presence re-created at a lower version after unsubscribing again', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var releaseLeave;
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      var presence = context.presence;
+      var isServerLeave = presence.id === 'presence-1' && presence.p === null && !releaseLeave;
+      if (!isServerLeave) return next();
+      releaseLeave = next;
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        localPresence1.submit({index: 0}, errorHandler(done));
+        presence2.once('receive', function() {
+          next();
+        });
+      },
+      function(next) {
+        localPresence1.submit({index: 1}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(presence).to.eql({index: 1});
+          next();
+        });
+      },
+      function(next) {
+        onHeld = next;
+        presence1.unsubscribe(errorHandler(done));
+      },
+      presence1.subscribe.bind(presence1),
+      presence1.unsubscribe.bind(presence1),
+      function(next) {
+        presence1.create('presence-1').submit({index: 2}, next);
+      },
+      function(next) {
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.be.null;
+          next();
+        });
+        releaseLeave();
+      }
+    ], done);
+  });
+
+  it('does not broadcast the leave for older presence in flight once it is re-created and broadcast', function(done) {
+    var localPresence1 = presence1.create('presence-1');
+    var localPresence2 = presence1.create('presence-2');
+    var held = {};
+    var onHeld;
+
+    backend.use(backend.MIDDLEWARE_ACTIONS.receivePresence, function(context, next) {
+      var presence = context.presence;
+      var key = presence.id + (presence.p === null ? ' leave' : ' update');
+      if (held[key]) return next();
+      held[key] = next;
+      onHeld();
+    });
+
+    async.series([
+      presence1.subscribe.bind(presence1),
+      presence2.subscribe.bind(presence2),
+      function(next) {
+        onHeld = next;
+        localPresence1.submit({index: 1}, errorHandler(done));
+      },
+      function(next) {
+        onHeld = next;
+        localPresence2.submit({index: 2}, errorHandler(done));
+      },
+      presence1.unsubscribe.bind(presence1),
+      function(next) {
+        onHeld = next;
+        held['presence-1 update']();
+      },
+      function(next) {
+        onHeld = next;
+        held['presence-2 update']();
+      },
+      function(next) {
+        presence1.create('presence-1').submit({index: 3}, errorHandler(done));
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-1');
+          expect(presence).to.eql({index: 3});
+          next();
+        });
+      },
+      function(next) {
+        held['presence-1 leave']();
+        held['presence-2 leave']();
+        presence2.once('receive', function(id, presence) {
+          expect(id).to.equal('presence-2');
+          expect(presence).to.be.null;
+          next();
+        });
+      },
+      function(next) {
+        expect(presence2.remotePresences).to.eql({'presence-1': {index: 3}});
+        next();
       }
     ], done);
   });
