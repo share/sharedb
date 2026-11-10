@@ -341,6 +341,64 @@ describe('Agent', function() {
         });
       });
     });
+
+    describe('with presence', function() {
+      beforeEach(function(done) {
+        backend.close(function(error) {
+          if (error) return done(error);
+          backend = new Backend({presence: true});
+          writer = backend.connect();
+          subscriber = backend.connect();
+          done();
+        });
+      });
+
+      function expectOnlyPresence(presence, callback) {
+        var messages = [];
+        subscriber.on('receive', function(request) {
+          messages.push(request.data);
+        });
+        presence.once('receive', function() {
+          expect(messages).to.have.length(1);
+          expect(messages[0].a).to.equal(ACTIONS.presence);
+          callback();
+        });
+      }
+
+      it('does not deliver ops from a collection whose channel matches the presence channel', function(done) {
+        var presence = subscriber.getPresence('secrets');
+        presence.subscribe(function(error) {
+          if (error) return done(error);
+          expectOnlyPresence(presence, done);
+          writer.get('$presence.secrets', 'alice').create({pin: '1234'}, function(error) {
+            if (error) return done(error);
+            writer.getPresence('secrets').create('writer').submit({name: 'Writer'}, function(error) {
+              if (error) done(error);
+            });
+          });
+        });
+      });
+
+      it('does not deliver ops from a doc whose channel matches the doc presence channel', function(done) {
+        var writerDoc = writer.get('notes', 'alice');
+        var subscriberDoc = subscriber.get('notes', 'alice');
+        var presence = subscriber.getDocPresence('notes', 'alice');
+        async.series([
+          writerDoc.create.bind(writerDoc, 'Hello', presenceTestType.type.name),
+          subscriberDoc.fetch.bind(subscriberDoc),
+          presence.subscribe.bind(presence),
+          function(next) {
+            expectOnlyPresence(presence, next);
+            writer.get('$presence', 'notes.alice').create({pin: '1234'}, function(error) {
+              if (error) return next(error);
+              writer.getDocPresence('notes', 'alice').create('writer').submit({index: 1}, function(error) {
+                if (error) next(error);
+              });
+            });
+          }
+        ], done);
+      });
+    });
   });
 
   describe('cleanup', function() {
