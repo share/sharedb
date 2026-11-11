@@ -127,7 +127,6 @@ module.exports = function(options) {
 
         it('does not duplicate messages', function(done) {
           var connection = this.backend.connect();
-          this.backend.db.pollInterval = 0;
           this.backend.db.pollDebounce = 0;
           var count = 0;
           var query = connection.createSubscribeQuery(
@@ -153,6 +152,19 @@ module.exports = function(options) {
             } else if (count > 3) {
               done('It should not duplicate messages');
             }
+          });
+        });
+
+        it('does not poll the database on a timer', function(done) {
+          var clock = util.useFakeTimers();
+          var connection = this.backend.connect();
+          var db = this.backend.db;
+          connection.createSubscribeQuery('dogs', this.matchAllDbQuery, null, function(err) {
+            if (err) return done(err);
+            sinon.spy(db, 'queryPoll');
+            clock.tick(5000);
+            expect(db.queryPoll.called).to.be.false;
+            done();
           });
         });
 
@@ -739,7 +751,6 @@ function commonTests(options) {
     var clock = util.useFakeTimers();
     var connection = this.backend.connect();
     var db = this.backend.db;
-    db.pollInterval = 0;
     sinon.spy(db, 'queryPoll');
     connection.createSubscribeQuery('dogs', this.matchAllDbQuery, {pollInterval: 50}, function(err) {
       if (err) return done(err);
