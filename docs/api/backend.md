@@ -284,9 +284,10 @@ backend.addProjection(name, collection, fields)
 > ```js
 > share.addProjection('names', 'users', {name: true})
 > ```
-
-{: .warn }
-> Defining sub-field projections is **not** supported.
+> Keys can also be dot-separated paths to [sub-fields]({{ site.baseurl }}{% link projections.md %}#sub-fields):
+> ```js
+> share.addProjection('contacts', 'users', {name: true, 'address.city': true})
+> ```
 
 ### submit()
 
