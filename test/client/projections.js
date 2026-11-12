@@ -26,6 +26,26 @@ module.exports = function(options) {
       });
     });
 
+    [null, 1].forEach(function(version) {
+      it('snapshot fetchSnapshot at version ' + version, function(done) {
+        this.backend.connect().fetchSnapshot('dogs_summary', 'fido', version, function(err, snapshot) {
+          if (err) return done(err);
+          expect(snapshot.data).eql({age: 3, owner: {name: 'jim'}});
+          expect(snapshot.v).eql(1);
+          done();
+        });
+      });
+    });
+
+    it('snapshot fetchSnapshotByTimestamp', function(done) {
+      this.backend.connect().fetchSnapshotByTimestamp('dogs_summary', 'fido', null, function(err, snapshot) {
+        if (err) return done(err);
+        expect(snapshot.data).eql({age: 3, owner: {name: 'jim'}});
+        expect(snapshot.v).eql(1);
+        done();
+      });
+    });
+
     if (getQuery) {
       ['createFetchQuery', 'createSubscribeQuery'].forEach(function(method) {
         it('snapshot ' + method, function(done) {

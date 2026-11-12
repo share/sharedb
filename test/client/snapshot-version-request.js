@@ -351,6 +351,22 @@ describe('SnapshotVersionRequest', function() {
           done();
         });
       });
+
+      describe('when the database projects snapshots', function() {
+        beforeEach(function() {
+          backend.db.projectsSnapshots = true;
+        });
+
+        [null, 2].forEach(function(version) {
+          it('applies the projection to a snapshot at version ' + version, function(done) {
+            backend.connect().fetchSnapshot('bookTitles', 'don-quixote', version, function(error, snapshot) {
+              if (error) return done(error);
+              expect(snapshot.data).to.eql({title: 'Don Quixote'});
+              done();
+            });
+          });
+        });
+      });
     });
   });
 

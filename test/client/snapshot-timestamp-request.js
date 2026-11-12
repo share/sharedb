@@ -411,6 +411,23 @@ describe('SnapshotTimestampRequest', function() {
           done();
         });
       });
+
+      describe('when the database projects snapshots', function() {
+        beforeEach(function() {
+          backend.db.projectsSnapshots = true;
+        });
+
+        [null, day2].forEach(function(timestamp) {
+          it('applies the projection to a snapshot at timestamp ' + timestamp, function(done) {
+            var connection = backend.connect();
+            connection.fetchSnapshotByTimestamp('bookTitles', 'time-machine', timestamp, function(error, snapshot) {
+              if (error) return done(error);
+              expect(snapshot.data).to.eql({title: 'The Time Machine'});
+              done();
+            });
+          });
+        });
+      });
     });
   });
 
