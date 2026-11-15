@@ -467,12 +467,6 @@ describe('sub-field projections', function() {
       );
     });
 
-    it('lets a projected ancestor include its whole subtree, in either order', function() {
-      var data = {owner: {name: 'jim', phone: '555'}};
-      test({owner: true, 'owner.name': true}, clone(data), data);
-      test({'owner.name': true, owner: true}, clone(data), data);
-    });
-
     it('returns an empty object for a parent with none of the sub-fields', function() {
       test({'owner.name': true}, {owner: {phone: '555'}}, {owner: {}});
     });
@@ -495,11 +489,6 @@ describe('sub-field projections', function() {
     it('does not read sub-fields from the prototype', function() {
       test({'owner.toString': true}, {owner: {name: 'jim'}}, {owner: {}});
       test({'owner.__proto__': true}, {owner: {name: 'jim'}}, {owner: {}});
-    });
-
-    it('does not treat numeric sub-fields as array indexes', function() {
-      test({'owner.0': true}, {owner: ['jim']}, {});
-      test({'owner.0': true}, {owner: {0: 'jim'}}, {owner: {0: 'jim'}});
     });
 
     it('treats dotted fields as paths, not literal keys', function() {
@@ -559,7 +548,26 @@ describe('sub-field projections', function() {
     it('drops the non-object side when replacing a parent of projected sub-fields', function() {
       test({p: ['owner'], od: 'jim', oi: {name: 'jim'}}, [{p: ['owner'], oi: {name: 'jim'}}]);
       test({p: ['owner'], od: {name: 'jim'}, oi: ['jim']}, [{p: ['owner'], od: {name: 'jim'}}]);
-      test({p: ['owner'], od: 'jim', oi: 5}, []);
+      test({p: ['owner'], od: 'jim', oi: 5}, [{p: ['owner'], od: {}}]);
+    });
+
+    it('deletes a parent of projected sub-fields replaced by a non-object without od', function() {
+      // json0 doesn't require od, so the projection can't rely on it to know
+      // whether the client has the parent
+      test({p: ['owner'], oi: 'gone'}, [{p: ['owner'], od: {}}]);
+      test({p: ['owner'], oi: null}, [{p: ['owner'], od: {}}]);
+      test({p: ['owner'], oi: 5}, [{p: ['owner'], od: {}}]);
+      test({p: ['owner'], oi: ['jim']}, [{p: ['owner'], od: {}}]);
+      test({p: ['owner', 'address'], oi: 'Durham'}, [{p: ['owner', 'address'], od: {}}]);
+    });
+
+    it('projects a parent of projected sub-fields replaced by an object without od', function() {
+      test({p: ['owner'], oi: {name: 'bob', phone: '556'}}, [{p: ['owner'], oi: {name: 'bob'}}]);
+    });
+
+    it('deletes a parent of projected sub-fields that is removed', function() {
+      test({p: ['owner'], od: {name: 'jim', phone: '555'}}, [{p: ['owner'], od: {name: 'jim'}}]);
+      test({p: ['owner'], od: 'jim'}, [{p: ['owner'], od: {}}]);
     });
 
     it('drops non-object edits to a parent of projected sub-fields', function() {
@@ -658,11 +666,9 @@ describe('sub-field projections', function() {
       {a: true},
       {'a.b': true},
       {'a.b.c': true, d: true},
-      {a: true, 'a.b': true},
+      {'a.b': true, 'a.c': true},
       {'a.b': true, 'a.c.d': true, b: true},
-      {'b.a.a': true, 'c.c': true},
-      // Numeric segments must not reach into arrays
-      {'a.0': true, 'b.1.c': true}
+      {'b.a.a': true, 'c.c': true}
     ];
 
     // Small deterministic PRNG so failures are reproducible
@@ -718,9 +724,11 @@ describe('sub-field projections', function() {
       var r = random();
 
       if (path.length === 0) {
-        if (r < 0.2) return {p: [], od: clone(data), oi: randomObject(random, 3)};
+        if (r < 0.1) return {p: [], od: clone(data), oi: randomObject(random, 3)};
+        // json0 doesn't check od, so sometimes leave it out
+        if (r < 0.2) return {p: [], oi: randomObject(random, 3)};
         var key = pick(random, KEYS);
-        if (data[key] === undefined) return {p: [key], oi: randomValue(random, 3)};
+        if (data[key] === undefined || random() < 0.3) return {p: [key], oi: randomValue(random, 3)};
         return {p: [key], od: clone(data[key]), oi: randomValue(random, 3)};
       }
       if (typeof value === 'number' && r < 0.5) return {p: path, na: 1};
@@ -747,7 +755,9 @@ describe('sub-field projections', function() {
         if (r2 < 0.66) return {p: path, lm: Math.floor(random() * parent.length)};
         return {p: path, ld: clone(value), li: randomValue(random, 2)};
       }
-      if (random() < 0.3) return {p: path, od: clone(value)};
+      var r3 = random();
+      if (r3 < 0.25) return {p: path, od: clone(value)};
+      if (r3 < 0.5) return {p: path, oi: randomValue(random, 3)};
       return {p: path, od: clone(value), oi: randomValue(random, 3)};
     }
 

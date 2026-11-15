@@ -423,6 +423,18 @@ module.exports = function(options) {
           done
         );
       });
+
+      it('parent of a projected sub-field replaced by a non-object without od', function(done) {
+        test.call(this, {p: ['owner'], oi: 'gone'}, {age: 3}, done);
+      });
+
+      it('parent of a projected sub-field replaced by null without od', function(done) {
+        test.call(this, {p: ['owner'], oi: null}, {age: 3}, done);
+      });
+
+      it('parent of a projected sub-field replaced by an object without od', function(done) {
+        test.call(this, {p: ['owner'], oi: {name: 'sue', phone: '555-0142'}}, {age: 3, owner: {name: 'sue'}}, done);
+      });
     }
 
     describe('op fetch', function() {

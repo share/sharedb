@@ -76,23 +76,59 @@ describe('Backend', function() {
       backend = new Backend();
     });
 
+    function addProjection(fields) {
+      backend.addProjection('contacts', 'users', fields);
+    }
+
+    function single(field) {
+      var fields = {};
+      fields[field] = true;
+      return fields;
+    }
+
     it('accepts sub-field paths', function() {
-      backend.addProjection('contacts', 'users', {name: true, 'address.city': true});
-      expect(backend.projections.contacts.hasSubFields).equal(true);
+      addProjection({name: true, 'address.city': true, 'address.zip': true, 'owner.address.city': true});
+      expect(backend.projections.contacts.fields).eql(
+        {name: true, 'address.city': true, 'address.zip': true, 'owner.address.city': true}
+      );
     });
 
-    it('does not flag projections without sub-fields', function() {
-      backend.addProjection('names', 'users', {name: true});
-      expect(backend.projections.names.hasSubFields).equal(false);
+    it('still accepts any top-level field', function() {
+      addProjection({'': true, 0: true, name: true});
+    });
+
+    it('rejects fields that are not true', function() {
+      expect(function() {
+        addProjection({'address.city': 1});
+      }).to.throw(/must be \{somekey: true\}/);
     });
 
     ['address.', '.city', 'address..city', '.'].forEach(function(field) {
       it('rejects the field ' + JSON.stringify(field), function() {
-        var fields = {};
-        fields[field] = true;
         expect(function() {
-          backend.addProjection('contacts', 'users', fields);
+          addProjection(single(field));
         }).to.throw(/empty segments/);
+      });
+    });
+
+    ['tags.0', 'tags.0.name', '0.name', 'owner.10'].forEach(function(field) {
+      it('rejects the numeric field ' + JSON.stringify(field), function() {
+        expect(function() {
+          addProjection(single(field));
+        }).to.throw(/numeric segments/);
+      });
+    });
+
+    [
+      {owner: true, 'owner.name': true},
+      {'owner.name': true, owner: true},
+      {'owner.address': true, 'owner.address.city': true},
+      {'owner.address.city': true, 'owner.address': true}
+    ].forEach(function(fields) {
+      it('rejects the overlapping fields ' + JSON.stringify(Object.keys(fields)), function() {
+        expect(function() {
+          addProjection(fields);
+        }).to.throw(/overlap/);
       });
     });
 
