@@ -71,6 +71,86 @@ describe('Backend', function() {
     });
   });
 
+  describe('addProjection', function() {
+    beforeEach(function() {
+      backend = new Backend();
+    });
+
+    function addProjection(fields) {
+      backend.addProjection('contacts', 'users', fields);
+    }
+
+    function single(field) {
+      var fields = {};
+      fields[field] = true;
+      return fields;
+    }
+
+    it('accepts sub-field paths', function() {
+      addProjection({name: true, 'address.city': true, 'address.zip': true, 'owner.address.city': true});
+      expect(backend.projections.contacts.fields).eql(
+        {name: true, 'address.city': true, 'address.zip': true, 'owner.address.city': true}
+      );
+    });
+
+    it('still accepts any top-level field', function() {
+      addProjection({'': true, 0: true, name: true});
+    });
+
+    it('rejects fields that are not true', function() {
+      expect(function() {
+        addProjection({'address.city': 1});
+      }).to.throw(/must be \{somekey: true\}/);
+    });
+
+    ['address.', '.city', 'address..city', '.'].forEach(function(field) {
+      it('rejects the field ' + JSON.stringify(field), function() {
+        expect(function() {
+          addProjection(single(field));
+        }).to.throw(/empty segments/);
+      });
+    });
+
+    ['tags.0', 'tags.0.name', '0.name', 'owner.10'].forEach(function(field) {
+      it('rejects the numeric field ' + JSON.stringify(field), function() {
+        expect(function() {
+          addProjection(single(field));
+        }).to.throw(/numeric segments/);
+      });
+    });
+
+    [
+      {owner: true, 'owner.name': true},
+      {'owner.name': true, owner: true},
+      {'owner.address': true, 'owner.address.city': true},
+      {'owner.address.city': true, 'owner.address': true}
+    ].forEach(function(fields) {
+      it('rejects the overlapping fields ' + JSON.stringify(Object.keys(fields)), function() {
+        expect(function() {
+          addProjection(fields);
+        }).to.throw(/overlap/);
+      });
+    });
+
+    it('projects sub-fields itself when the DB projects snapshots', function(done) {
+      // A DB that projects snapshots might treat sub-fields differently, eg
+      // MongoDB projects documents inside arrays, so ShareDB re-projects them
+      var db = new MemoryDB();
+      db.projectsSnapshots = true;
+      backend = new Backend({db: db});
+      backend.addProjection('contacts', 'users', {'address.city': true});
+      var data = {name: 'jim', address: [{city: 'Durham'}]};
+      backend.connect().get('users', 'jim').create(data, function(err) {
+        if (err) return done(err);
+        backend.fetch(backend.connect().agent, 'contacts', 'jim', function(err, snapshot) {
+          if (err) return done(err);
+          expect(snapshot.data).eql({});
+          done();
+        });
+      });
+    });
+  });
+
   describe('a simple document', function() {
     var agent = {
       custom: {
