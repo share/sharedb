@@ -260,6 +260,19 @@ describe('projection utility methods', function() {
           {create: {type: type, data: {}}}
         );
       });
+
+      it('does not mutate the create object on a shallow copy of the op', function() {
+        // Pubsub hands the same op object to every subscribed agent, and
+        // agent._onOp only makes a shallow copy, so the create object is
+        // shared. Projecting one agent's copy must not rewrite the create
+        // data seen by other subscribers.
+        var create = {type: type, data: {x: 10, y: 20}};
+        var op = {create: create};
+        var copy = require('../lib/util').shallowCopy(op);
+        projections.projectOp({x: true}, copy);
+        expect(copy.create.data).eql({x: 10});
+        expect(create.data).eql({x: 10, y: 20});
+      });
     });
   });
 
