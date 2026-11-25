@@ -13,6 +13,23 @@ module.exports = function(options) {
       this.connection.get('dogs', 'fido').create(data, done);
     });
 
+    it('does not project the create sent to an unprojected subscriber', function(done) {
+      var connection = this.connection;
+      var summary = this.backend.connect().get('dogs_summary', 'spot');
+      var full = this.backend.connect().get('dogs', 'spot');
+      summary.subscribe(function(err) {
+        if (err) return done(err);
+        full.subscribe(function(err) {
+          if (err) return done(err);
+          full.on('create', function() {
+            expect(full.data).eql({age: 5, color: 'spotted'});
+            done();
+          });
+          connection.get('dogs', 'spot').create({age: 5, color: 'spotted'});
+        });
+      });
+    });
+
     ['fetch', 'subscribe'].forEach(function(method) {
       it('snapshot ' + method, function(done) {
         var connection2 = this.backend.connect();
