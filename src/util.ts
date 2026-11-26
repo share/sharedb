@@ -1,7 +1,7 @@
 import nextTickImpl = require('./next-tick');
 export let nextTick: any;
 export let inherits: any;
-export { doNothing };
+export {doNothing};
 function doNothing() {}
 
 export function hasKeys(object) {
@@ -9,7 +9,7 @@ export function hasKeys(object) {
   return false;
 }
 
-export const hasOwn = Object.hasOwn || function(obj, prop) {
+export const hasOwn = (Object as any).hasOwn || function(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 };
 
@@ -31,6 +31,7 @@ export function isValidTimestamp(timestamp) {
 
 export const MAX_SAFE_INTEGER = 9007199254740991;
 
+export function dig(...args: any[]): any;
 export function dig() {
   var obj = arguments[0];
   for (var i = 1; i < arguments.length; i++) {
@@ -40,6 +41,7 @@ export function dig() {
   return obj;
 }
 
+export function digOrCreate(...args: any[]): any;
 export function digOrCreate() {
   var obj = arguments[0];
   var createCallback = arguments[arguments.length - 1];
@@ -51,6 +53,7 @@ export function digOrCreate() {
   return obj;
 }
 
+export function digAndRemove(...args: any[]): any;
 export function digAndRemove() {
   var obj = arguments[0];
   var objects = [obj];
@@ -73,7 +76,7 @@ export function supportsPresence(type) {
   return type && typeof type.transformPresence === 'function';
 }
 
-export function callEach(callbacks, error) {
+export function callEach(callbacks, error?) {
   var called = false;
   callbacks.forEach(function(callback) {
     if (callback) {
@@ -106,7 +109,7 @@ export function clone(obj) {
 }
 
 export function shallowCopy(object) {
-  var out = {};
+  var out: any = {};
   for (var key in object) {
     if (exports.hasOwn(object, key)) {
       out[key] = object[key];

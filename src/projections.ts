@@ -1,21 +1,24 @@
-import { type as json0 } from 'ot-json0';
+import {type as json0} from 'ot-json0';
 import ShareDBError = require('./error');
 import util = require('./util');
 
 var ERROR_CODE = ShareDBError.CODES;
 
-export { projectSnapshot };
-export { projectSnapshots };
-export { projectOp };
-export { isSnapshotAllowed };
-export { isOpAllowed };
+export {projectSnapshot};
+export {projectSnapshots};
+export {projectOp};
+export {isSnapshotAllowed};
+export {isOpAllowed};
 
 
 // Project a snapshot in place to only include specified fields
 function projectSnapshot(fields, snapshot) {
   // Only json0 supported right now
   if (snapshot.type && snapshot.type !== json0.uri) {
-    throw new Error(ERROR_CODE.ERR_TYPE_CANNOT_BE_PROJECTED, 'Cannot project snapshots of type ' + snapshot.type);
+    throw new (Error as any)(
+      ERROR_CODE.ERR_TYPE_CANNOT_BE_PROJECTED,
+      'Cannot project snapshots of type ' + snapshot.type
+    );
   }
   snapshot.data = projectData(fields, snapshot.data);
 }
@@ -45,7 +48,7 @@ function projectEdit(fields, op) {
     var path = c.p;
 
     if (path.length === 0) {
-      var newC = {p: []};
+      var newC: any = {p: []};
 
       if (c.od !== undefined || c.oi !== undefined) {
         if (c.od !== undefined) {

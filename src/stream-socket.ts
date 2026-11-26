@@ -1,4 +1,4 @@
-import { Duplex } from 'stream';
+import {Duplex} from 'stream';
 import logger = require('./logger');
 import util = require('./util');
 
@@ -57,44 +57,33 @@ class StreamSocket {
 
 export = StreamSocket;
 
-class ServerStream extends Duplex {
-  socket;
+function ServerStream(socket) {
+  Duplex.call(this, {objectMode: true});
 
-  constructor(socket) {
-    super({objectMode: true});
+  this.socket = socket;
 
-    this.socket = socket;
+  this.on('error', function(error) {
+    logger.warn('ShareDB client message stream error', error);
+    socket.close('stopped');
+  });
 
-    this.on('error', function(error) {
-      logger.warn('ShareDB client message stream error', error);
-      socket.close('stopped');
-    });
-
-    // The server ended the writable stream. Triggered by calling stream.end()
-    // in agent.close()
-    this.on('finish', function() {
-      socket.close('stopped');
-    });
-  }
-
-  declare isServer;
-
-  static {
-    ServerStream.prototype.isServer = true;
-  }
-
-  declare _read;
-
-  static {
-    ServerStream.prototype._read = util.doNothing;
-  }
-
-  _write(chunk, encoding, callback) {
-    var socket = this.socket;
-    util.nextTick(function() {
-      if (socket.readyState !== 1) return;
-      socket.onmessage({data: JSON.stringify(chunk)});
-      callback();
-    });
-  }
+  // The server ended the writable stream. Triggered by calling stream.end()
+  // in agent.close()
+  this.on('finish', function() {
+    socket.close('stopped');
+  });
 }
+util.inherits(ServerStream, Duplex);
+
+ServerStream.prototype.isServer = true;
+
+ServerStream.prototype._read = util.doNothing;
+
+ServerStream.prototype._write = function(chunk, encoding, callback) {
+  var socket = this.socket;
+  util.nextTick(function() {
+    if (socket.readyState !== 1) return;
+    socket.onmessage({data: JSON.stringify(chunk)});
+    callback();
+  });
+};

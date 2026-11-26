@@ -1,6 +1,8 @@
-export const Connection = require('./connection');
-export const Doc = require('./doc');
-export const Error = require('../error');
-export const Query = require('./query');
-export const types = require('../types');
-export const logger = require('../logger');
+import Connection = require('./connection');
+import Doc = require('./doc');
+import ShareDBError = require('../error');
+import Query = require('./query');
+import types = require('../types');
+import logger = require('../logger');
+
+export = {Connection, Doc, Error: ShareDBError, Query, types, logger};

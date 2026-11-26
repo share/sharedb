@@ -81,4 +81,6 @@ class MilestoneDB {
   }
 }
 
+interface MilestoneDB extends emitter.EventEmitter {}
+
 emitter.mixin(MilestoneDB);

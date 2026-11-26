@@ -1,5 +1,5 @@
 import emitter = require('../../emitter');
-import { ACTIONS } from '../../message-actions';
+import {ACTIONS} from '../../message-actions';
 import util = require('../../util');
 
 export = LocalPresence;
@@ -88,5 +88,7 @@ class LocalPresence {
     if (error) this.emit('error', error);
   }
 }
+
+interface LocalPresence extends emitter.EventEmitter {}
 
 emitter.mixin(LocalPresence);

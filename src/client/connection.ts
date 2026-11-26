@@ -6,7 +6,7 @@ import SnapshotVersionRequest = require('./snapshot-request/snapshot-version-req
 import SnapshotTimestampRequest = require('./snapshot-request/snapshot-timestamp-request');
 import emitter = require('../emitter');
 import ShareDBError = require('../error');
-import { ACTIONS } from '../message-actions';
+import {ACTIONS} from '../message-actions';
 import types = require('../types');
 import util = require('../util');
 import logger = require('../logger');
@@ -81,6 +81,9 @@ class Connection {
 
   debug;
   state;
+  socket;
+  canSend;
+  bulk;
 
   constructor(socket) {
     emitter.EventEmitter.call(this);
@@ -313,7 +316,7 @@ class Connection {
       }
     } else if (Array.isArray(message.b)) {
       for (var i = 0; i < message.b.length; i++) {
-        var id = message.b[i];
+        var id: string = message.b[i];
         var doc = this.getExisting(message.c, id);
         if (doc) doc[method](err);
       }
@@ -332,7 +335,7 @@ class Connection {
   }
 
   /** Set the connection's state. The connection is basically a state machine. */
-  _setState(newState, reason) {
+  _setState(newState, reason?) {
     if (this.state === newState) return;
 
     // I made a state diagram. The only invalid transitions are getting to
@@ -429,7 +432,7 @@ class Connection {
       }
     }
     if (ids.length === 1) {
-      var id = ids[0];
+      var id: string = ids[0];
       this.send({a: action, c: collection, d: id});
     } else if (ids.length) {
       this.send({a: 'b' + action, c: collection, b: ids});
@@ -442,7 +445,7 @@ class Connection {
     }
   }
 
-  _sendActions(action, doc, version) {
+  _sendActions(action, doc, version?) {
     // Ensure the doc is registered so that it receives the reply message
     this._addDoc(doc);
     if (this.bulk) {
@@ -474,7 +477,7 @@ class Connection {
   sendOp(doc, op) {
     // Ensure the doc is registered so that it receives the reply message
     this._addDoc(doc);
-    var message = {
+    var message: any = {
       a: ACTIONS.op,
       c: doc.collection,
       d: doc.id,
@@ -855,12 +858,14 @@ class Connection {
   }
 }
 
+interface Connection extends emitter.EventEmitter {}
+
 emitter.mixin(Connection);
 
 
-function wrapErrorData(errorData, fullMessage) {
+function wrapErrorData(errorData, fullMessage?) {
   // wrap in Error object so can be passed through event emitters
-  var err = new Error(errorData.message);
+  var err: any = new Error(errorData.message);
   err.code = errorData.code;
   if (fullMessage) {
     // Add the message data to the error object for more context

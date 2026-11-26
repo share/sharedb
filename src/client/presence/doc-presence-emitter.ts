@@ -1,5 +1,5 @@
 import util = require('../../util');
-import { EventEmitter } from 'events';
+import {EventEmitter} from 'events';
 
 var EVENTS = [
   'create',

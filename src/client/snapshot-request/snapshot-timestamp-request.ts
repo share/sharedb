@@ -1,6 +1,6 @@
 import SnapshotRequest = require('./snapshot-request');
 import util = require('../../util');
-import { ACTIONS } from '../../message-actions';
+import {ACTIONS} from '../../message-actions';
 
 export = SnapshotTimestampRequest;
 

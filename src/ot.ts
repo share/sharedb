@@ -255,7 +255,7 @@ export function applyOps(snapshot, ops, options) {
   }
 }
 
-export function transformPresence(presence, op, isOwnOp) {
+export function transformPresence(this: typeof import('./ot'), presence, op, isOwnOp) {
   var opError = this.checkOp(op);
   if (opError) return opError;
 

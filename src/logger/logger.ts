@@ -5,6 +5,10 @@ var SUPPORTED_METHODS = [
 ];
 
 class Logger {
+  declare info;
+  declare warn;
+  declare error;
+
   constructor() {
     var defaultMethods = Object.create(null);
     SUPPORTED_METHODS.forEach(function(method) {

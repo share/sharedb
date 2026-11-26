@@ -26,8 +26,9 @@ class QueryEmitter {
   _pendingPoll;
   _pollDebounceId;
   _pollIntervalId;
+  _defaultCallback;
 
-  constructor(request, streams, ids, extra) {
+  constructor(request, streams, ids, extra?) {
     this.backend = request.backend;
     this.agent = request.agent;
     this.db = request.db;
@@ -182,7 +183,7 @@ class QueryEmitter {
     }
   }
 
-  queryPoll(callback) {
+  queryPoll(callback?) {
     var emitter = this;
 
     // Only run a single polling check against mongo at a time per emitter. This
@@ -234,7 +235,7 @@ class QueryEmitter {
         emitter.ids = ids;
         var inserted = getInserted(idsDiff);
         if (inserted.length) {
-          var snapshotOptions = {};
+          var snapshotOptions: any = {};
           snapshotOptions.agentCustom = emitter.agent.custom;
 
           var _getSnapshotBulkCb = function(err, snapshotMap) {
@@ -293,7 +294,7 @@ class QueryEmitter {
         // it at the end
         var index = emitter.ids.push(id) - 1;
 
-        var snapshotOptions = {};
+        var snapshotOptions: any = {};
         snapshotOptions.agentCustom = emitter.agent.custom;
 
         // We can get the result to send to the client async, since there is a
@@ -334,6 +335,9 @@ class QueryEmitter {
    * are received and applied in order, so it is critical that none are dropped.
    */
   declare onError;
+  declare onDiff;
+  declare onExtra;
+  declare onOp;
 
   static {
     QueryEmitter.prototype.onError =

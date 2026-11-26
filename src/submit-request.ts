@@ -131,7 +131,7 @@ class SubmitRequest {
     // With a null projection, it strips document metadata
     var fields = {$submit: true};
 
-    var snapshotOptions = {};
+    var snapshotOptions: any = {};
     snapshotOptions.agentCustom = request.agent.custom;
     backend.db.getSnapshot(collection, id, fields, snapshotOptions, function(err, snapshot) {
       if (err) return callback(err);

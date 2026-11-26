@@ -1,6 +1,6 @@
-import { EventEmitter } from 'events';
-export { EventEmitter };
-export { mixin };
+import {EventEmitter} from 'events';
+export {EventEmitter};
+export {mixin};
 
 function mixin(Constructor) {
   for (var key in EventEmitter.prototype) {

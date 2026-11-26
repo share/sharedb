@@ -159,7 +159,7 @@ class RemoteDocPresence extends RemotePresence {
     this._opCache = null;
   }
 
-  _cacheOp(op, isOwnOp) {
+  _cacheOp(op, isOwnOp?) {
     if (this._opCache) {
       op = op ? {op: op} : null;
       // Subtract 1 from the current doc version, because an op with v3

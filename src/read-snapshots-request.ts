@@ -115,7 +115,7 @@ class ReadSnapshotsRequest {
     // fetchBulk and subscribeBulk know how to handle that special error by sending a doc-by-doc
     // success/failure to the client. Other methods that don't or can't handle partial failures
     // will treat it as a full rejection.
-    var err = new ShareDBError(ShareDBError.CODES.ERR_SNAPSHOT_READS_REJECTED);
+    var err: any = new ShareDBError(ShareDBError.CODES.ERR_SNAPSHOT_READS_REJECTED);
     err.idToError = idToError;
     return err;
   }

@@ -4,7 +4,7 @@ import RemotePresence = require('./remote-presence');
 import util = require('../../util');
 import async = require('async');
 import hat = require('hat');
-import { ACTIONS } from '../../message-actions';
+import {ACTIONS} from '../../message-actions';
 
 export = Presence;
 
@@ -211,7 +211,7 @@ class Presence {
     return new RemotePresence(this, id);
   }
 
-  _callEachOrEmit(callbacks, error) {
+  _callEachOrEmit(callbacks, error?) {
     var called = util.callEach(callbacks, error);
     if (!called && error) this.emit('error', error);
   }
@@ -227,5 +227,7 @@ class Presence {
     };
   }
 }
+
+interface Presence extends emitter.EventEmitter {}
 
 emitter.mixin(Presence);

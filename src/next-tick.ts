@@ -8,7 +8,7 @@ export function messageChannel() {
   channel.port2.postMessage('');
 }
 
-export { nextTickWithSetTimeout as setTimeout };
+export {nextTickWithSetTimeout as setTimeout};
 function nextTickWithSetTimeout() {
   var triggerCallback = createNextTickTrigger(arguments);
   setTimeout(triggerCallback);

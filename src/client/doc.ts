@@ -6,7 +6,7 @@ import types = require('../types');
 import util = require('../util');
 var clone = util.clone;
 import deepEqual = require('fast-deep-equal');
-import { ACTIONS } from '../message-actions';
+import {ACTIONS} from '../message-actions';
 
 var ERROR_CODE = ShareDBError.CODES;
 
@@ -355,7 +355,7 @@ class Doc {
     this._emitNothingPending();
   }
 
-  _handleSubscribe(error, snapshot) {
+  _handleSubscribe(error?, snapshot?) {
     var request = this.inflightSubscribe;
     this.inflightSubscribe = null;
     var callbacks = this.pendingFetch;
@@ -480,7 +480,7 @@ class Doc {
   }
 
   /** Request the current document snapshot or ops that bring us up to date */
-  fetch(callback) {
+  fetch(callback?) {
     this._fetch({}, callback);
   }
 
@@ -495,7 +495,7 @@ class Doc {
   }
 
   /** Fetch the initial document and keep receiving updates */
-  subscribe(callback) {
+  subscribe(callback?) {
     var wantSubscribe = true;
     this._queueSubscribe(wantSubscribe, callback);
   }
@@ -830,7 +830,7 @@ class Doc {
     if (!op) return;
     // Compose the ops added since the beginning of the apply stack, since we
     // had to skip compose when they were originally pushed
-    var i = this.pendingOps.indexOf(op);
+    var i: number = this.pendingOps.indexOf(op);
     if (i === -1) return;
     var ops = this.pendingOps.splice(i);
     for (var i = 0; i < ops.length; i++) {
@@ -1123,7 +1123,7 @@ class Doc {
     });
   }
 
-  _clearInflightOp(err) {
+  _clearInflightOp(err?) {
     var inflightOp = this.inflightOp;
 
     this.inflightOp = null;
@@ -1136,6 +1136,8 @@ class Doc {
     if (err && !called) return this.emit('error', err);
   }
 }
+
+interface Doc extends emitter.EventEmitter {}
 
 emitter.mixin(Doc);
 

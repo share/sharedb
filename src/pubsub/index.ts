@@ -72,7 +72,9 @@ class PubSub {
 
   _publish(channels, data, callback) {
     util.nextTick(function() {
-      callback(new ShareDBError(ERROR_CODE.ERR_DATABASE_METHOD_NOT_IMPLEMENTED, '_publish PubSub method unimplemented'));
+      callback(
+        new ShareDBError(ERROR_CODE.ERR_DATABASE_METHOD_NOT_IMPLEMENTED, '_publish PubSub method unimplemented')
+      );
     });
   }
 
@@ -176,4 +178,6 @@ class PubSub {
 }
 
 export = PubSub;
+interface PubSub extends emitter.EventEmitter {}
+
 emitter.mixin(PubSub);

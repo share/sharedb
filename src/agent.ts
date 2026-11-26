@@ -2,7 +2,7 @@ import async = require('async');
 import hat = require('hat');
 import ShareDBError = require('./error');
 import logger = require('./logger');
-import { ACTIONS } from './message-actions';
+import {ACTIONS} from './message-actions';
 import types = require('./types');
 import util = require('./util');
 import protocol = require('./protocol');
@@ -277,7 +277,7 @@ class Agent {
     delete this.presenceRequests[channel];
   }
 
-  _broadcastLeave(presence, callback) {
+  _broadcastLeave(presence, callback?) {
     var agent = this;
     presence.p = null;
     this._broadcastPresence(presence, [], function(error, result) {
@@ -375,7 +375,7 @@ class Agent {
   }
 
   _sendOp(collection, id, op) {
-    var message = {
+    var message: any = {
       a: ACTIONS.op,
       c: collection,
       d: id,
@@ -450,7 +450,7 @@ class Agent {
 
       var request = {data: chunk};
       agent.backend.trigger(agent.backend.MIDDLEWARE_ACTIONS.receive, agent, request, function(err) {
-        var callback = function(err, message) {
+        var callback = function(err, message?) {
           agent._reply(request.data, err, message);
         };
         if (err) return callback(err);
@@ -865,27 +865,32 @@ class Agent {
         }
         var clientHasLeft = agent.closed || pendingBroadcast.retracted;
         if (clientHasLeft && !leaving) return agent._broadcastLeave(presence, callback);
-        var requests = agent.presenceRequests[presence.ch] || (agent.presenceRequests[presence.ch] = Object.create(null));
+        var requests = agent.presenceRequests[presence.ch] ||
+          (agent.presenceRequests[presence.ch] = Object.create(null));
         var previousRequest = requests[presence.id];
         if (!previousRequest || previousRequest.p === null || previousRequest.pv < presence.pv) {
           requests[presence.id] = presence;
         }
 
         var trackedVersion = util.dig(agent.latestDocVersions, presence.c, presence.d);
-        backend._transformPresenceToLatestVersion(agent, presence, trackedVersion, function(error, transformedPresence) {
-          if (error) {
-            agent._withdrawPresenceRequest(requests, presence, previousRequest);
-            return callback(error);
-          }
-          var replaced = util.dig(agent.presenceRequests, presence.ch, presence.id) !== presence;
-          if (replaced && !leaving) return callback(null, transformedPresence);
-          var channel = agent._getPresenceChannel(transformedPresence.ch);
-          agent.backend.pubsub.publish([channel], transformedPresence, function(error) {
-            if (error) return callback(error);
-            backend.emit('timing', 'presence.broadcast', Date.now() - start, context);
-            callback(null, transformedPresence);
+        backend._transformPresenceToLatestVersion(
+          agent,
+          presence,
+          trackedVersion,
+          function(error, transformedPresence) {
+            if (error) {
+              agent._withdrawPresenceRequest(requests, presence, previousRequest);
+              return callback(error);
+            }
+            var replaced = util.dig(agent.presenceRequests, presence.ch, presence.id) !== presence;
+            if (replaced && !leaving) return callback(null, transformedPresence);
+            var channel = agent._getPresenceChannel(transformedPresence.ch);
+            agent.backend.pubsub.publish([channel], transformedPresence, function(error) {
+              if (error) return callback(error);
+              backend.emit('timing', 'presence.broadcast', Date.now() - start, context);
+              callback(null, transformedPresence);
+            });
           });
-        });
       });
     });
   }
@@ -968,7 +973,7 @@ class Agent {
   _subscribePresence(channel, seq, cb) {
     var agent = this;
 
-    function callback(error) {
+    function callback(error?) {
       cb(error, {ch: channel, seq: seq});
     }
 
@@ -1190,7 +1195,7 @@ function hasRejectedSnapshot(snapshotMap) {
 }
 
 function getSnapshotData(snapshot) {
-  var data = {
+  var data: any = {
     v: snapshot.v,
     data: snapshot.data
   };
@@ -1221,7 +1226,7 @@ class CreateOp {
   m;
   x;
 
-  constructor(src, seq, v, create, x, c, d, m) {
+  constructor(src, seq, v, create, x, c?, d?, m?) {
     this.src = src;
     this.seq = seq;
     this.v = v;
@@ -1243,7 +1248,7 @@ class EditOp {
   m;
   x;
 
-  constructor(src, seq, v, op, x, c, d, m) {
+  constructor(src, seq, v, op, x, c?, d?, m?) {
     this.src = src;
     this.seq = seq;
     this.v = v;
@@ -1265,7 +1270,7 @@ class DeleteOp {
   m;
   x;
 
-  constructor(src, seq, v, del, x, c, d, m) {
+  constructor(src, seq, v, del, x, c?, d?, m?) {
     this.src = src;
     this.seq = seq;
     this.v = v;

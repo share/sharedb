@@ -10,7 +10,7 @@ export = NoOpMilestoneDB;
  * no effect.
  */
 class NoOpMilestoneDB extends MilestoneDB {
-  constructor(options) {
+  constructor(options?) {
     super(options);
   }
 

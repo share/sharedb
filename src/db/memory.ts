@@ -26,7 +26,9 @@ class MemoryDB extends DB {
 
   closed;
 
-  constructor(options) {
+  constructor(options?) {
+    // @ts-expect-error TS17009 doesn't apply to our ES5 output
+    if (!(this instanceof MemoryDB)) return new MemoryDB(options);
     super(options);
 
     this.docs = Object.create(null);
@@ -147,6 +149,7 @@ class MemoryDB extends DB {
     });
   }
 
+  _querySync(snapshots, query?, options?): any;
   /**
    * For testing, it may be useful to implement the desired query
    * language by defining this function. Returns an object with
@@ -158,7 +161,7 @@ class MemoryDB extends DB {
     return {snapshots: snapshots};
   }
 
-  _writeOpSync(collection, id, op) {
+  _writeOpSync(collection, id, op): any {
     var opLog = this._getOpLogSync(collection, id);
     // This will write an op in the log at its version, which should always be
     // the next item in the array under normal operation
@@ -170,7 +173,7 @@ class MemoryDB extends DB {
    * object will be passed in with a type property. If there is no type property,
    * it should be considered a delete
    */
-  _writeSnapshotSync(collection, id, snapshot) {
+  _writeSnapshotSync(collection, id, snapshot): any {
     var collectionDocs = this.docs[collection] || (this.docs[collection] = Object.create(null));
     if (!snapshot.type) {
       delete collectionDocs[id];

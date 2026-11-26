@@ -11,7 +11,9 @@ import util = require('../util');
  * processes are desired. No pub/sub APIs are adapter specific.
  */
 class MemoryPubSub extends PubSub {
-  constructor(options) {
+  constructor(options?) {
+    // @ts-expect-error TS17009 doesn't apply to our ES5 output
+    if (!(this instanceof MemoryPubSub)) return new MemoryPubSub(options);
     super(options);
   }
 

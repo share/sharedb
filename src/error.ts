@@ -3,7 +3,7 @@ class ShareDBError {
   message;
   stack;
 
-  constructor(code, message) {
+  constructor(code, message?) {
     this.code = code;
     this.message = message || '';
     if (Error.captureStackTrace) {
@@ -14,10 +14,6 @@ class ShareDBError {
   }
 
   declare name;
-
-  static {
-    ShareDBError.prototype.name = 'ShareDBError';
-  }
 
   static CODES = {
     ERR_APPLY_OP_VERSION_DOES_NOT_MATCH_SNAPSHOT: 'ERR_APPLY_OP_VERSION_DOES_NOT_MATCH_SNAPSHOT',
@@ -89,5 +85,6 @@ class ShareDBError {
 
 ShareDBError.prototype = Object.create(Error.prototype);
 ShareDBError.prototype.constructor = ShareDBError;
+ShareDBError.prototype.name = 'ShareDBError';
 
 export = ShareDBError;

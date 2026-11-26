@@ -45,6 +45,23 @@ class Backend {
   remoteAgentsCount;
   errorHandler;
 
+  declare static Agent;
+  declare static Backend;
+  declare static DB;
+  declare static Error;
+  declare static logger;
+  declare static MemoryDB;
+  declare static MemoryMilestoneDB;
+  declare static MemoryPubSub;
+  declare static MESSAGE_ACTIONS;
+  declare static MilestoneDB;
+  declare static ot;
+  declare static projections;
+  declare static PubSub;
+  declare static QueryEmitter;
+  declare static SubmitRequest;
+  declare static types;
+
   constructor(options) {
     if (!(this instanceof Backend)) return new Backend(options);
     emitter.EventEmitter.call(this);
@@ -77,7 +94,7 @@ class Backend {
 
     this.errorHandler = typeof options.errorHandler === 'function' ?
       options.errorHandler :
-      // eslint-disable-next-line no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       function(error, context) {
         logger.error(error);
       };
@@ -136,7 +153,7 @@ class Backend {
   close(callback) {
     var wait = 4;
     var backend = this;
-    function finish(err) {
+    function finish(err?) {
       if (err) return util.callbackOrEmit(backend, err, callback);
       if (--wait) return;
       if (callback) callback();
@@ -198,7 +215,9 @@ class Backend {
 
     for (var key in fields) {
       if (fields[key] !== true) {
-        throw new Error('Invalid field ' + key + ' - fields must be {somekey: true}. Subfields not currently supported.');
+        throw new Error(
+          'Invalid field ' + key + ' - fields must be {somekey: true}. Subfields not currently supported.'
+        );
       }
     }
 
@@ -240,7 +259,7 @@ class Backend {
 
     // Copying the triggers we'll fire so they don't get edited while we iterate.
     fns = fns.slice();
-    var next = function(err) {
+    var next = function(err?) {
       if (err) return callback(err);
       var fn = fns.shift();
       if (!fn) return callback();
@@ -258,7 +277,7 @@ class Backend {
     var backend = this;
     var request = new SubmitRequest(this, agent, index, id, op, options);
 
-    var callback = function(error, ops) {
+    var callback = function(error, ops?) {
       backend.emit('submitRequestEnd', error, request);
       originalCallback(error, ops, request);
     };
@@ -379,11 +398,13 @@ class Backend {
     });
   }
 
+  getOps(agent, index, id, from, to, callback);
+  getOps(agent, index, id, from, to, options, callback);
   /**
    * Non inclusive - gets ops from [from, to). Ie, all relevant ops. If to is
    * not defined (null or undefined) then it returns all ops.
    */
-  getOps(agent, index, id, from, to, options, callback) {
+  getOps(agent, index, id, from, to, options, callback?) {
     if (typeof options === 'function') {
       callback = options;
       options = null;
@@ -432,7 +453,9 @@ class Backend {
     });
   }
 
-  fetch(agent, index, id, options, callback) {
+  fetch(agent, index, id, callback);
+  fetch(agent, index, id, options, callback);
+  fetch(agent, index, id, options, callback?) {
     if (typeof options === 'function') {
       callback = options;
       options = null;
@@ -473,6 +496,8 @@ class Backend {
    * @typedef {{ [id: string]: Snapshot | { error: Error | string } }} SnapshotMap
    */
 
+  fetchBulk(agent, index, ids, callback);
+  fetchBulk(agent, index, ids, options, callback);
   /**
    * @param {Agent} agent
    * @param {string} index
@@ -480,7 +505,7 @@ class Backend {
    * @param {*} options
    * @param {(err?: Error | string, snapshotMap?: SnapshotMap) => void} callback
    */
-  fetchBulk(agent, index, ids, options, callback) {
+  fetchBulk(agent, index, ids, options, callback?) {
     if (typeof options === 'function') {
       callback = options;
       options = null;
@@ -787,18 +812,23 @@ class Backend {
 
   _query(agent, request, callback) {
     var backend = this;
-    request.db.query(request.collection, request.query, request.fields, request.options, function(err, snapshots, extra) {
-      if (err) return callback(err);
-      backend._sanitizeSnapshots(
-        agent,
-        request.snapshotProjection,
-        request.collection,
-        snapshots,
-        backend.SNAPSHOT_TYPES.current,
-        function(err) {
-          callback(err, snapshots, extra);
-        });
-    });
+    request.db.query(
+      request.collection,
+      request.query,
+      request.fields,
+      request.options,
+      function(err, snapshots, extra) {
+        if (err) return callback(err);
+        backend._sanitizeSnapshots(
+          agent,
+          request.snapshotProjection,
+          request.collection,
+          snapshots,
+          backend.SNAPSHOT_TYPES.current,
+          function(err) {
+            callback(err, snapshots, extra);
+          });
+      });
   }
 
   getCollectionChannel(collection) {
@@ -859,7 +889,8 @@ class Backend {
       if (error) return callback(error);
 
       // Bypass backend.getOps so that we don't call _sanitizeOps. We want to avoid this, because:
-      // - we want to avoid the 'op' middleware, because we later use the 'readSnapshots' middleware in _sanitizeSnapshots
+      // - we want to avoid the 'op' middleware, because we later use the 'readSnapshots' middleware in
+      //   _sanitizeSnapshots
       // - we handle the projection in _sanitizeSnapshots
       var from = milestoneSnapshot ? milestoneSnapshot.v : 0;
       db.getOps(collection, id, from, version, null, function(error, ops) {
@@ -1004,6 +1035,8 @@ class Backend {
 }
 
 export = Backend;
+interface Backend extends emitter.EventEmitter {}
+
 emitter.mixin(Backend);
 
 function destroyStreams(streams) {

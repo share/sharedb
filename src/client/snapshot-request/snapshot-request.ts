@@ -3,7 +3,7 @@ import emitter = require('../../emitter');
 
 export = SnapshotRequest;
 
-class SnapshotRequest {
+abstract class SnapshotRequest {
   requestId;
   connection;
   id;
@@ -26,6 +26,8 @@ class SnapshotRequest {
 
     this.sent = false;
   }
+
+  abstract _message();
 
   send() {
     if (!this.connection.canSend) {
@@ -60,5 +62,7 @@ class SnapshotRequest {
     this.callback(null, snapshot);
   }
 }
+
+interface SnapshotRequest extends emitter.EventEmitter {}
 
 emitter.mixin(SnapshotRequest);

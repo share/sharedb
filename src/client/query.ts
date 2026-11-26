@@ -1,11 +1,7 @@
 import emitter = require('../emitter');
-import { ACTIONS } from '../message-actions';
+import {ACTIONS} from '../message-actions';
 import util = require('../util');
 
-// Queries are live requests to the database for particular sets of fields.
-//
-// The server actively tells the client when there's new data that matches
-// a set of conditions.
 // Queries are live requests to the database for particular sets of fields.
 //
 // The server actively tells the client when there's new data that matches
@@ -76,7 +72,7 @@ class Query {
   send() {
     if (!this.connection.canSend) return;
 
-    var message = {
+    var message: any = {
       a: this.action,
       id: this.id,
       c: this.collection,
@@ -140,7 +136,7 @@ class Query {
 
     var query = this;
     var wait = 1;
-    var finish = function(err) {
+    var finish = function(err?) {
       if (err) return query._finishResponse(err, callback);
       if (--wait) return;
       query._finishResponse(null, callback);
@@ -162,7 +158,7 @@ class Query {
     finish();
   }
 
-  _ingestSnapshots(snapshots, finish) {
+  _ingestSnapshots(snapshots, finish?) {
     var results = [];
     for (var i = 0; i < snapshots.length; i++) {
       var snapshot = snapshots[i];
@@ -227,5 +223,7 @@ class Query {
     this.emit('extra', extra);
   }
 }
+
+interface Query extends emitter.EventEmitter {}
 
 emitter.mixin(Query);
