@@ -1,14 +1,14 @@
-var json0 = require('ot-json0').type;
-var ShareDBError = require('./error');
-var util = require('./util');
+import { type as json0 } from 'ot-json0';
+import ShareDBError = require('./error');
+import util = require('./util');
 
 var ERROR_CODE = ShareDBError.CODES;
 
-exports.projectSnapshot = projectSnapshot;
-exports.projectSnapshots = projectSnapshots;
-exports.projectOp = projectOp;
-exports.isSnapshotAllowed = isSnapshotAllowed;
-exports.isOpAllowed = isOpAllowed;
+export { projectSnapshot };
+export { projectSnapshots };
+export { projectOp };
+export { isSnapshotAllowed };
+export { isOpAllowed };
 
 
 // Project a snapshot in place to only include specified fields

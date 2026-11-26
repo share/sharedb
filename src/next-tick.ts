@@ -1,4 +1,4 @@
-exports.messageChannel = function() {
+export function messageChannel() {
   var triggerCallback = createNextTickTrigger(arguments);
   var channel = new MessageChannel();
   channel.port1.onmessage = function() {
@@ -6,9 +6,9 @@ exports.messageChannel = function() {
     channel.port1.close();
   };
   channel.port2.postMessage('');
-};
+}
 
-exports.setTimeout = nextTickWithSetTimeout;
+export { nextTickWithSetTimeout as setTimeout };
 function nextTickWithSetTimeout() {
   var triggerCallback = createNextTickTrigger(arguments);
   setTimeout(triggerCallback);

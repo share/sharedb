@@ -1,4 +1,4 @@
-exports.ACTIONS = {
+export const ACTIONS = {
   initLegacy: 'init',
   handshake: 'hs',
   queryFetch: 'qf',

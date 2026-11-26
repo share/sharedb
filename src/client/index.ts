@@ -1,6 +1,6 @@
-exports.Connection = require('./connection');
-exports.Doc = require('./doc');
-exports.Error = require('../error');
-exports.Query = require('./query');
-exports.types = require('../types');
-exports.logger = require('../logger');
+export const Connection = require('./connection');
+export const Doc = require('./doc');
+export const Error = require('../error');
+export const Query = require('./query');
+export const types = require('../types');
+export const logger = require('../logger');

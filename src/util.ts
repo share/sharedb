@@ -1,46 +1,46 @@
-var nextTickImpl = require('./next-tick');
-
-exports.doNothing = doNothing;
+import nextTickImpl = require('./next-tick');
+export let nextTick: any;
+export let inherits: any;
+export { doNothing };
 function doNothing() {}
 
-exports.hasKeys = function(object) {
+export function hasKeys(object) {
   for (var key in object) return true;
   return false;
-};
+}
 
-var hasOwn;
-exports.hasOwn = hasOwn = Object.hasOwn || function(obj, prop) {
+export const hasOwn = Object.hasOwn || function(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger#Polyfill
-exports.isInteger = Number.isInteger || function(value) {
+export const isInteger = Number.isInteger || function(value) {
   return typeof value === 'number' &&
     isFinite(value) &&
     Math.floor(value) === value;
 };
 
-exports.isValidVersion = function(version) {
+export function isValidVersion(version) {
   if (version === null) return true;
   return exports.isInteger(version) && version >= 0;
-};
+}
 
-exports.isValidTimestamp = function(timestamp) {
+export function isValidTimestamp(timestamp) {
   return exports.isValidVersion(timestamp);
-};
+}
 
-exports.MAX_SAFE_INTEGER = 9007199254740991;
+export const MAX_SAFE_INTEGER = 9007199254740991;
 
-exports.dig = function() {
+export function dig() {
   var obj = arguments[0];
   for (var i = 1; i < arguments.length; i++) {
     var key = arguments[i];
     obj = hasOwn(obj, key) ? obj[key] : (i === arguments.length - 1 ? undefined : Object.create(null));
   }
   return obj;
-};
+}
 
-exports.digOrCreate = function() {
+export function digOrCreate() {
   var obj = arguments[0];
   var createCallback = arguments[arguments.length - 1];
   for (var i = 1; i < arguments.length - 1; i++) {
@@ -49,9 +49,9 @@ exports.digOrCreate = function() {
       (obj[key] = i === arguments.length - 2 ? createCallback() : Object.create(null));
   }
   return obj;
-};
+}
 
-exports.digAndRemove = function() {
+export function digAndRemove() {
   var obj = arguments[0];
   var objects = [obj];
   for (var i = 1; i < arguments.length - 1; i++) {
@@ -67,13 +67,13 @@ exports.digAndRemove = function() {
     var child = parent[key];
     if (i === objects.length - 1 || !exports.hasKeys(child)) delete parent[key];
   }
-};
+}
 
-exports.supportsPresence = function(type) {
+export function supportsPresence(type) {
   return type && typeof type.transformPresence === 'function';
-};
+}
 
-exports.callEach = function(callbacks, error) {
+export function callEach(callbacks, error) {
   var called = false;
   callbacks.forEach(function(callback) {
     if (callback) {
@@ -82,30 +82,30 @@ exports.callEach = function(callbacks, error) {
     }
   });
   return called;
-};
-
-exports.callbackOrEmit = function(emitter, error, callback) {
-  if (callback) return callback(error);
-  if (error) emitter.emit('error', error);
-};
-
-exports.truthy = function(arg) {
-  return !!arg;
-};
-
-if (typeof process !== 'undefined' && typeof process.nextTick === 'function') {
-  exports.nextTick = process.nextTick;
-} else if (typeof MessageChannel !== 'undefined') {
-  exports.nextTick = nextTickImpl.messageChannel;
-} else {
-  exports.nextTick = nextTickImpl.setTimeout;
 }
 
-exports.clone = function(obj) {
-  return (obj === undefined) ? undefined : JSON.parse(JSON.stringify(obj));
-};
+export function callbackOrEmit(emitter, error, callback) {
+  if (callback) return callback(error);
+  if (error) emitter.emit('error', error);
+}
 
-exports.shallowCopy = function(object) {
+export function truthy(arg) {
+  return !!arg;
+}
+
+if (typeof process !== 'undefined' && typeof process.nextTick === 'function') {
+  nextTick = process.nextTick;
+} else if (typeof MessageChannel !== 'undefined') {
+  nextTick = nextTickImpl.messageChannel;
+} else {
+  nextTick = nextTickImpl.setTimeout;
+}
+
+export function clone(obj) {
+  return (obj === undefined) ? undefined : JSON.parse(JSON.stringify(obj));
+}
+
+export function shallowCopy(object) {
   var out = {};
   for (var key in object) {
     if (exports.hasOwn(object, key)) {
@@ -113,24 +113,25 @@ exports.shallowCopy = function(object) {
     }
   }
   return out;
-};
+}
 
 // A null prototype makes '__proto__' an ordinary own key, so it can be in the map
 var objectProtoPropNames = Object.create(null);
 Object.getOwnPropertyNames(Object.prototype).forEach(function(prop) {
   objectProtoPropNames[prop] = true;
 });
-exports.isDangerousProperty = function(propName) {
+
+export function isDangerousProperty(propName) {
   return objectProtoPropNames[propName] === true;
-};
+}
 
 try {
   var util = require('util');
   if (typeof util.inherits !== 'function') throw new Error('Could not find util.inherits()');
-  exports.inherits = util.inherits;
+  inherits = util.inherits;
 } catch (e) {
   try {
-    exports.inherits = require('inherits');
+    inherits = require('inherits');
   } catch (e) {
     throw new Error('If running sharedb in a browser, please install the "inherits" or "util" package');
   }

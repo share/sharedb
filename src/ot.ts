@@ -3,14 +3,15 @@
 // These functions understand versions and can deal with out of bound create &
 // delete operations.
 
-var types = require('./types');
-var ShareDBError = require('./error');
-var util = require('./util');
+import types = require('./types');
+
+import ShareDBError = require('./error');
+import util = require('./util');
 
 var ERROR_CODE = ShareDBError.CODES;
 
 // Returns an error string on failure. Rockin' it C style.
-exports.checkOp = function(op) {
+export function checkOp(op) {
   if (op == null || typeof op !== 'object') {
     return new ShareDBError(ERROR_CODE.ERR_OT_OP_BADLY_FORMED, 'Op must be an object');
   }
@@ -49,16 +50,16 @@ exports.checkOp = function(op) {
   if (op.m != null && typeof op.m !== 'object') {
     return new ShareDBError(ERROR_CODE.ERR_OT_OP_BADLY_FORMED, 'op.m must be an object or null');
   }
-};
+}
 
 // Takes in a string (type name or URI) and returns the normalized name (uri)
-exports.normalizeType = function(typeName) {
+export function normalizeType(typeName) {
   return types.map[typeName] && types.map[typeName].uri;
-};
+}
 
 // This is the super apply function that takes in snapshot data (including the
 // type) and edits it in-place. Returns an error or null for success.
-exports.apply = function(snapshot, op) {
+export function apply(snapshot, op) {
   if (typeof snapshot !== 'object') {
     return new ShareDBError(ERROR_CODE.ERR_APPLY_SNAPSHOT_NOT_PROVIDED, 'Missing snapshot');
   }
@@ -99,7 +100,7 @@ exports.apply = function(snapshot, op) {
   } else {
     snapshot.v++;
   }
-};
+}
 
 function applyOpEdit(snapshot, edit) {
   if (!snapshot.type) return new ShareDBError(ERROR_CODE.ERR_DOC_DOES_NOT_EXIST, 'Document does not exist');
@@ -173,19 +174,19 @@ function isJson0(type) {
   return !!type && type.name === 'json0';
 }
 
-exports.checkOpPathsForType = function(type, op) {
+export function checkOpPathsForType(type, op) {
   if (!('op' in op)) return;
   if (!isJson0(type)) return;
   return checkJson0OpPaths(op.op);
-};
+}
 
-exports.checkSubmittedOpForType = function(type, op) {
+export function checkSubmittedOpForType(type, op) {
   if (!('op' in op)) return;
   if (!isJson0(type)) return;
   return checkSubmittedJson0Op(op.op);
-};
+}
 
-exports.transform = function(type, op, appliedOp) {
+export function transform(type, op, appliedOp) {
   // There are 16 cases this function needs to deal with - which are all the
   // combinations of create/delete/op/noop from both op and appliedOp
   if (op.v != null && op.v !== appliedOp.v) {
@@ -220,7 +221,7 @@ exports.transform = function(type, op, appliedOp) {
   }
 
   if (op.v != null) op.v++;
-};
+}
 
 /**
  * Apply an array of ops to the provided snapshot.
@@ -230,7 +231,7 @@ exports.transform = function(type, op, appliedOp) {
  * @param options - options (currently for internal use only)
  * @return an error object if applicable
  */
-exports.applyOps = function(snapshot, ops, options) {
+export function applyOps(snapshot, ops, options) {
   options = options || {};
   for (var index = 0; index < ops.length; index++) {
     var op = ops[index];
@@ -252,9 +253,9 @@ exports.applyOps = function(snapshot, ops, options) {
     var error = exports.apply(snapshot, op);
     if (error) return error;
   }
-};
+}
 
-exports.transformPresence = function(presence, op, isOwnOp) {
+export function transformPresence(presence, op, isOwnOp) {
   var opError = this.checkOp(op);
   if (opError) return opError;
 
@@ -282,7 +283,7 @@ exports.transformPresence = function(presence, op, isOwnOp) {
   }
 
   presence.v++;
-};
+}
 
 /**
  * json0 had a breaking change in https://github.com/ottypes/json0/pull/40
