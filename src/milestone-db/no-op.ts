@@ -1,13 +1,14 @@
 var MilestoneDB = require('./index');
 var util = require('../util');
 
+module.exports = NoOpMilestoneDB;
+
 /**
  * A no-op implementation of the MilestoneDB class.
  *
  * This class exists as a simple, silent default drop-in for ShareDB, which allows the backend to call its methods with
  * no effect.
  */
-module.exports = NoOpMilestoneDB;
 function NoOpMilestoneDB(options) {
   MilestoneDB.call(this, options);
 }

@@ -8,10 +8,11 @@ exports.messageChannel = function() {
   channel.port2.postMessage('');
 };
 
-exports.setTimeout = function() {
+exports.setTimeout = nextTickWithSetTimeout;
+function nextTickWithSetTimeout() {
   var triggerCallback = createNextTickTrigger(arguments);
   setTimeout(triggerCallback);
-};
+}
 
 function createNextTickTrigger(args) {
   var callback = args[0];

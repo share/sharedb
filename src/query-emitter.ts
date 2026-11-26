@@ -216,7 +216,7 @@ QueryEmitter.prototype.queryPoll = function(callback) {
         var snapshotOptions = {};
         snapshotOptions.agentCustom = emitter.agent.custom;
 
-        function _getSnapshotBulkCb(err, snapshotMap) {
+        var _getSnapshotBulkCb = function(err, snapshotMap) {
           if (err) return emitter._finishPoll(err, callback, pending);
           var snapshots = emitter.backend._getSnapshotsFromMap(inserted, snapshotMap);
           var snapshotType = emitter.backend.SNAPSHOT_TYPES.current;

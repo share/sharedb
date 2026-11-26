@@ -20,6 +20,8 @@ function connectionState(socket) {
   return 'disconnected';
 }
 
+module.exports = Connection;
+
 /**
  * Handles communication with the sharejs server and provides queries and
  * documents.
@@ -35,7 +37,6 @@ function connectionState(socket) {
  *
  * @param socket @see bindToSocket
  */
-module.exports = Connection;
 function Connection(socket) {
   emitter.EventEmitter.call(this);
 
