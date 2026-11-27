@@ -1,0 +1,23 @@
+export const ACTIONS = {
+  initLegacy: 'init',
+  handshake: 'hs',
+  queryFetch: 'qf',
+  querySubscribe: 'qs',
+  queryUnsubscribe: 'qu',
+  queryUpdate: 'q',
+  bulkFetch: 'bf',
+  bulkSubscribe: 'bs',
+  bulkUnsubscribe: 'bu',
+  fetch: 'f',
+  fixup: 'fixup',
+  subscribe: 's',
+  unsubscribe: 'u',
+  op: 'op',
+  snapshotFetch: 'nf',
+  snapshotFetchByTimestamp: 'nt',
+  pingPong: 'pp',
+  presence: 'p',
+  presenceSubscribe: 'ps',
+  presenceUnsubscribe: 'pu',
+  presenceRequest: 'pr'
+};

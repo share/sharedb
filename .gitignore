@@ -39,6 +39,9 @@ node_modules
 package-lock.json
 jspm_packages
 
+# Compiled from src/
+/lib/
+
 # Don't commit generated JS bundles
 examples/**/static/dist/bundle.js
 examples/**/dist

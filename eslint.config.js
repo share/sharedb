@@ -4,6 +4,7 @@ const {
     globalIgnores,
 } = require("eslint/config");
 const eslintConfigGoogle = require('eslint-config-google');
+const tseslint = require('typescript-eslint');
 
 // The ESLint ecmaVersion argument is inconsistently used. Some rules will ignore it entirely, so if the rule has
 // been set, it will still error even if it's not applicable to that version number. Since Google sets these
@@ -67,7 +68,29 @@ module.exports = defineConfig([
 
         rules: Object.assign({}, DISABLED_ES6_OPTIONS, SHAREDB_RULES),
     },
-    globalIgnores(["docs/"]),
+    globalIgnores(["docs/", "lib/"]),
+    {
+        files: ["src/**/*.ts"],
+
+        languageOptions: {
+            parser: tseslint.parser,
+            ecmaVersion: 2022,
+            sourceType: "module",
+        },
+
+        plugins: {
+            '@typescript-eslint': tseslint.plugin,
+        },
+
+        rules: {
+            'no-invalid-this': 'off',
+            '@typescript-eslint/no-invalid-this': 'error',
+            // TypeScript checks this itself (TS17009)
+            'no-this-before-super': 'off',
+            'no-unused-vars': 'off',
+            '@typescript-eslint/no-unused-vars': SHAREDB_RULES['no-unused-vars'],
+        },
+    },
     {
         files: ["examples/counter-json1-vite/*.js"],
 
